@@ -1,0 +1,126 @@
+{
+  "identity": {
+    "designer": "E1",
+    "mission": "Create a 'Midnight Social' experience that feels like a VIP pass—mysterious, playful, and high-contrast.",
+    "core_principles": [
+      "Fusion: Nightlife Neon x Swiss Precision",
+      "Emotion: Every interaction feels 'live' and 'spontaneous'",
+      "Depth: Glassmorphism and Z-Index layering to create physical space",
+      "Negative Space: Don't clutter—let the avatars and content breathe"
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "heading": "Outfit, sans-serif",
+      "body": "Manrope, sans-serif",
+      "accent": "Syne, sans-serif"
+    },
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Outfit:wght@400;500;700;900&family=Syne:wght@700&display=swap",
+    "scale": {
+      "display": "text-5xl md:text-7xl font-black tracking-tight",
+      "h1": "text-4xl md:text-5xl font-bold tracking-tight",
+      "h2": "text-3xl md:text-4xl font-bold tracking-tight",
+      "h3": "text-2xl font-semibold",
+      "body_lg": "text-lg leading-relaxed",
+      "body": "text-base leading-relaxed text-muted-foreground",
+      "caption": "text-sm font-medium tracking-wide uppercase text-muted-foreground"
+    }
+  },
+  "colors": {
+    "theme_strategy": "Midnight Social (Dark Mode Native)",
+    "palette": {
+      "background": {
+        "default": "bg-slate-950",
+        "glass": "bg-slate-900/60 backdrop-blur-xl border border-white/10",
+        "card": "bg-slate-900/40"
+      },
+      "text": {
+        "primary": "text-white",
+        "secondary": "text-slate-400",
+        "muted": "text-slate-600"
+      },
+      "brand": {
+        "primary": "bg-[#6366F1]",
+        "primary_gradient": "bg-gradient-to-r from-[#6366F1] to-[#EC4899]",
+        "accent": "bg-[#4ADE80]",
+        "glow": "shadow-[0_0_20px_rgba(99,102,241,0.5)]"
+      },
+      "status": {
+        "live": "bg-emerald-500",
+        "busy": "bg-orange-500",
+        "offline": "bg-slate-700"
+      }
+    },
+    "gradients": {
+      "hero_glow": "bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/50 via-slate-950 to-slate-950",
+      "card_shimmer": "bg-gradient-to-br from-white/10 to-transparent"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "rounded-full bg-white text-black font-bold hover:bg-slate-200 transition-all active:scale-95 shadow-lg shadow-white/10",
+      "brand": "rounded-full bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold hover:opacity-90 transition-all active:scale-95 shadow-[0_0_20px_rgba(99,102,241,0.3)]",
+      "ghost": "rounded-full hover:bg-white/10 text-white transition-colors"
+    },
+    "cards": {
+      "venue": "rounded-3xl bg-slate-900/50 border border-white/5 overflow-hidden hover:border-white/20 transition-all duration-300 group relative",
+      "profile": "rounded-2xl bg-white/5 border border-white/5 p-4 flex flex-col gap-3 hover:bg-white/10 transition-all",
+      "token": "rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-600/20 border border-amber-500/30 p-4 relative overflow-hidden"
+    },
+    "inputs": {
+      "default": "bg-white/5 border-transparent focus:border-indigo-500 rounded-xl h-12 px-4 text-white placeholder:text-slate-500 transition-all focus:bg-white/10 ring-offset-slate-950"
+    },
+    "navigation": {
+      "dock": "fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-2xl border border-white/10 rounded-full px-6 py-3 flex items-center gap-8 shadow-2xl shadow-black/50 z-50"
+    }
+  },
+  "layout_patterns": {
+    "grid_system": {
+      "venue_feed": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 md:p-8",
+      "people_grid": "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"
+    },
+    "containers": {
+      "page": "min-h-screen bg-slate-950 text-white pb-32",
+      "section": "max-w-7xl mx-auto px-4 md:px-8 py-12"
+    }
+  },
+  "motion": {
+    "transitions": "transition-all duration-300 ease-out",
+    "hover_effects": "hover:-translate-y-1 hover:shadow-xl",
+    "micro_interactions": {
+      "like": "active:scale-125 transition-transform",
+      "glance": "animate-pulse"
+    }
+  },
+  "image_assets": {
+    "placeholders": {
+      "user_avatar": "https://images.unsplash.com/photo-1623697986878-744935a60299?crop=entropy&cs=srgb&fm=jpg&w=200&h=200&fit=crop",
+      "user_avatar_2": "https://images.unsplash.com/photo-1623697986894-18510f741263?crop=entropy&cs=srgb&fm=jpg&w=200&h=200&fit=crop",
+      "user_avatar_3": "https://images.unsplash.com/photo-1588870577703-6184bfa1df8b?crop=entropy&cs=srgb&fm=jpg&w=200&h=200&fit=crop",
+      "venue_bar": "https://images.unsplash.com/photo-1766844649151-f671c0ec206d?crop=entropy&cs=srgb&fm=jpg&w=800&fit=crop",
+      "venue_cafe": "https://images.unsplash.com/photo-1765021095846-3c94960ecbd8?crop=entropy&cs=srgb&fm=jpg&w=800&fit=crop",
+      "drink_token_cocktail": "https://images.unsplash.com/photo-1758685493098-d3a09d4044d0?crop=entropy&cs=srgb&fm=jpg&w=400&fit=crop",
+      "drink_token_coffee": "https://images.unsplash.com/photo-1583124688253-60c350bc90d7?crop=entropy&cs=srgb&fm=jpg&w=400&fit=crop"
+    },
+    "icons": "Use 'lucide-react' for all UI icons. Use 'filled' variants for active states."
+  },
+  "accessibility": {
+    "contrast_check": "Ensure all text on dark backgrounds is at least slate-300 or lighter.",
+    "focus_states": "visible:outline-none visible:ring-2 visible:ring-indigo-500",
+    "reduced_motion": "respect-prefers-reduced-motion"
+  },
+  "universal_guidelines": [
+    "Do not use gradients for text, it hurts readability.",
+    "Avoid 'Inter' font. Use 'Outfit' for headings to maintain brand identity.",
+    "Use 'sonner' for all toast notifications.",
+    "Interactive elements must have 'data-testid' attributes.",
+    "No complete transparent backgrounds for dropdowns/overlays; use 'bg-slate-900/90' + blur."
+  ],
+  "instructions_to_main_agent": [
+    "Implement the 'Midnight Social' theme immediately in tailwind.config.js and index.css.",
+    "Install the 'Outfit' and 'Syne' fonts in index.html or CSS.",
+    "Create a reusable 'Layout' component that includes the floating dock navigation.",
+    "Build the 'VenueCard' and 'UserGlanceCard' as core atomic units.",
+    "Use the provided image URLs for seeding the database or mocked UI state."
+  ]
+}
