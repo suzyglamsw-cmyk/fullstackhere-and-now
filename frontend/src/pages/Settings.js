@@ -58,6 +58,7 @@ const Settings = () => {
   const [formData, setFormData] = useState({
     display_name: user?.display_name || "",
     bio: user?.bio || "",
+    avatar_url: user?.avatar_url || "",
     age: user?.age || "",
     gender: user?.gender || "",
     orientation: user?.orientation || "",
@@ -143,24 +144,49 @@ const Settings = () => {
           </div>
 
           <form onSubmit={handleUpdateProfile} className="space-y-6">
-            {/* Avatar Preview */}
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden">
-                <img
-                  src={user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
-                  alt={user?.display_name}
-                  className="w-full h-full object-cover"
-                />
+            {/* Photo Upload Section */}
+            <div className="space-y-4">
+              <Label className="text-slate-300">Profile Photo</Label>
+              <div className="flex items-start gap-4">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0">
+                  <img
+                    src={formData.avatar_url || user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
+                    alt={user?.display_name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 space-y-3">
+                  <Input
+                    data-testid="avatar-url-input"
+                    placeholder="Paste image URL..."
+                    value={formData.avatar_url}
+                    onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
+                    className="h-10 bg-white/5 border-transparent focus:border-indigo-500 rounded-xl text-white text-sm placeholder:text-slate-500"
+                  />
+                  <p className="text-xs text-slate-500">Or choose from presets:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop",
+                      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
+                      "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=200&h=200&fit=crop",
+                      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop",
+                      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop",
+                      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
+                    ].map((url, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, avatar_url: url })}
+                        className={`w-10 h-10 rounded-lg overflow-hidden border-2 transition-all ${
+                          formData.avatar_url === url ? "border-indigo-500" : "border-transparent hover:border-white/20"
+                        }`}
+                      >
+                        <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => navigate("/profile-setup")}
-                className="text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
-                data-testid="change-avatar-btn"
-              >
-                Change Avatar
-              </Button>
             </div>
 
             <div className="space-y-2">
