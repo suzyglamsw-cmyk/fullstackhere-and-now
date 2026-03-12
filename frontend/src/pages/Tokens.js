@@ -117,7 +117,7 @@ const Tokens = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-white">{pkg.name}</h3>
-                    <p className="text-slate-400 text-sm">${(pkg.price / pkg.tokens).toFixed(2)} per token</p>
+                    <p className="text-slate-400 text-sm">£{(pkg.price / pkg.tokens).toFixed(2)} per token</p>
                   </div>
                 </div>
                 <Button
@@ -131,7 +131,7 @@ const Tokens = () => {
                   ) : (
                     <>
                       <Plus className="w-4 h-4 mr-1" />
-                      ${pkg.price}
+                      £{pkg.price}
                     </>
                   )}
                 </Button>

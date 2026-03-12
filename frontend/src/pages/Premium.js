@@ -114,36 +114,71 @@ const Premium = () => {
 
         {/* Packages */}
         {!user?.is_premium && (
-          <div className="space-y-4">
+          <div className="space-y-4" data-testid="packages-list">
+            <h2 className="text-xl font-semibold text-white">Choose a Plan</h2>
             {loading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
               </div>
+            ) : packages.length === 0 ? (
+              <p className="text-slate-400 text-center py-4">No packages available</p>
             ) : (
-              packages.map((pkg) => (
-                <div
-                  key={pkg.id}
-                  data-testid={`package-${pkg.id}`}
-                  className="glass rounded-2xl p-6 flex items-center justify-between"
-                >
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">{pkg.name}</h3>
-                    <p className="text-slate-400 text-sm">{pkg.duration_days} days</p>
-                  </div>
-                  <Button
-                    data-testid={`buy-${pkg.id}`}
-                    onClick={() => handlePurchase(pkg.id)}
-                    disabled={purchasing === pkg.id}
-                    className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold hover:opacity-90"
+              <>
+                {/* Monthly Plan */}
+                {packages.filter(p => p.id === 'premium_monthly').map((pkg) => (
+                  <div
+                    key={pkg.id}
+                    data-testid={`package-${pkg.id}`}
+                    className="glass rounded-2xl p-6 flex items-center justify-between"
                   >
-                    {purchasing === pkg.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      `$${pkg.price}`
-                    )}
-                  </Button>
-                </div>
-              ))
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{pkg.name}</h3>
+                      <p className="text-slate-400 text-sm">{pkg.duration_days} days</p>
+                    </div>
+                    <Button
+                      data-testid={`buy-${pkg.id}`}
+                      onClick={() => handlePurchase(pkg.id)}
+                      disabled={purchasing === pkg.id}
+                      className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold hover:opacity-90"
+                    >
+                      {purchasing === pkg.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        `£${pkg.price}`
+                      )}
+                    </Button>
+                  </div>
+                ))}
+                
+                {/* Yearly Plan */}
+                {packages.filter(p => p.id === 'premium_yearly').map((pkg) => (
+                  <div
+                    key={pkg.id}
+                    data-testid={`package-${pkg.id}`}
+                    className="glass rounded-2xl p-6 flex items-center justify-between border border-amber-500/30"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-white">{pkg.name}</h3>
+                        <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Best Value</span>
+                      </div>
+                      <p className="text-slate-400 text-sm">{pkg.duration_days} days</p>
+                    </div>
+                    <Button
+                      data-testid={`buy-${pkg.id}`}
+                      onClick={() => handlePurchase(pkg.id)}
+                      disabled={purchasing === pkg.id}
+                      className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold hover:opacity-90"
+                    >
+                      {purchasing === pkg.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        `£${pkg.price}`
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         )}

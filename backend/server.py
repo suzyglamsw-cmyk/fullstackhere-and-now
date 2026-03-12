@@ -45,14 +45,14 @@ PREMIUM_DAILY_TOKENS = 5
 
 # Premium packages (defined on backend only for security)
 PREMIUM_PACKAGES = {
-    "premium_monthly": {"price": 9.99, "duration_days": 30, "name": "Premium Monthly"},
-    "premium_yearly": {"price": 79.99, "duration_days": 365, "name": "Premium Yearly"},
+    "premium_monthly": {"price": 7.99, "duration_days": 30, "name": "Premium Monthly", "currency": "gbp"},
+    "premium_yearly": {"price": 59.99, "duration_days": 365, "name": "Premium Yearly", "currency": "gbp"},
 }
 
 TOKEN_PACKAGES = {
-    "tokens_5": {"price": 4.99, "tokens": 5, "name": "5 Tokens"},
-    "tokens_15": {"price": 9.99, "tokens": 15, "name": "15 Tokens"},
-    "tokens_50": {"price": 24.99, "tokens": 50, "name": "50 Tokens"},
+    "tokens_5": {"price": 3.99, "tokens": 5, "name": "5 Tokens", "currency": "gbp"},
+    "tokens_15": {"price": 7.99, "tokens": 15, "name": "15 Tokens", "currency": "gbp"},
+    "tokens_50": {"price": 19.99, "tokens": 50, "name": "50 Tokens", "currency": "gbp"},
 }
 
 # Create the main app
@@ -1295,7 +1295,7 @@ async def create_premium_checkout(request: Request, package_id: str, current_use
             
             checkout_request = CheckoutSessionRequest(
                 amount=package["price"],
-                currency="usd",
+                currency="gbp",
                 success_url=success_url,
                 cancel_url=cancel_url,
                 metadata={
@@ -1315,7 +1315,7 @@ async def create_premium_checkout(request: Request, package_id: str, current_use
                 "type": "premium",
                 "package_id": package_id,
                 "amount": package["price"],
-                "currency": "usd",
+                "currency": "gbp",
                 "status": "pending",
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
@@ -1351,7 +1351,7 @@ async def create_tokens_checkout(request: Request, package_id: str, current_user
             
             checkout_request = CheckoutSessionRequest(
                 amount=package["price"],
-                currency="usd",
+                currency="gbp",
                 success_url=success_url,
                 cancel_url=cancel_url,
                 metadata={
@@ -1371,7 +1371,7 @@ async def create_tokens_checkout(request: Request, package_id: str, current_user
                 "type": "tokens",
                 "package_id": package_id,
                 "amount": package["price"],
-                "currency": "usd",
+                "currency": "gbp",
                 "token_count": package["tokens"],
                 "status": "pending",
                 "created_at": datetime.now(timezone.utc).isoformat()
