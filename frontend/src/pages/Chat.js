@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
-import { ArrowLeft, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Check, CheckCheck } from "lucide-react";
 
 const Chat = () => {
   const { userId } = useParams();
@@ -18,16 +18,59 @@ const Chat = () => {
   const [otherUser, setOtherUser] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const wsRef = useRef(null);
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
+    connectWebSocket();
+    const interval = setInterval(fetchMessages, 5000);
+    return () => {
+      clearInterval(interval);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
   }, [userId]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const connectWebSocket = () => {
+    if (!user?.id) return;
+    
+    const wsUrl = API.replace('/api', '').replace('https://', 'wss://').replace('http://', 'ws://');
+    const ws = new WebSocket(`${wsUrl}/api/ws/${user.id}`);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle read receipts
+        if (data.type === 'messages_read' && data.by_user_id === userId) {
+          setMessages(prev => prev.map(msg => {
+            if (data.message_ids.includes(msg.id)) {
+              return { ...msg, is_read: true, read_at: data.read_at };
+            }
+            return msg;
+          }));
+        }
+        
+        // Handle new messages
+        if (data.type === 'new_message' && data.message.from_user_id === userId) {
+          fetchMessages();
+        }
+      } catch (e) {
+        console.error('WebSocket message error:', e);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    wsRef.current = ws;
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -96,6 +139,24 @@ const Chat = () => {
     });
   };
 
+  const formatReadTime = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1440) return formatTime(dateString);
+    return date.toLocaleDateString();
+  };
+
+  // Get the last sent message that was read (for showing "Read" indicator)
+  const lastReadMessage = messages
+    .filter(m => m.from_user_id === user?.id && m.is_read)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col" data-testid="chat-page">
       {/* Header */}
@@ -139,34 +200,59 @@ const Chat = () => {
               <p className="text-slate-400">No messages yet. Say hello!</p>
             </div>
           ) : (
-            messages.map((message) => (
-              <div
-                key={message.id}
-                data-testid={`message-${message.id}`}
-                className={`flex ${
-                  message.from_user_id === user.id ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                    message.from_user_id === user.id
-                      ? "message-sent text-white"
-                      : "message-received text-white"
-                  }`}
-                >
-                  <p className="text-sm leading-relaxed">{message.content}</p>
-                  <p
-                    className={`text-xs mt-1 ${
-                      message.from_user_id === user.id
-                        ? "text-white/60"
-                        : "text-slate-500"
-                    }`}
+            messages.map((message, index) => {
+              const isOwn = message.from_user_id === user?.id;
+              const isLastMessage = index === messages.length - 1;
+              const showReadReceipt = isOwn && message.is_read && user?.is_premium;
+              const isLastRead = lastReadMessage?.id === message.id;
+              
+              return (
+                <div key={message.id}>
+                  <div
+                    data-testid={`message-${message.id}`}
+                    className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
                   >
-                    {formatTime(message.created_at)}
-                  </p>
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                        isOwn
+                          ? "message-sent text-white"
+                          : "message-received text-white"
+                      }`}
+                    >
+                      <p className="text-sm leading-relaxed">{message.content}</p>
+                      <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : ""}`}>
+                        <p
+                          className={`text-xs ${
+                            isOwn ? "text-white/60" : "text-slate-500"
+                          }`}
+                        >
+                          {formatTime(message.created_at)}
+                        </p>
+                        {/* Read receipt indicators for own messages */}
+                        {isOwn && (
+                          <span className="text-white/60">
+                            {message.is_read ? (
+                              <CheckCheck className="w-3.5 h-3.5 text-indigo-400" data-testid={`read-receipt-${message.id}`} />
+                            ) : (
+                              <Check className="w-3.5 h-3.5" data-testid={`sent-receipt-${message.id}`} />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Show "Read" text for the last read message (premium feature) */}
+                  {showReadReceipt && isLastRead && (
+                    <div className="flex justify-end mt-1 mr-2">
+                      <span className="text-xs text-indigo-400" data-testid="read-timestamp">
+                        Read {formatReadTime(message.read_at)}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
           <div ref={messagesEndRef} />
         </div>

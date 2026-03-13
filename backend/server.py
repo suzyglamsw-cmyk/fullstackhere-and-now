@@ -375,6 +375,10 @@ class MessageResponse(BaseModel):
     content: str
     created_at: str
     is_read: bool = False
+    read_at: Optional[str] = None
+
+class MarkMessagesRead(BaseModel):
+    message_ids: List[str]
 
 class ConnectionResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -1772,23 +1776,92 @@ async def get_messages(user_id: str, current_user: dict = Depends(get_current_us
         ]
     }, {"_id": 0}).sort("created_at", 1).to_list(100)
     
-    # Mark as read
-    await db.messages.update_many(
-        {"from_user_id": user_id, "to_user_id": current_user["id"], "is_read": False},
-        {"$set": {"is_read": True}}
-    )
+    # Find unread messages from the other user
+    unread_message_ids = [
+        msg["id"] for msg in messages 
+        if msg["from_user_id"] == user_id and not msg.get("is_read", False)
+    ]
+    
+    # Mark as read with timestamp
+    read_at = datetime.now(timezone.utc).isoformat()
+    if unread_message_ids:
+        await db.messages.update_many(
+            {"id": {"$in": unread_message_ids}},
+            {"$set": {"is_read": True, "read_at": read_at}}
+        )
+        
+        # Send read receipt notification via WebSocket (premium feature)
+        other_user = await db.users.find_one({"id": user_id}, {"_id": 0})
+        if other_user and other_user.get("is_premium"):
+            await manager.send_to_user(user_id, {
+                "type": "messages_read",
+                "by_user_id": current_user["id"],
+                "by_user_name": current_user["display_name"],
+                "message_ids": unread_message_ids,
+                "read_at": read_at
+            })
     
     result = []
     for msg in messages:
         from_user = await db.users.find_one({"id": msg["from_user_id"]}, {"_id": 0, "password": 0})
         if from_user:
+            # Update is_read and read_at for messages we just marked as read
+            msg_is_read = msg.get("is_read", False)
+            msg_read_at = msg.get("read_at")
+            if msg["id"] in unread_message_ids:
+                msg_is_read = True
+                msg_read_at = read_at
+            
             result.append({
                 **msg,
                 "from_user_name": from_user["display_name"],
-                "from_user_avatar": from_user.get("avatar_url", "")
+                "from_user_avatar": from_user.get("avatar_url", ""),
+                "is_read": msg_is_read,
+                "read_at": msg_read_at
             })
     
     return result
+
+@api_router.post("/messages/mark-read")
+async def mark_messages_as_read(data: MarkMessagesRead, current_user: dict = Depends(get_current_user)):
+    """Explicitly mark specific messages as read"""
+    read_at = datetime.now(timezone.utc).isoformat()
+    
+    # Only mark messages sent TO the current user
+    result = await db.messages.update_many(
+        {
+            "id": {"$in": data.message_ids},
+            "to_user_id": current_user["id"],
+            "is_read": False
+        },
+        {"$set": {"is_read": True, "read_at": read_at}}
+    )
+    
+    if result.modified_count > 0:
+        # Get the sender to send read receipt
+        messages = await db.messages.find(
+            {"id": {"$in": data.message_ids}},
+            {"_id": 0, "from_user_id": 1}
+        ).to_list(len(data.message_ids))
+        
+        # Group by sender
+        sender_ids = set(m["from_user_id"] for m in messages)
+        
+        for sender_id in sender_ids:
+            sender = await db.users.find_one({"id": sender_id}, {"_id": 0})
+            if sender and sender.get("is_premium"):
+                await manager.send_to_user(sender_id, {
+                    "type": "messages_read",
+                    "by_user_id": current_user["id"],
+                    "by_user_name": current_user["display_name"],
+                    "message_ids": data.message_ids,
+                    "read_at": read_at
+                })
+    
+    return {
+        "marked_count": result.modified_count,
+        "read_at": read_at
+    }
 
 @api_router.get("/messages/unread/count")
 async def get_unread_count(current_user: dict = Depends(get_current_user)):
