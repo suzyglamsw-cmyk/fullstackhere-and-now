@@ -5,7 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { MapPin, Users, LogOut, Loader2, Navigation, MapPinOff } from "lucide-react";
+import { MapPin, Users, LogOut, Loader2, Navigation, MapPinOff, Star, Clock } from "lucide-react";
 import LiveClock from "../components/LiveClock";
 
 const Venues = () => {
@@ -202,6 +202,17 @@ const Venues = () => {
           </div>
         )}
 
+        {/* Demo Mode Notice */}
+        {displayVenues.length > 0 && displayVenues[0]?.is_seeded && (
+          <div className="glass rounded-2xl p-4 mb-6 flex items-center gap-3 border border-indigo-500/30" data-testid="demo-mode-notice">
+            <MapPin className="w-5 h-5 text-indigo-400" />
+            <div>
+              <p className="text-white font-medium">Demo Mode</p>
+              <p className="text-slate-400 text-sm">Showing sample venues. Connect Google Places API for real venues.</p>
+            </div>
+          </div>
+        )}
+
         {/* Current Check-in Banner */}
         {currentCheckin && (
           <div className="glass rounded-2xl p-4 mb-6 flex items-center justify-between" data-testid="current-checkin-banner">
@@ -292,6 +303,9 @@ const Venues = () => {
                     src={venue.image_url || "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800"}
                     alt={venue.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      e.target.src = "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800";
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
                   
@@ -299,26 +313,49 @@ const Venues = () => {
                   <div className="absolute top-4 right-4 flex items-center gap-2">
                     {venue.distance && (
                       <span className="glass rounded-full px-3 py-1.5 text-white text-xs font-medium">
-                        {venue.distance}m
+                        {venue.distance < 1000 ? `${venue.distance}m` : `${(venue.distance/1000).toFixed(1)}km`}
                       </span>
                     )}
                     <div className="flex items-center gap-2 glass rounded-full px-3 py-1.5">
                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-live" />
                       <span className="text-white text-sm font-medium">
-                        {venue.checked_in_count}
+                        {venue.checked_in_count || 0}
                       </span>
                     </div>
                   </div>
+
+                  {/* Open/Closed Status */}
+                  {venue.is_open !== undefined && (
+                    <div className="absolute top-4 left-4">
+                      <span className={`glass rounded-full px-3 py-1.5 text-xs font-medium flex items-center gap-1 ${venue.is_open ? 'text-emerald-400' : 'text-slate-400'}`}>
+                        <Clock className="w-3 h-3" />
+                        {venue.is_open ? 'Open' : 'Closed'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Venue Info */}
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="text-xl font-semibold text-white mb-1">{venue.name}</h3>
-                      <span className={`text-sm font-medium capitalize ${getVenueTypeColor(venue.type)}`}>
-                        {venue.type?.replace(/_/g, ' ')}
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xl font-semibold text-white mb-1 truncate">{venue.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-medium capitalize ${getVenueTypeColor(venue.type)}`}>
+                          {venue.type?.replace(/_/g, ' ')}
+                        </span>
+                        {venue.rating && (
+                          <span className="flex items-center gap-1 text-amber-400 text-sm">
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                            {venue.rating.toFixed(1)}
+                          </span>
+                        )}
+                        {venue.price_level && (
+                          <span className="text-slate-500 text-sm">
+                            {'£'.repeat(venue.price_level)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -327,7 +364,7 @@ const Venues = () => {
                   )}
 
                   <div className="flex items-center gap-2 text-slate-500 text-sm mb-4">
-                    <MapPin className="w-4 h-4" />
+                    <MapPin className="w-4 h-4 flex-shrink-0" />
                     <span className="truncate">{venue.address}</span>
                   </div>
 

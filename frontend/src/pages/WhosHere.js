@@ -127,11 +127,27 @@ const WhosHere = () => {
 
   const fetchVenue = async () => {
     try {
+      // First try to get from venues collection
       const response = await axios.get(`${API}/venues/${venueId}`);
       setVenue(response.data);
     } catch (error) {
-      toast.error("Failed to load venue");
-      navigate("/venues");
+      // If not found in venues, try Google Places details
+      try {
+        const placeResponse = await axios.get(`${API}/places/${venueId}/details`);
+        setVenue({
+          id: placeResponse.data.place_id,
+          name: placeResponse.data.name,
+          type: placeResponse.data.types?.[0] || 'venue',
+          address: placeResponse.data.address,
+          description: "",
+          rating: placeResponse.data.rating,
+          image_url: placeResponse.data.photos?.[0],
+          is_open: placeResponse.data.is_open
+        });
+      } catch (e) {
+        toast.error("Failed to load venue");
+        navigate("/venues");
+      }
     }
   };
 

@@ -18,6 +18,7 @@ import httpx
 import base64
 import io
 from pywebpush import webpush, WebPushException
+from math import cos, radians
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -2035,67 +2036,231 @@ async def seed_data():
 # ============================================
 
 @api_router.get("/places/nearby")
-async def get_nearby_places(lat: float, lng: float, current_user: dict = Depends(get_current_user)):
+async def get_nearby_places(lat: float, lng: float, radius: int = 500, current_user: dict = Depends(get_current_user)):
     """Get nearby venues from Google Places API"""
     if not GOOGLE_PLACES_API_KEY:
         # Fallback to seeded venues if no API key
+        logger.warning("No Google Places API key configured, using seeded venues")
         venues = await db.venues.find({}, {"_id": 0}).to_list(20)
         return [{"place_id": v["id"], "name": v["name"], "type": v["type"], 
                  "address": v["address"], "distance": 100, "checked_in_count": 0,
-                 "is_seeded": True} for v in venues]
+                 "is_seeded": True, "image_url": v.get("image_url")} for v in venues]
+    
+    # Check cache first (cache for 5 minutes)
+    cache_key = f"places_{round(lat, 3)}_{round(lng, 3)}_{radius}"
+    cached = await db.places_cache.find_one({"key": cache_key})
+    if cached and datetime.fromisoformat(cached["expires_at"]) > datetime.now(timezone.utc):
+        # Add live check-in counts to cached results
+        results = cached["results"]
+        for place in results:
+            count = await db.checkins.count_documents({
+                "venue_id": place["place_id"], 
+                "is_active": True
+            })
+            place["checked_in_count"] = count
+        return results
     
     try:
         async with httpx.AsyncClient() as client_http:
-            # Search for nearby places (bars, cafes, restaurants, gyms, parks)
-            types = "bar|cafe|restaurant|gym|park|night_club|coworking_space"
-            url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
-            params = {
-                "location": f"{lat},{lng}",
-                "radius": 500,  # 500 meters
-                "type": types,
-                "key": GOOGLE_PLACES_API_KEY
-            }
-            response = await client_http.get(url, params=params)
-            data = response.json()
+            # Search for nearby places - using multiple types for better coverage
+            venue_types = ["bar", "cafe", "restaurant", "night_club", "gym", "park"]
+            all_results = []
+            seen_place_ids = set()
             
-            if data.get("status") != "OK":
+            for venue_type in venue_types:
+                url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+                params = {
+                    "location": f"{lat},{lng}",
+                    "radius": radius,
+                    "type": venue_type,
+                    "key": GOOGLE_PLACES_API_KEY
+                }
+                response = await client_http.get(url, params=params)
+                data = response.json()
+                
+                if data.get("status") == "OK":
+                    for place in data.get("results", []):
+                        place_id = place.get("place_id")
+                        if place_id not in seen_place_ids:
+                            seen_place_ids.add(place_id)
+                            all_results.append(place)
+            
+            if not all_results:
                 # Return seeded venues as fallback
+                logger.warning("Google Places returned no results, using seeded venues")
                 venues = await db.venues.find({}, {"_id": 0}).to_list(20)
                 return [{"place_id": v["id"], "name": v["name"], "type": v["type"], 
                          "address": v["address"], "distance": 100, "checked_in_count": 0,
-                         "is_seeded": True} for v in venues]
+                         "is_seeded": True, "image_url": v.get("image_url")} for v in venues]
             
             results = []
-            for place in data.get("results", [])[:15]:
+            for place in all_results[:20]:  # Limit to 20 venues
                 place_id = place.get("place_id")
+                
                 # Get check-in count for this venue
                 count = await db.checkins.count_documents({
                     "venue_id": place_id, 
                     "is_active": True
                 })
                 
-                # Calculate approximate distance
+                # Calculate distance using Haversine-like approximation
                 place_lat = place["geometry"]["location"]["lat"]
                 place_lng = place["geometry"]["location"]["lng"]
-                distance = int(((lat - place_lat)**2 + (lng - place_lng)**2)**0.5 * 111000)
+                lat_diff = (lat - place_lat) * 111000  # ~111km per degree latitude
+                lng_diff = (lng - place_lng) * 111000 * abs(cos(lat * 3.14159 / 180))
+                distance = int((lat_diff**2 + lng_diff**2)**0.5)
+                
+                # Get photo URL if available
+                photo_url = None
+                if place.get("photos"):
+                    photo_ref = place["photos"][0].get("photo_reference")
+                    if photo_ref:
+                        photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference={photo_ref}&key={GOOGLE_PLACES_API_KEY}"
+                
+                # Determine primary type
+                types = place.get("types", [])
+                primary_type = "venue"
+                type_priority = ["bar", "night_club", "cafe", "restaurant", "gym", "park"]
+                for t in type_priority:
+                    if t in types:
+                        primary_type = t
+                        break
                 
                 results.append({
                     "place_id": place_id,
                     "name": place.get("name"),
-                    "type": place.get("types", ["venue"])[0],
+                    "type": primary_type,
+                    "types": types[:5],
                     "address": place.get("vicinity", ""),
                     "distance": distance,
                     "checked_in_count": count,
+                    "rating": place.get("rating"),
+                    "user_ratings_total": place.get("user_ratings_total"),
+                    "price_level": place.get("price_level"),
+                    "is_open": place.get("opening_hours", {}).get("open_now"),
+                    "image_url": photo_url,
                     "photo_ref": place.get("photos", [{}])[0].get("photo_reference") if place.get("photos") else None
                 })
             
+            # Sort by distance
+            results.sort(key=lambda x: x["distance"])
+            
+            # Cache results (without check-in counts which change frequently)
+            cache_results = [{k: v for k, v in r.items() if k != "checked_in_count"} for r in results]
+            await db.places_cache.update_one(
+                {"key": cache_key},
+                {
+                    "$set": {
+                        "key": cache_key,
+                        "results": cache_results,
+                        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+                    }
+                },
+                upsert=True
+            )
+            
             return results
+            
     except Exception as e:
         logger.error(f"Google Places API error: {e}")
         venues = await db.venues.find({}, {"_id": 0}).to_list(20)
         return [{"place_id": v["id"], "name": v["name"], "type": v["type"], 
                  "address": v["address"], "distance": 100, "checked_in_count": 0,
-                 "is_seeded": True} for v in venues]
+                 "is_seeded": True, "image_url": v.get("image_url")} for v in venues]
+
+@api_router.get("/places/{place_id}/details")
+async def get_place_details(place_id: str, current_user: dict = Depends(get_current_user)):
+    """Get detailed information about a specific place"""
+    if not GOOGLE_PLACES_API_KEY:
+        # Check if it's a seeded venue
+        venue = await db.venues.find_one({"id": place_id}, {"_id": 0})
+        if venue:
+            return {
+                "place_id": venue["id"],
+                "name": venue["name"],
+                "type": venue["type"],
+                "address": venue["address"],
+                "description": venue.get("description", ""),
+                "image_url": venue.get("image_url"),
+                "is_seeded": True
+            }
+        raise HTTPException(status_code=404, detail="Place not found")
+    
+    try:
+        async with httpx.AsyncClient() as client_http:
+            url = "https://maps.googleapis.com/maps/api/place/details/json"
+            params = {
+                "place_id": place_id,
+                "fields": "name,formatted_address,formatted_phone_number,website,opening_hours,rating,reviews,photos,price_level,types,geometry",
+                "key": GOOGLE_PLACES_API_KEY
+            }
+            response = await client_http.get(url, params=params)
+            data = response.json()
+            
+            if data.get("status") != "OK":
+                raise HTTPException(status_code=404, detail="Place not found")
+            
+            result = data.get("result", {})
+            
+            # Get photos
+            photos = []
+            for photo in result.get("photos", [])[:5]:
+                photo_ref = photo.get("photo_reference")
+                if photo_ref:
+                    photos.append(f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference={photo_ref}&key={GOOGLE_PLACES_API_KEY}")
+            
+            # Get check-in count
+            count = await db.checkins.count_documents({
+                "venue_id": place_id, 
+                "is_active": True
+            })
+            
+            return {
+                "place_id": place_id,
+                "name": result.get("name"),
+                "address": result.get("formatted_address"),
+                "phone": result.get("formatted_phone_number"),
+                "website": result.get("website"),
+                "rating": result.get("rating"),
+                "price_level": result.get("price_level"),
+                "types": result.get("types", [])[:5],
+                "opening_hours": result.get("opening_hours", {}).get("weekday_text", []),
+                "is_open": result.get("opening_hours", {}).get("open_now"),
+                "photos": photos,
+                "checked_in_count": count,
+                "location": result.get("geometry", {}).get("location", {})
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Place details error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch place details")
+
+@api_router.get("/places/photo")
+async def get_place_photo(photo_ref: str):
+    """Proxy for Google Places photos (to hide API key from frontend)"""
+    if not GOOGLE_PLACES_API_KEY:
+        raise HTTPException(status_code=404, detail="Photos not available")
+    
+    try:
+        async with httpx.AsyncClient() as client_http:
+            url = "https://maps.googleapis.com/maps/api/place/photo"
+            params = {
+                "maxwidth": 800,
+                "photo_reference": photo_ref,
+                "key": GOOGLE_PLACES_API_KEY
+            }
+            response = await client_http.get(url, params=params, follow_redirects=True)
+            
+            return Response(
+                content=response.content,
+                media_type=response.headers.get("content-type", "image/jpeg"),
+                headers={"Cache-Control": "public, max-age=86400"}
+            )
+    except Exception as e:
+        logger.error(f"Photo proxy error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch photo")
 
 # ============================================
 # Open Area Check-in
