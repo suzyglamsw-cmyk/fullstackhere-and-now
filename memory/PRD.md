@@ -68,7 +68,6 @@ Account deletion feature required. Playful but grown up design. No AI integratio
   - Friends page (/friends) with Friends/Requests tabs
   - Add/Remove friends functionality
   - Friend request accept/decline
-  - Friends link in Settings page
 - [x] **Chat Request System:**
   - Drink offer and Chat request actions
   - Accept/Decline with predefined messages
@@ -77,26 +76,34 @@ Account deletion feature required. Playful but grown up design. No AI integratio
   - Admin Reports page (/admin/reports)
   - User blocking from admin
   - Report status (Pending/Resolved)
-  - Ban User and Dismiss actions
 - [x] **Test Mode Features:**
   - Test Tools page (/test-tools)
   - TEST MODE ACTIVE banner
   - Generate fake glances, drinks, messages
   - Fake users list (Sophie, Liam, Mia, Alex)
-  - IS_TEST_BUILD flag support
-- [x] **Premium Features:**
-  - Profile viewers list
-  - Second reveal after 7 days
-  - Glance viewed notification
 - [x] **Enhanced Notifications:**
   - Activity tab (glances, drink tokens, matches)
   - Requests tab (pending chat requests)
   - Accept/Decline with predefined responses
-- [x] **Settings Developer Section:**
-  - Test Tools link
-  - Admin Inbox link
 
-## Privacy & Safety Rules Implemented
+### Phase 4 (March 2026 - Complete)
+- [x] **Photo Upload System:**
+  - Upload up to 3 profile photos
+  - Stored in MongoDB with base64 encoding
+  - Photo slots with loading states
+  - Photo deletion by slot
+  - Automatic avatar_url update for slot 0
+  - Endpoints: POST /api/photos/upload, GET /api/photos/{id}, DELETE /api/photos/{slot}
+- [x] **Push Notifications System:**
+  - Push subscription management (subscribe/unsubscribe)
+  - Notification settings per category (glances, drinks, messages, matches)
+  - Push queue for delivery
+  - VAPID public key endpoint for Web Push
+  - Auto-trigger on glance, drink token, and message events
+  - Settings UI with master toggle and category toggles
+  - Endpoints: POST /api/push/subscribe, GET/PUT /api/push/settings, GET /api/push/pending
+
+## Privacy & Safety Rules
 - Users only visible while checked in
 - No location history stored
 - No exact GPS shared (rounded to ~100m)
@@ -110,6 +117,7 @@ Account deletion feature required. Playful but grown up design. No AI integratio
 - Payments: Stripe (with mock mode for testing)
 - Location: Google Places API (fallback to seeded venues)
 - Real-time: WebSocket
+- Storage: MongoDB (base64 photos)
 
 ## Frontend Pages
 | Route | Page | Description |
@@ -124,7 +132,7 @@ Account deletion feature required. Playful but grown up design. No AI integratio
 | /connections | Connections | Your matches list |
 | /chat/:userId | Chat | Direct messaging |
 | /notifications | Notifications | Activity & Requests tabs |
-| /settings | Settings | Profile, privacy, account |
+| /settings | Settings | Profile, privacy, notifications |
 | /premium | Premium | Subscription upgrade |
 | /tokens | Tokens | Token purchase |
 | /friends | Friends | Friends list & requests |
@@ -139,14 +147,13 @@ All core features implemented
 
 ### P1 (High Priority) - Next
 - [ ] Real Google Places API key for production
-- [ ] Push notifications (FCM/APNs)
-- [ ] Profile photo upload to cloud storage
+- [ ] Web Push worker implementation (actual push delivery)
 - [ ] Google Play Billing for Android
 
 ### P2 (Medium Priority)
 - [ ] Venue ratings/reviews
 - [ ] Message read receipts
-- [ ] Enhanced real-time updates
+- [ ] Cloud storage migration (S3/GCS instead of MongoDB base64)
 
 ### P3 (Nice to Have)
 - [ ] Group check-ins
@@ -165,6 +172,20 @@ All core features implemented
 - POST /api/auth/forgot-password
 - POST /api/auth/reset-password
 
+### Photos
+- POST /api/photos/upload
+- GET /api/photos/{photo_id}
+- DELETE /api/photos/{slot}
+- GET /api/photos/user/{user_id}
+
+### Push Notifications
+- POST /api/push/subscribe
+- DELETE /api/push/unsubscribe
+- GET /api/push/settings
+- PUT /api/push/settings
+- GET /api/push/pending
+- GET /api/push/vapid-public-key
+
 ### Social
 - GET /api/friends
 - POST /api/friends/add
@@ -174,9 +195,6 @@ All core features implemented
 - POST /api/chat-request
 - GET /api/chat-requests/inbox
 - POST /api/chat-request/{request_id}/respond
-- GET /api/chat-requests/decline-messages
-- GET /api/chat-requests/accept-messages
-- GET /api/chat/status/{user_id}
 
 ### Venue
 - GET /api/venues
@@ -184,7 +202,6 @@ All core features implemented
 - POST /api/checkin/{venue_id}
 - POST /api/checkout
 - GET /api/venues/{venue_id}/people
-- GET /api/places/nearby
 
 ### Interactions
 - POST /api/glance
@@ -205,7 +222,6 @@ All core features implemented
 ### Admin
 - GET /api/admin/reports
 - POST /api/admin/block-user/{user_id}
-- GET /api/report/reasons
 
 ### Test Mode
 - GET /api/test/status
@@ -222,15 +238,31 @@ DB_NAME=test_database
 JWT_SECRET=your-secret-key
 STRIPE_API_KEY=sk_test_xxx
 GOOGLE_PLACES_API_KEY=xxx
-IS_TEST_BUILD=true  # Enable test mode
+IS_TEST_BUILD=true
+VAPID_PUBLIC_KEY=xxx (optional for web push)
 
 # Frontend (.env)
 REACT_APP_BACKEND_URL=https://your-domain.com
 ```
 
+## Database Collections
+- users
+- photos
+- venues
+- checkins
+- glances
+- drink_tokens
+- connections
+- messages
+- friends
+- reports
+- password_resets
+- push_subscriptions
+- push_settings
+- push_queue
+
 ## Next Tasks
 1. Production Google Places API key
-2. Push notification integration (FCM)
-3. Photo upload to cloud storage
-4. Google Play Billing integration
-5. Enhanced WebSocket reliability
+2. Web Push service worker implementation
+3. Google Play Billing integration
+4. Cloud storage migration for photos
