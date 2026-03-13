@@ -39,9 +39,50 @@ AUTO_CHECKOUT_MINUTES = 30
 
 # Premium/Token Config
 FREE_DAILY_GLANCES = 5
-FREE_TOKENS_PER_SESSION = 1
+FREE_DAILY_TOKENS = 1
 PREMIUM_DAILY_GLANCES = 20
 PREMIUM_DAILY_TOKENS = 5
+FREE_TOKEN_EXPIRY_HOURS = 24
+
+# Second reveal after 7 days
+SECOND_REVEAL_DAYS = 7
+
+# Test Mode flag (set to True for dev builds)
+IS_TEST_BUILD = os.environ.get('IS_TEST_BUILD', 'false').lower() == 'true'
+
+# Decline messages
+DECLINE_MESSAGES = [
+    "Not this time, thank you.",
+    "I'll pass for now, thank you.",
+    "Maybe another time, thank you.",
+    "Not today, but I appreciate it.",
+    "I'm going to skip this one, thanks."
+]
+
+# Accept messages
+ACCEPT_MESSAGES = [
+    "I'd love to.",
+    "That would be nice.",
+    "Absolutely.",
+    "Yes — as friends only, hope that's ok.",
+    "Sure, that sounds good.",
+    "Why not."
+]
+
+# Fake test users
+FAKE_TEST_USERS = [
+    {"id": "fake-sophie", "display_name": "Sophie", "age": 28, "distance": 5, "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200"},
+    {"id": "fake-liam", "display_name": "Liam", "age": 31, "distance": 12, "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200"},
+    {"id": "fake-mia", "display_name": "Mia", "age": 26, "distance": 8, "avatar_url": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200"},
+    {"id": "fake-alex", "display_name": "Alex", "age": 34, "distance": 15, "avatar_url": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200"},
+]
+
+FAKE_USER_MESSAGES = {
+    "fake-sophie": ["Hey, how's your night going", "Nice to see someone else here", "What are you drinking tonight"],
+    "fake-liam": ["You look familiar, have we met here before", "Busy night in here", "What brings you out tonight"],
+    "fake-mia": ["Love your vibe tonight", "This place has great music", "Are you here with friends"],
+    "fake-alex": ["Evening, how's your night", "Trying this place for the first time", "What's your favourite drink"],
+}
 
 # Premium packages (defined on backend only for security)
 PREMIUM_PACKAGES = {
@@ -203,6 +244,36 @@ class TokenBalanceResponse(BaseModel):
     daily_remaining: int
     is_premium: bool
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+class ChatRequestCreate(BaseModel):
+    to_user_id: str
+    venue_id: str
+    request_type: str  # "drink" or "chat"
+
+class ChatRequestResponse(BaseModel):
+    request_id: str
+    accept: bool
+    message: Optional[str] = None
+
+class FriendRequest(BaseModel):
+    user_id: str
+
+class AdminReportView(BaseModel):
+    id: str
+    reported_user_id: str
+    reported_user_name: str
+    reporter_user_id: str
+    reporter_user_name: str
+    reason: str
+    created_at: str
+    status: str
+
 class GlanceCreate(BaseModel):
     to_user_id: str
     venue_id: str
@@ -320,7 +391,7 @@ async def register(data: UserCreate):
         "premium_expires_at": None,
         "token_balance": 0,
         "daily_glances_remaining": FREE_DAILY_GLANCES,
-        "daily_tokens_remaining": FREE_TOKENS_PER_SESSION,
+        "daily_tokens_remaining": FREE_DAILY_TOKENS,
         "glances_reset_at": now.isoformat(),
         "profile_theme": None,
         "blocked_users": [],
@@ -348,7 +419,7 @@ async def register(data: UserCreate):
             "premium_expires_at": None,
             "token_balance": 0,
             "daily_glances_remaining": FREE_DAILY_GLANCES,
-            "daily_tokens_remaining": FREE_TOKENS_PER_SESSION,
+            "daily_tokens_remaining": FREE_DAILY_TOKENS,
             "glances_reset_at": user["glances_reset_at"],
             "profile_theme": None,
             "created_at": user["created_at"]
@@ -369,7 +440,7 @@ async def login(data: UserLogin):
         if (now - reset_time).days >= 1:
             is_premium = user.get("is_premium", False)
             daily_glances = PREMIUM_DAILY_GLANCES if is_premium else FREE_DAILY_GLANCES
-            daily_tokens = PREMIUM_DAILY_TOKENS if is_premium else FREE_TOKENS_PER_SESSION
+            daily_tokens = PREMIUM_DAILY_TOKENS if is_premium else FREE_DAILY_TOKENS
             await db.users.update_one({"id": user["id"]}, {"$set": {
                 "daily_glances_remaining": daily_glances,
                 "daily_tokens_remaining": daily_tokens,
@@ -405,7 +476,7 @@ async def login(data: UserLogin):
             "premium_expires_at": user.get("premium_expires_at"),
             "token_balance": user.get("token_balance", 0),
             "daily_glances_remaining": user.get("daily_glances_remaining", FREE_DAILY_GLANCES),
-            "daily_tokens_remaining": user.get("daily_tokens_remaining", FREE_TOKENS_PER_SESSION),
+            "daily_tokens_remaining": user.get("daily_tokens_remaining", FREE_DAILY_TOKENS),
             "glances_reset_at": user.get("glances_reset_at"),
             "profile_theme": user.get("profile_theme"),
             "created_at": user["created_at"]
@@ -440,6 +511,635 @@ async def delete_account(current_user: dict = Depends(get_current_user)):
     await db.connections.delete_many({"$or": [{"user1_id": user_id}, {"user2_id": user_id}]})
     await db.messages.delete_many({"$or": [{"from_user_id": user_id}, {"to_user_id": user_id}]})
     return {"message": "Account deleted successfully"}
+
+# Password Reset
+@api_router.post("/auth/forgot-password")
+async def forgot_password(data: PasswordResetRequest):
+    user = await db.users.find_one({"email": data.email})
+    if not user:
+        # Don't reveal if email exists
+        return {"message": "If this email exists, you'll receive a reset link."}
+    
+    reset_token = str(uuid.uuid4())
+    expires = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    await db.password_resets.insert_one({
+        "user_id": user["id"],
+        "token": reset_token,
+        "expires_at": expires.isoformat(),
+        "used": False
+    })
+    
+    # In production, send email here
+    logger.info(f"Password reset token for {data.email}: {reset_token}")
+    
+    return {"message": "If this email exists, you'll receive a reset link.", "reset_token": reset_token}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(data: PasswordResetConfirm):
+    reset = await db.password_resets.find_one({"token": data.token, "used": False})
+    if not reset:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+    
+    expires = datetime.fromisoformat(reset["expires_at"].replace('Z', '+00:00'))
+    if datetime.now(timezone.utc) > expires:
+        raise HTTPException(status_code=400, detail="Reset link has expired")
+    
+    await db.users.update_one(
+        {"id": reset["user_id"]},
+        {"$set": {"password": hash_password(data.new_password)}}
+    )
+    await db.password_resets.update_one({"token": data.token}, {"$set": {"used": True}})
+    
+    return {"message": "Password updated. You can now log in."}
+
+# ============================================
+# Chat Requests (Drinks & Chat)
+# ============================================
+
+@api_router.post("/chat-request")
+async def send_chat_request(data: ChatRequestCreate, current_user: dict = Depends(get_current_user)):
+    """Send a drink offer or chat request (costs 1 token)"""
+    # Check token balance
+    free_tokens = current_user.get("free_tokens", [])
+    paid_balance = current_user.get("token_balance", 0)
+    
+    # Filter expired free tokens
+    now = datetime.now(timezone.utc)
+    valid_free = [t for t in free_tokens if datetime.fromisoformat(t["expires_at"].replace('Z', '+00:00')) > now]
+    
+    if len(valid_free) == 0 and paid_balance == 0:
+        raise HTTPException(status_code=402, detail="You need tokens.")
+    
+    # Deduct token (free first)
+    if len(valid_free) > 0:
+        valid_free.pop(0)
+        await db.users.update_one({"id": current_user["id"]}, {"$set": {"free_tokens": valid_free}})
+    else:
+        await db.users.update_one({"id": current_user["id"]}, {"$inc": {"token_balance": -1}})
+    
+    request_id = str(uuid.uuid4())
+    chat_request = {
+        "id": request_id,
+        "from_user_id": current_user["id"],
+        "to_user_id": data.to_user_id,
+        "venue_id": data.venue_id,
+        "request_type": data.request_type,
+        "status": "pending",
+        "created_at": now.isoformat()
+    }
+    await db.chat_requests.insert_one(chat_request)
+    
+    # Send notification
+    if data.request_type == "drink":
+        await manager.send_to_user(data.to_user_id, {
+            "type": "drink_offer",
+            "message": f"{current_user['display_name']} offered you a drink.",
+            "from_user": {"id": current_user["id"], "display_name": current_user["display_name"]}
+        })
+        return {"message": "Drink sent.", "request_id": request_id}
+    else:
+        await manager.send_to_user(data.to_user_id, {
+            "type": "chat_request",
+            "message": f"{current_user['display_name']} wants to chat sometime.",
+            "from_user": {"id": current_user["id"], "display_name": current_user["display_name"]}
+        })
+        return {"message": "Request sent.", "request_id": request_id}
+
+@api_router.get("/chat-requests/inbox")
+async def get_chat_requests_inbox(current_user: dict = Depends(get_current_user)):
+    """Get received drink offers and chat requests"""
+    requests = await db.chat_requests.find(
+        {"to_user_id": current_user["id"], "status": "pending"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    result = []
+    for req in requests:
+        from_user = await db.users.find_one({"id": req["from_user_id"]}, {"_id": 0, "password": 0})
+        if from_user:
+            result.append({
+                **req,
+                "from_user_name": from_user["display_name"],
+                "from_user_avatar": from_user.get("avatar_url") or (from_user.get("photos", [""])[0] if from_user.get("photos") else "")
+            })
+    return result
+
+@api_router.post("/chat-request/{request_id}/respond")
+async def respond_to_chat_request(request_id: str, data: ChatRequestResponse, current_user: dict = Depends(get_current_user)):
+    """Accept or decline a drink offer or chat request"""
+    request = await db.chat_requests.find_one({"id": request_id, "to_user_id": current_user["id"]})
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    if data.accept:
+        await db.chat_requests.update_one({"id": request_id}, {"$set": {"status": "accepted"}})
+        
+        # Create chat unlock
+        await db.chat_unlocks.insert_one({
+            "id": str(uuid.uuid4()),
+            "user1_id": request["from_user_id"],
+            "user2_id": current_user["id"],
+            "unlocked_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Notify sender
+        await manager.send_to_user(request["from_user_id"], {
+            "type": "request_accepted",
+            "message": f"{current_user['display_name']} accepted. Chat unlocked."
+        })
+        
+        return {"message": "You accepted. Chat unlocked.", "response_message": data.message}
+    else:
+        await db.chat_requests.update_one({"id": request_id}, {"$set": {"status": "declined", "decline_message": data.message}})
+        
+        # Notify sender
+        await manager.send_to_user(request["from_user_id"], {
+            "type": "request_declined",
+            "message": "They declined."
+        })
+        
+        return {"message": "You declined."}
+
+@api_router.get("/chat-requests/decline-messages")
+async def get_decline_messages():
+    """Get list of decline message options"""
+    return DECLINE_MESSAGES
+
+@api_router.get("/chat-requests/accept-messages")
+async def get_accept_messages():
+    """Get list of accept message options"""
+    return ACCEPT_MESSAGES
+
+# ============================================
+# Chat Lock Check
+# ============================================
+
+@api_router.get("/chat/status/{user_id}")
+async def get_chat_status(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Check if chat is unlocked with a user"""
+    # Check if chat is unlocked
+    unlock = await db.chat_unlocks.find_one({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": user_id},
+            {"user1_id": user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    if unlock:
+        # Check if still friends or if locked due to unfriend
+        is_locked = unlock.get("locked", False)
+        return {
+            "unlocked": not is_locked,
+            "locked_message": "Chat locked. Re-add each other to continue." if is_locked else None
+        }
+    
+    return {
+        "unlocked": False,
+        "locked_message": "Send a drink or a chat request. If they accept, chat unlocks."
+    }
+
+# ============================================
+# Friends System
+# ============================================
+
+@api_router.post("/friends/add")
+async def add_friend(data: FriendRequest, current_user: dict = Depends(get_current_user)):
+    """Send a friend request"""
+    # Check if chat is unlocked
+    unlock = await db.chat_unlocks.find_one({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": data.user_id},
+            {"user1_id": data.user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    if not unlock:
+        raise HTTPException(status_code=403, detail="Chat must be unlocked first")
+    
+    # Check if already friends
+    existing = await db.friends.find_one({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": data.user_id},
+            {"user1_id": data.user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    if existing and existing.get("status") == "accepted":
+        return {"message": "Already friends"}
+    
+    friend_id = str(uuid.uuid4())
+    await db.friends.insert_one({
+        "id": friend_id,
+        "user1_id": current_user["id"],
+        "user2_id": data.user_id,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    await manager.send_to_user(data.user_id, {
+        "type": "friend_request",
+        "message": f"{current_user['display_name']} wants to add you as a friend."
+    })
+    
+    return {"message": "Friend request sent"}
+
+@api_router.post("/friends/respond/{friend_id}")
+async def respond_to_friend_request(friend_id: str, accept: bool, current_user: dict = Depends(get_current_user)):
+    """Accept or decline a friend request"""
+    friend_req = await db.friends.find_one({"id": friend_id, "user2_id": current_user["id"]})
+    if not friend_req:
+        raise HTTPException(status_code=404, detail="Friend request not found")
+    
+    if accept:
+        await db.friends.update_one({"id": friend_id}, {"$set": {"status": "accepted"}})
+        return {"message": "Friend added"}
+    else:
+        await db.friends.delete_one({"id": friend_id})
+        return {"message": "Friend request declined"}
+
+@api_router.get("/friends")
+async def get_friends(current_user: dict = Depends(get_current_user)):
+    """Get list of friends"""
+    friends = await db.friends.find({
+        "$or": [
+            {"user1_id": current_user["id"], "status": "accepted"},
+            {"user2_id": current_user["id"], "status": "accepted"}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    result = []
+    for f in friends:
+        other_id = f["user2_id"] if f["user1_id"] == current_user["id"] else f["user1_id"]
+        other_user = await db.users.find_one({"id": other_id}, {"_id": 0, "password": 0})
+        if other_user:
+            result.append({
+                "friend_id": f["id"],
+                "user_id": other_id,
+                "display_name": other_user["display_name"],
+                "avatar_url": other_user.get("avatar_url") or (other_user.get("photos", [""])[0] if other_user.get("photos") else ""),
+                "added_at": f["created_at"]
+            })
+    return result
+
+@api_router.delete("/friends/{user_id}")
+async def remove_friend(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Remove a friend (soft unfriend - no notification)"""
+    await db.friends.delete_one({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": user_id},
+            {"user1_id": user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    # Lock chat
+    await db.chat_unlocks.update_one(
+        {"$or": [
+            {"user1_id": current_user["id"], "user2_id": user_id},
+            {"user1_id": user_id, "user2_id": current_user["id"]}
+        ]},
+        {"$set": {"locked": True}}
+    )
+    
+    return {"message": "Friend removed"}
+
+@api_router.get("/friends/requests")
+async def get_friend_requests(current_user: dict = Depends(get_current_user)):
+    """Get pending friend requests"""
+    requests = await db.friends.find(
+        {"user2_id": current_user["id"], "status": "pending"},
+        {"_id": 0}
+    ).to_list(50)
+    
+    result = []
+    for r in requests:
+        user = await db.users.find_one({"id": r["user1_id"]}, {"_id": 0, "password": 0})
+        if user:
+            result.append({
+                "friend_id": r["id"],
+                "user_id": user["id"],
+                "display_name": user["display_name"],
+                "avatar_url": user.get("avatar_url") or (user.get("photos", [""])[0] if user.get("photos") else ""),
+                "created_at": r["created_at"]
+            })
+    return result
+
+# ============================================
+# Blocking (Updated)
+# ============================================
+
+@api_router.post("/users/block")
+async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_current_user)):
+    """Block a user - they won't see you and you won't see them"""
+    if data.user_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Cannot block yourself")
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$addToSet": {"blocked_users": data.user_id}}
+    )
+    
+    # Remove from friends
+    await db.friends.delete_many({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": data.user_id},
+            {"user1_id": data.user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    # Remove any existing connection
+    await db.connections.delete_many({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": data.user_id},
+            {"user1_id": data.user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    return {"message": "They won't be able to contact you."}
+
+# ============================================
+# Report User (Updated)
+# ============================================
+
+REPORT_REASONS = [
+    "Harassment",
+    "Fake profile",
+    "Inappropriate content",
+    "Safety concern",
+    "Other"
+]
+
+@api_router.get("/report/reasons")
+async def get_report_reasons():
+    """Get list of report reasons"""
+    return REPORT_REASONS
+
+@api_router.post("/users/report")
+async def report_user(data: ReportUserRequest, current_user: dict = Depends(get_current_user)):
+    """Report a user for inappropriate behavior"""
+    report = {
+        "id": str(uuid.uuid4()),
+        "reporter_id": current_user["id"],
+        "reported_user_id": data.user_id,
+        "reason": data.reason,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "pending"
+    }
+    await db.reports.insert_one(report)
+    
+    return {"message": "Thank you — we'll take a look."}
+
+# ============================================
+# Admin Inbox
+# ============================================
+
+@api_router.get("/admin/reports")
+async def get_admin_reports(current_user: dict = Depends(get_current_user)):
+    """Get all reports (admin only)"""
+    # In production, check admin status
+    reports = await db.reports.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    result = []
+    for r in reports:
+        reported = await db.users.find_one({"id": r["reported_user_id"]}, {"_id": 0, "password": 0})
+        reporter = await db.users.find_one({"id": r["reporter_id"]}, {"_id": 0, "password": 0})
+        result.append({
+            "id": r["id"],
+            "reported_user_id": r["reported_user_id"],
+            "reported_user_name": reported["display_name"] if reported else "Unknown",
+            "reporter_user_id": r["reporter_id"],
+            "reporter_user_name": reporter["display_name"] if reporter else "Unknown",
+            "reason": r["reason"],
+            "created_at": r["created_at"],
+            "status": r["status"]
+        })
+    return result
+
+@api_router.post("/admin/block-user/{user_id}")
+async def admin_block_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Admin blocks a user"""
+    await db.users.update_one({"id": user_id}, {"$set": {"is_banned": True}})
+    return {"message": "User banned"}
+
+# ============================================
+# Premium - Profile Viewers
+# ============================================
+
+@api_router.post("/profile/view/{user_id}")
+async def record_profile_view(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Record that current user viewed a profile"""
+    await db.profile_views.insert_one({
+        "id": str(uuid.uuid4()),
+        "viewer_id": current_user["id"],
+        "viewed_id": user_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return {"recorded": True}
+
+@api_router.get("/profile/viewers")
+async def get_profile_viewers(current_user: dict = Depends(get_current_user)):
+    """Get users who viewed your profile (Premium only)"""
+    if not current_user.get("is_premium"):
+        raise HTTPException(status_code=403, detail="Premium feature")
+    
+    views = await db.profile_views.find(
+        {"viewed_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    result = []
+    seen_viewers = set()
+    for v in views:
+        if v["viewer_id"] in seen_viewers:
+            continue
+        seen_viewers.add(v["viewer_id"])
+        viewer = await db.users.find_one({"id": v["viewer_id"]}, {"_id": 0, "password": 0})
+        if viewer:
+            result.append({
+                "user_id": viewer["id"],
+                "display_name": viewer["display_name"],
+                "avatar_url": viewer.get("avatar_url") or (viewer.get("photos", [""])[0] if viewer.get("photos") else ""),
+                "viewed_at": v["created_at"]
+            })
+    return result
+
+# ============================================
+# Second Reveal Logic
+# ============================================
+
+@api_router.post("/glance/second-reveal/{glance_id}")
+async def send_second_reveal(glance_id: str, current_user: dict = Depends(get_current_user)):
+    """Send second reveal after 7 days (Premium only)"""
+    if not current_user.get("is_premium"):
+        raise HTTPException(status_code=403, detail="Premium feature")
+    
+    glance = await db.glances.find_one({"id": glance_id, "from_user_id": current_user["id"]})
+    if not glance:
+        raise HTTPException(status_code=404, detail="Glance not found")
+    
+    created = datetime.fromisoformat(glance["created_at"].replace('Z', '+00:00'))
+    if datetime.now(timezone.utc) - created < timedelta(days=SECOND_REVEAL_DAYS):
+        raise HTTPException(status_code=400, detail="Must wait 7 days")
+    
+    if glance.get("second_reveal_sent"):
+        raise HTTPException(status_code=400, detail="Already sent")
+    
+    await db.glances.update_one({"id": glance_id}, {"$set": {"second_reveal_sent": True}})
+    
+    await manager.send_to_user(glance["to_user_id"], {
+        "type": "second_reveal",
+        "message": "Someone glanced at you again."
+    })
+    
+    return {"message": "Second reveal sent"}
+
+@api_router.post("/glance/{glance_id}/viewed")
+async def mark_glance_viewed(glance_id: str, current_user: dict = Depends(get_current_user)):
+    """Mark a glance as viewed"""
+    glance = await db.glances.find_one({"id": glance_id, "to_user_id": current_user["id"]})
+    if not glance:
+        raise HTTPException(status_code=404, detail="Glance not found")
+    
+    await db.glances.update_one({"id": glance_id}, {"$set": {"was_viewed": True, "viewed_at": datetime.now(timezone.utc).isoformat()}})
+    
+    # Notify sender if premium
+    sender = await db.users.find_one({"id": glance["from_user_id"]})
+    if sender and sender.get("is_premium"):
+        await manager.send_to_user(glance["from_user_id"], {
+            "type": "glance_viewed",
+            "message": "Glance viewed."
+        })
+    
+    return {"message": "Glance viewed."}
+
+# ============================================
+# Free Token Distribution
+# ============================================
+
+@api_router.post("/tokens/claim-daily")
+async def claim_daily_token(current_user: dict = Depends(get_current_user)):
+    """Claim daily free token"""
+    now = datetime.now(timezone.utc)
+    last_claim = current_user.get("last_free_token_claim")
+    
+    if last_claim:
+        last_dt = datetime.fromisoformat(last_claim.replace('Z', '+00:00'))
+        if (now - last_dt).total_seconds() < 86400:  # 24 hours
+            raise HTTPException(status_code=400, detail="Already claimed today")
+    
+    is_premium = current_user.get("is_premium", False)
+    token_count = PREMIUM_DAILY_TOKENS if is_premium else FREE_DAILY_TOKENS
+    
+    free_tokens = current_user.get("free_tokens", [])
+    expiry = now + timedelta(hours=FREE_TOKEN_EXPIRY_HOURS)
+    
+    for _ in range(token_count):
+        free_tokens.append({
+            "id": str(uuid.uuid4()),
+            "expires_at": expiry.isoformat()
+        })
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"free_tokens": free_tokens, "last_free_token_claim": now.isoformat()}}
+    )
+    
+    return {"message": "Your free token is ready.", "tokens_added": token_count}
+
+@api_router.get("/tokens/status")
+async def get_token_status(current_user: dict = Depends(get_current_user)):
+    """Get detailed token status"""
+    now = datetime.now(timezone.utc)
+    free_tokens = current_user.get("free_tokens", [])
+    
+    # Filter expired
+    valid_free = [t for t in free_tokens if datetime.fromisoformat(t["expires_at"].replace('Z', '+00:00')) > now]
+    
+    # Check if any expiring soon (within 2 hours)
+    expiring_soon = any(
+        datetime.fromisoformat(t["expires_at"].replace('Z', '+00:00')) - now < timedelta(hours=2)
+        for t in valid_free
+    )
+    
+    return {
+        "free_tokens": len(valid_free),
+        "paid_tokens": current_user.get("token_balance", 0),
+        "total": len(valid_free) + current_user.get("token_balance", 0),
+        "expiring_soon": expiring_soon,
+        "expiring_message": "Your free token expires soon." if expiring_soon else None
+    }
+
+# ============================================
+# Test Mode APIs
+# ============================================
+
+@api_router.get("/test/status")
+async def get_test_status():
+    """Check if test mode is enabled"""
+    return {"is_test_mode": IS_TEST_BUILD}
+
+@api_router.get("/test/fake-users")
+async def get_fake_users(current_user: dict = Depends(get_current_user)):
+    """Get fake test users (test mode only)"""
+    if not IS_TEST_BUILD:
+        return []
+    return FAKE_TEST_USERS
+
+@api_router.post("/test/generate-glance")
+async def generate_test_glance(current_user: dict = Depends(get_current_user)):
+    """Generate a fake glance (test mode only)"""
+    if not IS_TEST_BUILD:
+        raise HTTPException(status_code=403, detail="Test mode only")
+    
+    import random
+    fake_user = random.choice(FAKE_TEST_USERS)
+    
+    await manager.send_to_user(current_user["id"], {
+        "type": "new_glance",
+        "message": "Someone glanced at you!",
+        "from_user": fake_user
+    })
+    
+    return {"message": "Fake glance generated", "from": fake_user["display_name"]}
+
+@api_router.post("/test/generate-drink")
+async def generate_test_drink(current_user: dict = Depends(get_current_user)):
+    """Generate a fake drink offer (test mode only)"""
+    if not IS_TEST_BUILD:
+        raise HTTPException(status_code=403, detail="Test mode only")
+    
+    import random
+    fake_user = random.choice(FAKE_TEST_USERS)
+    
+    await manager.send_to_user(current_user["id"], {
+        "type": "drink_offer",
+        "message": f"{fake_user['display_name']} offered you a drink.",
+        "from_user": fake_user
+    })
+    
+    return {"message": "Fake drink offer generated", "from": fake_user["display_name"]}
+
+@api_router.post("/test/generate-message")
+async def generate_test_message(current_user: dict = Depends(get_current_user)):
+    """Generate a fake chat message (test mode only)"""
+    if not IS_TEST_BUILD:
+        raise HTTPException(status_code=403, detail="Test mode only")
+    
+    import random
+    fake_user = random.choice(FAKE_TEST_USERS)
+    messages = FAKE_USER_MESSAGES.get(fake_user["id"], ["Hello!"])
+    message = random.choice(messages)
+    
+    await manager.send_to_user(current_user["id"], {
+        "type": "new_message",
+        "message": {
+            "from_user_id": fake_user["id"],
+            "from_user_name": fake_user["display_name"],
+            "content": message
+        }
+    })
+    
+    return {"message": "Fake message generated", "from": fake_user["display_name"], "text": message}
 
 # Venue Routes
 @api_router.get("/venues", response_model=List[VenueResponse])
@@ -667,7 +1367,7 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
 @api_router.post("/drink-token")
 async def send_drink_token(data: DrinkTokenCreate, current_user: dict = Depends(get_current_user)):
     # Check token balance (daily free + purchased)
-    daily_remaining = current_user.get("daily_tokens_remaining", FREE_TOKENS_PER_SESSION)
+    daily_remaining = current_user.get("daily_tokens_remaining", FREE_DAILY_TOKENS)
     balance = current_user.get("token_balance", 0)
     
     if daily_remaining <= 0 and balance <= 0:
@@ -1239,7 +1939,7 @@ async def get_premium_status(current_user: dict = Depends(get_current_user)):
     if is_premium:
         benefits = [
             f"{PREMIUM_DAILY_GLANCES} daily glances (vs {FREE_DAILY_GLANCES})",
-            f"{PREMIUM_DAILY_TOKENS} daily tokens (vs {FREE_TOKENS_PER_SESSION})",
+            f"{PREMIUM_DAILY_TOKENS} daily tokens (vs {FREE_DAILY_TOKENS})",
             "See if your glance was viewed",
             "Second reveal attempt after 24h",
             "Priority visibility at venues",
@@ -1269,7 +1969,7 @@ async def get_token_balance(current_user: dict = Depends(get_current_user)):
     """Get current token balance"""
     return {
         "balance": current_user.get("token_balance", 0),
-        "daily_remaining": current_user.get("daily_tokens_remaining", FREE_TOKENS_PER_SESSION),
+        "daily_remaining": current_user.get("daily_tokens_remaining", FREE_DAILY_TOKENS),
         "is_premium": current_user.get("is_premium", False)
     }
 

@@ -27,7 +27,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { Loader2, LogOut, Trash2, Eye, EyeOff, User, Shield, Crown, Coins, ChevronRight, FileText } from "lucide-react";
+import { Loader2, LogOut, Trash2, Eye, EyeOff, User, Shield, Crown, Coins, ChevronRight, FileText, Camera } from "lucide-react";
 
 const INTERESTS = [
   "Music", "Fitness", "Food", "Travel", "Art", 
@@ -58,7 +58,7 @@ const Settings = () => {
   const [formData, setFormData] = useState({
     display_name: user?.display_name || "",
     bio: user?.bio || "",
-    avatar_url: user?.avatar_url || "",
+    photos: user?.photos || ["", "", ""],
     age: user?.age || "",
     gender: user?.gender || "",
     orientation: user?.orientation || "",
@@ -66,6 +66,31 @@ const Settings = () => {
     seeking: user?.seeking || "",
     interests: user?.interests || [],
   });
+
+  const handlePhotoUpload = (index, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be less than 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const newPhotos = [...formData.photos];
+      newPhotos[index] = e.target.result;
+      setFormData({ ...formData, photos: newPhotos });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = (index) => {
+    const newPhotos = [...formData.photos];
+    newPhotos[index] = "";
+    setFormData({ ...formData, photos: newPhotos });
+  };
 
   const toggleInterest = (interest) => {
     setFormData((prev) => ({
@@ -146,47 +171,52 @@ const Settings = () => {
           <form onSubmit={handleUpdateProfile} className="space-y-6">
             {/* Photo Upload Section */}
             <div className="space-y-4">
-              <Label className="text-slate-300">Profile Photo</Label>
-              <div className="flex items-start gap-4">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0">
-                  <img
-                    src={formData.avatar_url || user?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
-                    alt={user?.display_name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1 space-y-3">
-                  <Input
-                    data-testid="avatar-url-input"
-                    placeholder="Paste image URL..."
-                    value={formData.avatar_url}
-                    onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
-                    className="h-10 bg-white/5 border-transparent focus:border-indigo-500 rounded-xl text-white text-sm placeholder:text-slate-500"
-                  />
-                  <p className="text-xs text-slate-500">Or choose from presets:</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {[
-                      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop",
-                      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-                      "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=200&h=200&fit=crop",
-                      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop",
-                      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop",
-                      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
-                    ].map((url, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, avatar_url: url })}
-                        className={`w-10 h-10 rounded-lg overflow-hidden border-2 transition-all ${
-                          formData.avatar_url === url ? "border-indigo-500" : "border-transparent hover:border-white/20"
-                        }`}
+              <Label className="text-slate-300">Photos (up to 3)</Label>
+              <div className="flex gap-3">
+                {[0, 1, 2].map((index) => (
+                  <div key={index} className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id={`photo-upload-${index}`}
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(index, e)}
+                      data-testid={`photo-upload-${index}`}
+                    />
+                    {formData.photos[index] ? (
+                      <div className="relative w-24 h-24 rounded-2xl overflow-hidden group">
+                        <img
+                          src={formData.photos[index]}
+                          alt={`Photo ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(index)}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                          data-testid={`remove-photo-${index}`}
+                        >
+                          <span className="text-white text-xs">Remove</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor={`photo-upload-${index}`}
+                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-white/5 transition-all"
                       >
-                        <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
+                        <Camera className="w-6 h-6 text-slate-400 mb-1" />
+                        <span className="text-xs text-slate-400">Add</span>
+                      </label>
+                    )}
+                    {index === 0 && formData.photos[0] && (
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+                        Main
+                      </div>
+                    )}
                   </div>
-                </div>
+                ))}
               </div>
+              <p className="text-xs text-slate-500">First photo will be your main profile picture</p>
             </div>
 
             <div className="space-y-2">
