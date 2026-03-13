@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, status, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, status, Request, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -14,9 +15,15 @@ import bcrypt
 import jwt
 import json
 import httpx
+import base64
+import io
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -126,14 +133,14 @@ class ConnectionManager:
             for connection in self.active_connections[venue_id]:
                 try:
                     await connection.send_json(message)
-                except:
+                except Exception:
                     pass
     
     async def send_to_user(self, user_id: str, message: dict):
         if user_id in self.user_connections:
             try:
                 await self.user_connections[user_id].send_json(message)
-            except:
+            except Exception:
                 pass
 
 manager = ConnectionManager()
@@ -263,6 +270,17 @@ class ChatRequestResponse(BaseModel):
 
 class FriendRequest(BaseModel):
     user_id: str
+
+class PushSubscription(BaseModel):
+    endpoint: str
+    keys: Dict[str, str]  # p256dh and auth keys
+
+class PushNotificationSettings(BaseModel):
+    enabled: bool = True
+    glances: bool = True
+    drinks: bool = True
+    messages: bool = True
+    matches: bool = True
 
 class AdminReportView(BaseModel):
     id: str
@@ -493,6 +511,144 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
     await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
     updated = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "password": 0})
     return updated
+
+# ============================================
+# Photo Upload System
+# ============================================
+
+# Max photo size: 5MB
+MAX_PHOTO_SIZE = 5 * 1024 * 1024
+ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+
+@api_router.post("/photos/upload")
+async def upload_photo(
+    file: UploadFile = File(...),
+    slot: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload a profile photo (up to 3 photos, slots 0-2)"""
+    if slot < 0 or slot > 2:
+        raise HTTPException(status_code=400, detail="Invalid slot. Use 0, 1, or 2.")
+    
+    # Check content type
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid file type. Use JPEG, PNG, WebP, or GIF.")
+    
+    # Read file content
+    content = await file.read()
+    
+    # Check file size
+    if len(content) > MAX_PHOTO_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Maximum 5MB.")
+    
+    # Generate unique photo ID
+    photo_id = str(uuid.uuid4())
+    
+    # Store photo in database (base64 encoded)
+    photo_data = {
+        "id": photo_id,
+        "user_id": current_user["id"],
+        "slot": slot,
+        "content_type": file.content_type,
+        "data": base64.b64encode(content).decode("utf-8"),
+        "filename": file.filename,
+        "size": len(content),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Remove existing photo in this slot
+    await db.photos.delete_one({"user_id": current_user["id"], "slot": slot})
+    
+    # Insert new photo
+    await db.photos.insert_one(photo_data)
+    
+    # Update user's photos array
+    photos = current_user.get("photos", ["", "", ""])
+    if len(photos) < 3:
+        photos = photos + [""] * (3 - len(photos))
+    
+    # Generate URL for the photo
+    photo_url = f"/api/photos/{photo_id}"
+    photos[slot] = photo_url
+    
+    # Update avatar_url if this is slot 0
+    update_data = {"photos": photos}
+    if slot == 0:
+        update_data["avatar_url"] = photo_url
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": update_data}
+    )
+    
+    return {
+        "photo_id": photo_id,
+        "url": photo_url,
+        "slot": slot,
+        "message": "Photo uploaded successfully"
+    }
+
+@api_router.get("/photos/{photo_id}")
+async def get_photo(photo_id: str):
+    """Get a photo by ID (public endpoint for serving images)"""
+    photo = await db.photos.find_one({"id": photo_id})
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    # Decode base64 data
+    content = base64.b64decode(photo["data"])
+    
+    return Response(
+        content=content,
+        media_type=photo["content_type"],
+        headers={
+            "Cache-Control": "public, max-age=86400",
+            "Content-Disposition": f'inline; filename="{photo.get("filename", "photo")}"'
+        }
+    )
+
+@api_router.delete("/photos/{slot}")
+async def delete_photo(slot: int, current_user: dict = Depends(get_current_user)):
+    """Delete a photo from a specific slot"""
+    if slot < 0 or slot > 2:
+        raise HTTPException(status_code=400, detail="Invalid slot. Use 0, 1, or 2.")
+    
+    # Delete from photos collection
+    await db.photos.delete_one({"user_id": current_user["id"], "slot": slot})
+    
+    # Update user's photos array
+    photos = current_user.get("photos", ["", "", ""])
+    if len(photos) < 3:
+        photos = photos + [""] * (3 - len(photos))
+    photos[slot] = ""
+    
+    update_data = {"photos": photos}
+    
+    # If deleting slot 0, clear avatar_url
+    if slot == 0:
+        update_data["avatar_url"] = ""
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Photo deleted", "slot": slot}
+
+@api_router.get("/photos/user/{user_id}")
+async def get_user_photos(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all photos for a user"""
+    photos = await db.photos.find(
+        {"user_id": user_id},
+        {"_id": 0, "data": 0}  # Don't return the actual data, just metadata
+    ).to_list(3)
+    
+    return [{
+        "photo_id": p["id"],
+        "url": f"/api/photos/{p['id']}",
+        "slot": p["slot"],
+        "created_at": p["created_at"]
+    } for p in photos]
 
 @api_router.put("/auth/visibility")
 async def toggle_visibility(current_user: dict = Depends(get_current_user)):
@@ -1343,7 +1499,7 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
         }
         await db.connections.insert_one(connection)
         
-        # Notify both users
+        # Notify both users via WebSocket
         await manager.send_to_user(data.to_user_id, {
             "type": "mutual_glance",
             "from_user": {
@@ -1353,6 +1509,14 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
             }
         })
         
+        # Send push notification for match
+        await send_push_notification(
+            data.to_user_id,
+            "It's a match! 🎉",
+            f"You and {current_user['display_name']} both glanced at each other!",
+            {"type": "match", "user_id": current_user["id"]}
+        )
+        
         return {"message": "It's a match! You can now connect.", "is_mutual": True}
     
     # Notify target user of glance (anonymous)
@@ -1360,6 +1524,16 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
         "type": "new_glance",
         "message": "Someone glanced at you!"
     })
+    
+    # Send push notification for glance (if settings allow)
+    settings = await db.push_settings.find_one({"user_id": data.to_user_id})
+    if not settings or settings.get("glances", True):
+        await send_push_notification(
+            data.to_user_id,
+            "Someone noticed you 👀",
+            "Someone at your venue glanced at you!",
+            {"type": "glance"}
+        )
     
     return {"message": "Glance sent!", "is_mutual": False}
 
@@ -1403,7 +1577,7 @@ async def send_drink_token(data: DrinkTokenCreate, current_user: dict = Depends(
     }
     await db.drink_tokens.insert_one(drink_token)
     
-    # Notify recipient
+    # Notify recipient via WebSocket
     await manager.send_to_user(data.to_user_id, {
         "type": "drink_token_received",
         "from_user": {
@@ -1414,7 +1588,18 @@ async def send_drink_token(data: DrinkTokenCreate, current_user: dict = Depends(
         "drink_type": data.drink_type
     })
     
-    return {"message": f"Drink token sent!", "token_id": token_id}
+    # Send push notification for drink
+    settings = await db.push_settings.find_one({"user_id": data.to_user_id})
+    if not settings or settings.get("drinks", True):
+        drink_emoji = {"cocktail": "🍸", "beer": "🍺", "wine": "🍷", "coffee": "☕", "mocktail": "🍹"}.get(data.drink_type, "🥂")
+        await send_push_notification(
+            data.to_user_id,
+            f"Someone sent you a drink! {drink_emoji}",
+            f"{current_user['display_name']} sent you a {data.drink_type}",
+            {"type": "drink", "from_user_id": current_user["id"], "drink_type": data.drink_type}
+        )
+    
+    return {"message": "Drink token sent!", "token_id": token_id}
 
 @api_router.get("/drink-tokens/received", response_model=List[DrinkTokenResponse])
 async def get_received_drink_tokens(current_user: dict = Depends(get_current_user)):
@@ -1504,7 +1689,7 @@ async def send_message(data: MessageCreate, current_user: dict = Depends(get_cur
     }
     await db.messages.insert_one(message)
     
-    # Notify recipient
+    # Notify recipient via WebSocket
     await manager.send_to_user(data.to_user_id, {
         "type": "new_message",
         "message": {
@@ -1516,6 +1701,18 @@ async def send_message(data: MessageCreate, current_user: dict = Depends(get_cur
             "created_at": message["created_at"]
         }
     })
+    
+    # Send push notification for message
+    settings = await db.push_settings.find_one({"user_id": data.to_user_id})
+    if not settings or settings.get("messages", True):
+        # Truncate message preview
+        preview = data.content[:50] + "..." if len(data.content) > 50 else data.content
+        await send_push_notification(
+            data.to_user_id,
+            f"New message from {current_user['display_name']} 💬",
+            preview,
+            {"type": "message", "from_user_id": current_user["id"]}
+        )
     
     return {"message": "Message sent", "message_id": message_id}
 
@@ -1605,6 +1802,121 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
     notifications.sort(key=lambda x: x["created_at"], reverse=True)
     return notifications[:30]
 
+# ============================================
+# Push Notifications System
+# ============================================
+
+@api_router.post("/push/subscribe")
+async def subscribe_push(subscription: PushSubscription, current_user: dict = Depends(get_current_user)):
+    """Register a push notification subscription for the current user"""
+    # Store subscription
+    await db.push_subscriptions.update_one(
+        {"user_id": current_user["id"]},
+        {
+            "$set": {
+                "user_id": current_user["id"],
+                "endpoint": subscription.endpoint,
+                "keys": subscription.keys,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    return {"message": "Push subscription registered"}
+
+@api_router.delete("/push/unsubscribe")
+async def unsubscribe_push(current_user: dict = Depends(get_current_user)):
+    """Unregister push notifications for the current user"""
+    await db.push_subscriptions.delete_one({"user_id": current_user["id"]})
+    return {"message": "Push subscription removed"}
+
+@api_router.get("/push/settings")
+async def get_push_settings(current_user: dict = Depends(get_current_user)):
+    """Get push notification settings for the current user"""
+    settings = await db.push_settings.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    if not settings:
+        settings = {
+            "enabled": True,
+            "glances": True,
+            "drinks": True,
+            "messages": True,
+            "matches": True
+        }
+    return settings
+
+@api_router.put("/push/settings")
+async def update_push_settings(settings: PushNotificationSettings, current_user: dict = Depends(get_current_user)):
+    """Update push notification settings"""
+    await db.push_settings.update_one(
+        {"user_id": current_user["id"]},
+        {
+            "$set": {
+                "user_id": current_user["id"],
+                **settings.model_dump(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    return {"message": "Settings updated"}
+
+@api_router.get("/push/vapid-public-key")
+async def get_vapid_public_key():
+    """Get VAPID public key for push subscription"""
+    # In production, this would come from environment variables
+    # For now, return a placeholder that can be configured
+    vapid_public_key = os.environ.get("VAPID_PUBLIC_KEY", "")
+    return {"public_key": vapid_public_key}
+
+async def send_push_notification(user_id: str, title: str, body: str, data: Dict = None):
+    """Internal function to send push notifications to a user"""
+    # Check if user has push enabled
+    settings = await db.push_settings.find_one({"user_id": user_id})
+    if settings and not settings.get("enabled", True):
+        return False
+    
+    # Get subscription
+    subscription = await db.push_subscriptions.find_one({"user_id": user_id})
+    if not subscription:
+        return False
+    
+    # Store notification in queue for delivery
+    notification = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "title": title,
+        "body": body,
+        "data": data or {},
+        "endpoint": subscription["endpoint"],
+        "keys": subscription["keys"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "pending"
+    }
+    await db.push_queue.insert_one(notification)
+    
+    # In a production environment, this would be processed by a background worker
+    # that actually sends the push using the Web Push protocol
+    
+    return True
+
+@api_router.get("/push/pending")
+async def get_pending_push_notifications(current_user: dict = Depends(get_current_user)):
+    """Get pending push notifications for polling (fallback for devices without push support)"""
+    notifications = await db.push_queue.find(
+        {"user_id": current_user["id"], "status": "pending"},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(10).to_list(10)
+    
+    # Mark as delivered
+    if notifications:
+        ids = [n["id"] for n in notifications]
+        await db.push_queue.update_many(
+            {"id": {"$in": ids}},
+            {"$set": {"status": "delivered"}}
+        )
+    
+    return notifications
+
 # Seed Data Route (for development)
 @api_router.post("/seed")
 async def seed_data():
@@ -1682,7 +1994,7 @@ async def get_nearby_places(lat: float, lng: float, current_user: dict = Depends
         async with httpx.AsyncClient() as client_http:
             # Search for nearby places (bars, cafes, restaurants, gyms, parks)
             types = "bar|cafe|restaurant|gym|park|night_club|coworking_space"
-            url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+            url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
             params = {
                 "location": f"{lat},{lng}",
                 "radius": 500,  # 500 meters
@@ -1843,75 +2155,6 @@ async def run_auto_checkout():
     return {"checked_out_count": result.modified_count}
 
 # ============================================
-# Block & Report Users
-# ============================================
-
-@api_router.post("/users/block")
-async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_current_user)):
-    """Block a user - they won't see you and you won't see them"""
-    if data.user_id == current_user["id"]:
-        raise HTTPException(status_code=400, detail="Cannot block yourself")
-    
-    await db.users.update_one(
-        {"id": current_user["id"]},
-        {"$addToSet": {"blocked_users": data.user_id}}
-    )
-    
-    # Remove any existing connection
-    await db.connections.delete_many({
-        "$or": [
-            {"user1_id": current_user["id"], "user2_id": data.user_id},
-            {"user1_id": data.user_id, "user2_id": current_user["id"]}
-        ]
-    })
-    
-    return {"message": "User blocked"}
-
-@api_router.post("/users/unblock")
-async def unblock_user(data: BlockUserRequest, current_user: dict = Depends(get_current_user)):
-    """Unblock a user"""
-    await db.users.update_one(
-        {"id": current_user["id"]},
-        {"$pull": {"blocked_users": data.user_id}}
-    )
-    return {"message": "User unblocked"}
-
-@api_router.get("/users/blocked")
-async def get_blocked_users(current_user: dict = Depends(get_current_user)):
-    """Get list of blocked users"""
-    blocked_ids = current_user.get("blocked_users", [])
-    blocked_users = []
-    for uid in blocked_ids:
-        user = await db.users.find_one({"id": uid}, {"_id": 0, "password": 0})
-        if user:
-            blocked_users.append({
-                "id": user["id"],
-                "display_name": user["display_name"],
-                "avatar_url": user.get("avatar_url", "")
-            })
-    return blocked_users
-
-@api_router.post("/users/report")
-async def report_user(data: ReportUserRequest, current_user: dict = Depends(get_current_user)):
-    """Report a user for inappropriate behavior"""
-    report = {
-        "id": str(uuid.uuid4()),
-        "reporter_id": current_user["id"],
-        "reported_user_id": data.user_id,
-        "reason": data.reason,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "status": "pending"
-    }
-    await db.reports.insert_one(report)
-    
-    # Auto-block the reported user
-    await db.users.update_one(
-        {"id": current_user["id"]},
-        {"$addToSet": {"blocked_users": data.user_id}}
-    )
-    
-    return {"message": "Report submitted. User has been blocked."}
-
 # ============================================
 # Glance Limits & Repeated Glance Prevention
 # ============================================
@@ -2237,12 +2480,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

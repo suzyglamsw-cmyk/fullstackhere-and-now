@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { Loader2, LogOut, Trash2, Eye, EyeOff, User, Shield, Crown, Coins, ChevronRight, FileText, Camera, Users, Wrench, AlertTriangle } from "lucide-react";
+import { Loader2, LogOut, Trash2, Eye, EyeOff, User, Shield, Crown, Coins, ChevronRight, FileText, Camera, Users, Wrench, AlertTriangle, Bell } from "lucide-react";
 
 const INTERESTS = [
   "Music", "Fitness", "Food", "Travel", "Art", 
@@ -67,7 +67,61 @@ const Settings = () => {
     interests: user?.interests || [],
   });
 
-  const handlePhotoUpload = (index, event) => {
+  const [uploadingSlot, setUploadingSlot] = useState(null);
+  const [pushSettings, setPushSettings] = useState({
+    enabled: true,
+    glances: true,
+    drinks: true,
+    messages: true,
+    matches: true
+  });
+  const [pushSupported, setPushSupported] = useState(false);
+
+  useEffect(() => {
+    // Check if push notifications are supported
+    setPushSupported('Notification' in window && 'serviceWorker' in navigator);
+    fetchPushSettings();
+  }, []);
+
+  const fetchPushSettings = async () => {
+    try {
+      const response = await axios.get(`${API}/push/settings`);
+      setPushSettings(response.data);
+    } catch (error) {
+      console.error("Failed to fetch push settings");
+    }
+  };
+
+  const handlePushSettingChange = async (key, value) => {
+    const newSettings = { ...pushSettings, [key]: value };
+    setPushSettings(newSettings);
+    
+    try {
+      await axios.put(`${API}/push/settings`, newSettings);
+      if (key === "enabled" && value) {
+        await requestPushPermission();
+      }
+    } catch (error) {
+      toast.error("Failed to update notification settings");
+      setPushSettings(pushSettings); // Revert
+    }
+  };
+
+  const requestPushPermission = async () => {
+    if (!('Notification' in window)) {
+      toast.error("Push notifications not supported in this browser");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      toast.success("Push notifications enabled!");
+    } else if (permission === 'denied') {
+      toast.error("Push notifications blocked. Please enable in browser settings.");
+    }
+  };
+
+  const handlePhotoUpload = async (index, event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -77,19 +131,60 @@ const Settings = () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    // Check file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please upload a JPEG, PNG, WebP, or GIF image");
+      return;
+    }
+
+    setUploadingSlot(index);
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+      formDataUpload.append("slot", index.toString());
+
+      const response = await axios.post(`${API}/photos/upload`, formDataUpload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Update local state with the new photo URL
       const newPhotos = [...formData.photos];
-      newPhotos[index] = e.target.result;
+      newPhotos[index] = response.data.url;
       setFormData({ ...formData, photos: newPhotos });
-    };
-    reader.readAsDataURL(file);
+
+      // Update user context
+      updateUser({ photos: newPhotos });
+
+      toast.success("Photo uploaded!");
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to upload photo");
+    } finally {
+      setUploadingSlot(null);
+    }
   };
 
-  const removePhoto = (index) => {
-    const newPhotos = [...formData.photos];
-    newPhotos[index] = "";
-    setFormData({ ...formData, photos: newPhotos });
+  const removePhoto = async (index) => {
+    setUploadingSlot(index);
+    try {
+      await axios.delete(`${API}/photos/${index}`);
+      
+      const newPhotos = [...formData.photos];
+      newPhotos[index] = "";
+      setFormData({ ...formData, photos: newPhotos });
+      
+      // Update user context
+      updateUser({ photos: newPhotos });
+      
+      toast.success("Photo removed");
+    } catch (error) {
+      toast.error("Failed to remove photo");
+    } finally {
+      setUploadingSlot(null);
+    }
   };
 
   const toggleInterest = (interest) => {
@@ -173,48 +268,62 @@ const Settings = () => {
             <div className="space-y-4">
               <Label className="text-slate-300">Photos (up to 3)</Label>
               <div className="flex gap-3">
-                {[0, 1, 2].map((index) => (
-                  <div key={index} className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      id={`photo-upload-${index}`}
-                      className="hidden"
-                      onChange={(e) => handlePhotoUpload(index, e)}
-                      data-testid={`photo-upload-${index}`}
-                    />
-                    {formData.photos[index] ? (
-                      <div className="relative w-24 h-24 rounded-2xl overflow-hidden group">
-                        <img
-                          src={formData.photos[index]}
-                          alt={`Photo ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removePhoto(index)}
-                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                          data-testid={`remove-photo-${index}`}
+                {[0, 1, 2].map((index) => {
+                  const photoUrl = formData.photos[index];
+                  // Handle both API URLs and full URLs
+                  const displayUrl = photoUrl?.startsWith("/api/") 
+                    ? `${API.replace("/api", "")}${photoUrl}` 
+                    : photoUrl;
+                  
+                  return (
+                    <div key={index} className="relative">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        id={`photo-upload-${index}`}
+                        className="hidden"
+                        onChange={(e) => handlePhotoUpload(index, e)}
+                        data-testid={`photo-upload-${index}`}
+                        disabled={uploadingSlot !== null}
+                      />
+                      {uploadingSlot === index ? (
+                        <div className="w-24 h-24 rounded-2xl bg-white/10 flex items-center justify-center">
+                          <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+                        </div>
+                      ) : photoUrl ? (
+                        <div className="relative w-24 h-24 rounded-2xl overflow-hidden group">
+                          <img
+                            src={displayUrl}
+                            alt={`Photo ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(index)}
+                            disabled={uploadingSlot !== null}
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            data-testid={`remove-photo-${index}`}
+                          >
+                            <span className="text-white text-xs">Remove</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor={`photo-upload-${index}`}
+                          className={`w-24 h-24 rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-white/5 transition-all ${uploadingSlot !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                          <span className="text-white text-xs">Remove</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <label
-                        htmlFor={`photo-upload-${index}`}
-                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-white/5 transition-all"
-                      >
-                        <Camera className="w-6 h-6 text-slate-400 mb-1" />
-                        <span className="text-xs text-slate-400">Add</span>
-                      </label>
-                    )}
-                    {index === 0 && formData.photos[0] && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full">
-                        Main
-                      </div>
-                    )}
-                  </div>
-                ))}
+                          <Camera className="w-6 h-6 text-slate-400 mb-1" />
+                          <span className="text-xs text-slate-400">Add</span>
+                        </label>
+                      )}
+                      {index === 0 && photoUrl && uploadingSlot !== index && (
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+                          Main
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <p className="text-xs text-slate-500">First photo will be your main profile picture</p>
             </div>
@@ -416,6 +525,74 @@ const Settings = () => {
               onCheckedChange={handleToggleVisibility}
             />
           </div>
+        </div>
+
+        {/* Push Notifications Section */}
+        <div className="glass rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+              <Bell className="w-5 h-5 text-indigo-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-white">Notifications</h2>
+          </div>
+
+          {!pushSupported ? (
+            <p className="text-slate-400 text-sm">
+              Push notifications are not supported in this browser.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {/* Master Toggle */}
+              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5">
+                <div>
+                  <p className="text-white font-medium">Enable Push Notifications</p>
+                  <p className="text-slate-400 text-sm">Get notified when the app is closed</p>
+                </div>
+                <Switch
+                  data-testid="push-enabled-toggle"
+                  checked={pushSettings.enabled}
+                  onCheckedChange={(checked) => handlePushSettingChange("enabled", checked)}
+                />
+              </div>
+
+              {pushSettings.enabled && (
+                <div className="space-y-3 pl-4 border-l-2 border-white/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300">Glances</span>
+                    <Switch
+                      data-testid="push-glances-toggle"
+                      checked={pushSettings.glances}
+                      onCheckedChange={(checked) => handlePushSettingChange("glances", checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300">Drink Offers</span>
+                    <Switch
+                      data-testid="push-drinks-toggle"
+                      checked={pushSettings.drinks}
+                      onCheckedChange={(checked) => handlePushSettingChange("drinks", checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300">Messages</span>
+                    <Switch
+                      data-testid="push-messages-toggle"
+                      checked={pushSettings.messages}
+                      onCheckedChange={(checked) => handlePushSettingChange("messages", checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300">Matches</span>
+                    <Switch
+                      data-testid="push-matches-toggle"
+                      checked={pushSettings.matches}
+                      onCheckedChange={(checked) => handlePushSettingChange("matches", checked)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Premium & Tokens Section */}
