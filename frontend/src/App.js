@@ -20,6 +20,8 @@ import Premium from "./pages/Premium";
 import Tokens from "./pages/Tokens";
 import Legal from "./pages/Legal";
 import Friends from "./pages/Friends";
+import TestTools from "./pages/TestTools";
+import AdminReports from "./pages/AdminReports";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -210,6 +212,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Friends />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/test-tools"
+              element={
+                <ProtectedRoute>
+                  <TestTools />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reports"
+              element={
+                <ProtectedRoute>
+                  <AdminReports />
                 </ProtectedRoute>
               }
             />
