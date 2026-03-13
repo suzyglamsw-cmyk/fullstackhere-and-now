@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,11 @@ const Register = () => {
     display_name: "",
   });
 
-  if (user) {
-    navigate("/venues");
-  }
+  useEffect(() => {
+    if (user) {
+      navigate("/venues");
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

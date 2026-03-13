@@ -26,12 +26,12 @@ Added: Google Places API, Open-area check-in, Auto-checkout (30min), Block/Repor
 10. Account deletion capability
 11. Privacy toggle (visibility control)
 
-## What's Been Implemented (Jan 2026 Update)
+## What's Been Implemented
 
 ### Phase 1 (Complete)
 - [x] Landing page with "Here & Now" branding
 - [x] User registration/login with JWT auth
-- [x] Profile setup (avatar, bio, interests)
+- [x] Profile setup (avatar, bio, interests, age, gender, orientation, relationship status, seeking)
 - [x] Venues page with search and live counts
 - [x] Check-in/checkout system
 - [x] Who's Here page
@@ -48,18 +48,45 @@ Added: Google Places API, Open-area check-in, Auto-checkout (30min), Block/Repor
 - [x] Auto-checkout timeout (30 minutes inactivity)
 - [x] Block/Report users with one-tap action
 - [x] Premium system (Stripe + mock billing)
-  - Premium Monthly: $9.99/30 days
-  - Premium Yearly: $79.99/365 days
+  - Premium Monthly: £7.99/30 days
+  - Premium Yearly: £59.99/365 days
   - Benefits: 20 daily glances, 5 daily tokens, view tracking, 2nd reveal, priority visibility
 - [x] Token purchase system (Stripe + mock)
-  - 5 Tokens: $4.99
-  - 15 Tokens: $9.99
-  - 50 Tokens: $24.99
+  - 5 Tokens: £3.99
+  - 15 Tokens: £7.99
+  - 50 Tokens: £19.99
 - [x] Live clock on venues page
 - [x] Legal pages (Terms, Privacy, Safety)
 - [x] Daily glance/token limits enforced
 - [x] Heartbeat API for activity tracking
 - [x] Restore purchases functionality
+
+### Phase 3 (March 2026 - Complete)
+- [x] **Bug Fix:** Premium page rendering (FREE_TOKENS_PER_SESSION → FREE_DAILY_TOKENS)
+- [x] **Password Reset Flow:**
+  - "Forgot password?" link on Login page
+  - ForgotPassword page with email input
+  - Backend: /api/auth/forgot-password and /api/auth/reset-password endpoints
+- [x] **Friends System:**
+  - Friends page (/friends) with Friends/Requests tabs
+  - Add/Remove friends functionality
+  - Friend request accept/decline
+  - Friends link in Settings page
+- [x] **Chat Request System:**
+  - Drink offer and Chat request actions
+  - Accept/Decline with predefined messages
+  - Chat unlock mechanism
+- [x] **Admin Features:**
+  - Reports inbox (/api/admin/reports)
+  - User blocking from admin
+- [x] **Premium Features:**
+  - Profile viewers list
+  - Second reveal after 7 days
+  - Glance viewed notification
+- [x] **Test Mode APIs:**
+  - Fake users list
+  - Generate test glance/drink/message
+  - IS_TEST_BUILD flag support
 
 ## Privacy & Safety Rules Implemented
 - Users only visible while checked in
@@ -70,7 +97,7 @@ Added: Google Places API, Open-area check-in, Auto-checkout (30min), Block/Repor
 - Soft toast notifications
 
 ## Tech Stack
-- Frontend: React + Tailwind CSS
+- Frontend: React + Tailwind CSS + Shadcn UI
 - Backend: FastAPI + MongoDB
 - Payments: Stripe (with mock mode for testing)
 - Location: Google Places API (fallback to seeded venues)
@@ -82,22 +109,82 @@ Added: Google Places API, Open-area check-in, Auto-checkout (30min), Block/Repor
 All core features implemented
 
 ### P1 (High Priority) - Next
-- Real Google Places API key for production
-- Push notifications
-- Profile photo upload
+- [ ] Real Google Places API key for production
+- [ ] Push notifications (FCM/APNs)
+- [ ] Profile photo upload to cloud storage
+- [ ] Google Play Billing for Android
 
 ### P2 (Medium Priority)
-- Venue ratings/reviews
-- Friend lists
-- Message read receipts
+- [ ] Venue ratings/reviews
+- [ ] Message read receipts
+- [ ] Enhanced real-time updates
 
 ### P3 (Nice to Have)
-- Group check-ins
-- Event integration
-- Profile themes (premium)
+- [ ] Group check-ins
+- [ ] Event integration
+- [ ] Profile themes (premium)
+
+## API Endpoints Summary
+
+### Auth
+- POST /api/auth/register
+- POST /api/auth/login
+- GET /api/auth/me
+- PUT /api/auth/profile
+- PUT /api/auth/visibility
+- DELETE /api/auth/account
+- POST /api/auth/forgot-password
+- POST /api/auth/reset-password
+
+### Social
+- GET /api/friends
+- POST /api/friends/add
+- DELETE /api/friends/{user_id}
+- GET /api/friends/requests
+- POST /api/friends/respond/{friend_id}
+- POST /api/chat-request
+- GET /api/chat-requests/inbox
+- POST /api/chat-request/{request_id}/respond
+- GET /api/chat/status/{user_id}
+
+### Venue
+- GET /api/venues
+- GET /api/venues/{venue_id}
+- POST /api/checkin/{venue_id}
+- POST /api/checkout
+- GET /api/venues/{venue_id}/people
+- GET /api/places/nearby
+
+### Interactions
+- POST /api/glance
+- POST /api/drink-token
+- GET /api/connections
+- POST /api/messages
+- GET /api/messages/{user_id}
+- GET /api/notifications
+
+### Premium & Payments
+- GET /api/premium/status
+- GET /api/premium/packages
+- POST /api/payments/checkout/premium
+- GET /api/tokens/balance
+- GET /api/tokens/packages
+- POST /api/payments/checkout/tokens
+
+### Admin
+- GET /api/admin/reports
+- POST /api/admin/block-user/{user_id}
+
+### Test Mode
+- GET /api/test/status
+- GET /api/test/fake-users
+- POST /api/test/generate-glance
+- POST /api/test/generate-drink
+- POST /api/test/generate-message
 
 ## Next Tasks
 1. Production Google Places API key
-2. Push notification integration
-3. Photo upload capability
-4. Enhanced WebSocket reliability
+2. Push notification integration (FCM)
+3. Photo upload to cloud storage
+4. Google Play Billing integration
+5. Enhanced WebSocket reliability
