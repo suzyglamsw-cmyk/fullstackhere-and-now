@@ -325,7 +325,9 @@ const WhosHere = () => {
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                          <span className="text-4xl">?</span>
+                          <span className="text-4xl text-slate-400">
+                            {(person.first_name || person.display_name?.split(' ')[0] || "?").charAt(0)}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -346,7 +348,10 @@ const WhosHere = () => {
                   {/* Info */}
                   <div className="text-center mb-3">
                     <h3 className="font-semibold text-white truncate">
-                      {person.is_revealed ? person.display_name : "Someone"}
+                      {person.is_revealed 
+                        ? person.display_name 
+                        : `${person.first_name || person.display_name?.split(' ')[0] || "Someone"}${person.age ? `, ${person.age}` : ""}`
+                      }
                     </h3>
                     {person.is_revealed && person.bio && (
                       <p className="text-slate-400 text-xs mt-1 line-clamp-2">{person.bio}</p>

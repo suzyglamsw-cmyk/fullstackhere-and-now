@@ -5,7 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart } from "lucide-react";
+import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Wine } from "lucide-react";
 
 const Connections = () => {
   const navigate = useNavigate();
@@ -267,19 +267,38 @@ const Connections = () => {
                 <div
                   key={connection.id}
                   data-testid={`connection-card-${connection.id}`}
-                  className="glass rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 transition-colors"
+                  onClick={() => navigate(`/chat/${connection.user_id}`)}
+                  className="glass rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   {/* Avatar */}
                   <div className="relative">
                     <div className="w-16 h-16 rounded-2xl overflow-hidden">
-                      <img
-                        src={connection.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
-                        alt={connection.display_name}
-                        className="w-full h-full object-cover"
-                      />
+                      {connection.avatar_url ? (
+                        <img
+                          src={connection.avatar_url}
+                          alt={connection.display_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                          <span className="text-2xl text-slate-400">
+                            {connection.display_name?.charAt(0) || "?"}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                      <Sparkles className="w-3 h-3 text-white" />
+                    <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${
+                      connection.connection_type === "mutual_glance" ? "bg-pink-500" :
+                      connection.connection_type === "drink_accepted" ? "bg-amber-500" :
+                      "bg-emerald-500"
+                    }`}>
+                      {connection.connection_type === "mutual_glance" ? (
+                        <Heart className="w-3 h-3 text-white" />
+                      ) : connection.connection_type === "drink_accepted" ? (
+                        <Wine className="w-3 h-3 text-white" />
+                      ) : (
+                        <Sparkles className="w-3 h-3 text-white" />
+                      )}
                     </div>
                   </div>
 
@@ -290,8 +309,14 @@ const Connections = () => {
                       <p className="text-slate-400 text-sm truncate">{connection.bio}</p>
                     )}
                     <div className="flex items-center gap-2 mt-1 text-slate-500 text-xs">
-                      <MapPin className="w-3 h-3" />
-                      <span>Met at {connection.venue_name}</span>
+                      {connection.connection_type === "mutual_glance" ? (
+                        <Heart className="w-3 h-3" />
+                      ) : connection.connection_type === "drink_accepted" ? (
+                        <Wine className="w-3 h-3" />
+                      ) : (
+                        <MapPin className="w-3 h-3" />
+                      )}
+                      <span>{connection.venue_name}</span>
                       <span>•</span>
                       <span>{formatDate(connection.connected_at)}</span>
                     </div>

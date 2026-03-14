@@ -95,11 +95,17 @@ IS_TEST_BUILD=true
 - DELETE /api/photos/{slot} - Delete photo
 - POST /api/photos/make-main/{slot} - Move photo to slot 0
 
+### Venue Presence API
+- GET /api/venues/{venue_id}/people - Returns full profile data:
+  - first_name, age, avatar (if revealed), glance state
+  - Shows "Alex, 28" instead of "Someone" before reveal
+
 ### Connections
-- GET /api/connections - All connections
-- GET /api/connections/mutual-glances - Users with mutual glances
-- GET /api/messages/threads - Message threads with preview
-- GET /api/users/{user_id}/profile - View profile (no glance counted)
+- GET /api/connections - Unified list includes:
+  - Explicit connections (from connections collection)
+  - Mutual glances (both users glanced)
+  - Accepted drinks
+  - Shows connection_type badge (heart/wine/sparkle)
 
 ### Messages
 - GET /api/messages/{user_id} - Get conversation (returns unlock status + masked content if locked)

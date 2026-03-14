@@ -1821,12 +1821,17 @@ async def get_people_at_venue(venue_id: str, current_user: dict = Depends(get_cu
             ]
         }) is not None
         
-        # Revealed if mutual glance
-        is_revealed = has_glanced_at_me and i_glanced_at
+        # Revealed if mutual glance or connected
+        is_revealed = (has_glanced_at_me and i_glanced_at) or is_connected
+        
+        # Always show first name and age, but hide avatar/bio until revealed
+        first_name = get_first_name(user.get("display_name", "Someone"))
         
         people.append({
             "id": user["id"],
-            "display_name": user["display_name"] if is_revealed else "Someone",
+            "display_name": user["display_name"] if is_revealed else first_name,
+            "first_name": first_name,
+            "age": user.get("age"),
             "avatar_url": user.get("avatar_url", "") if is_revealed else "",
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
@@ -2064,33 +2069,130 @@ async def accept_drink_token(token_id: str, current_user: dict = Depends(get_cur
     return {"message": "Drink accepted! Cheers!"}
 
 # Connection Routes
-@api_router.get("/connections", response_model=List[ConnectionResponse])
+@api_router.get("/connections")
 async def get_connections(current_user: dict = Depends(get_current_user)):
-    connections = await db.connections.find({
+    """
+    Get all connections including:
+    - Mutual glances (both users glanced at each other)
+    - Accepted drinks (drink token was accepted)
+    - Chat acceptances (message request was accepted)
+    """
+    all_connections = []
+    seen_users = set()
+    
+    # 1. Get connections from the connections collection (explicit connections)
+    explicit_connections = await db.connections.find({
         "$or": [
             {"user1_id": current_user["id"]},
             {"user2_id": current_user["id"]}
         ]
     }, {"_id": 0}).to_list(100)
     
-    result = []
-    for conn in connections:
+    for conn in explicit_connections:
         other_user_id = conn["user2_id"] if conn["user1_id"] == current_user["id"] else conn["user1_id"]
-        other_user = await db.users.find_one({"id": other_user_id}, {"_id": 0, "password": 0})
-        venue = await db.venues.find_one({"id": conn["venue_id"]}, {"_id": 0})
+        if other_user_id in seen_users:
+            continue
+        seen_users.add(other_user_id)
         
-        if other_user and venue:
-            result.append({
+        other_user = await db.users.find_one({"id": other_user_id}, {"_id": 0, "password": 0})
+        
+        # Check fake users for test mode
+        if not other_user and IS_TEST_BUILD:
+            fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == other_user_id), None)
+            if fake_user:
+                other_user = fake_user
+        
+        if other_user:
+            venue = await db.venues.find_one({"id": conn.get("venue_id", "")}, {"_id": 0})
+            all_connections.append({
                 "id": conn["id"],
-                "user_id": other_user["id"],
-                "display_name": other_user["display_name"],
+                "user_id": other_user.get("id"),
+                "display_name": other_user.get("display_name", "Someone"),
                 "avatar_url": other_user.get("avatar_url", ""),
                 "bio": other_user.get("bio", ""),
                 "connected_at": conn["connected_at"],
-                "venue_name": venue["name"]
+                "venue_name": venue.get("name", "Chat") if venue else "Chat",
+                "connection_type": "connection"
             })
     
-    return result
+    # 2. Get mutual glances that aren't already in connections
+    glances_to_me = await db.glances.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    
+    for glance in glances_to_me:
+        from_user_id = glance["from_user_id"]
+        if from_user_id in seen_users:
+            continue
+        
+        # Check for mutual glance
+        my_glance = await db.glances.find_one({
+            "from_user_id": current_user["id"],
+            "to_user_id": from_user_id
+        })
+        
+        if my_glance:
+            seen_users.add(from_user_id)
+            
+            user = await db.users.find_one({"id": from_user_id}, {"_id": 0, "password": 0})
+            
+            # Check fake users for test mode
+            if not user and IS_TEST_BUILD:
+                fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == from_user_id), None)
+                if fake_user:
+                    user = fake_user
+            
+            if user:
+                # Get venue from glance
+                venue = await db.venues.find_one({"id": glance.get("venue_id", "")}, {"_id": 0})
+                all_connections.append({
+                    "id": f"mutual-{from_user_id}",
+                    "user_id": user.get("id"),
+                    "display_name": user.get("display_name", "Someone"),
+                    "avatar_url": user.get("avatar_url", ""),
+                    "bio": user.get("bio", ""),
+                    "connected_at": glance["created_at"],
+                    "venue_name": venue.get("name", "Nearby") if venue else "Nearby",
+                    "connection_type": "mutual_glance"
+                })
+    
+    # 3. Get accepted drink tokens that aren't already in connections
+    accepted_drinks = await db.drink_tokens.find({
+        "$or": [
+            {"from_user_id": current_user["id"], "status": "accepted"},
+            {"to_user_id": current_user["id"], "status": "accepted"}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    for drink in accepted_drinks:
+        other_user_id = drink["to_user_id"] if drink["from_user_id"] == current_user["id"] else drink["from_user_id"]
+        if other_user_id in seen_users:
+            continue
+        seen_users.add(other_user_id)
+        
+        user = await db.users.find_one({"id": other_user_id}, {"_id": 0, "password": 0})
+        
+        # Check fake users for test mode
+        if not user and IS_TEST_BUILD:
+            fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == other_user_id), None)
+            if fake_user:
+                user = fake_user
+        
+        if user:
+            venue = await db.venues.find_one({"id": drink.get("venue_id", "")}, {"_id": 0})
+            all_connections.append({
+                "id": f"drink-{drink['id']}",
+                "user_id": user.get("id"),
+                "display_name": user.get("display_name", "Someone"),
+                "avatar_url": user.get("avatar_url", ""),
+                "bio": user.get("bio", ""),
+                "connected_at": drink.get("accepted_at", drink.get("created_at")),
+                "venue_name": venue.get("name", "Via Drink") if venue else "Via Drink",
+                "connection_type": "drink_accepted"
+            })
+    
+    # Sort by connected_at descending
+    all_connections.sort(key=lambda x: x.get("connected_at", ""), reverse=True)
+    
+    return all_connections
 
 @api_router.get("/connections/mutual-glances")
 async def get_mutual_glances(current_user: dict = Depends(get_current_user)):
