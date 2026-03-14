@@ -332,7 +332,7 @@ const WhosHere = () => {
                           src={person.avatar_url}
                           alt={person.display_name}
                           className={`w-full h-full object-cover transition-all duration-300 ${
-                            person.is_revealed ? "" : "blur-md scale-110"
+                            person.is_revealed ? "" : "blur-[5px]"
                           }`}
                         />
                       ) : (
