@@ -2475,7 +2475,7 @@ async def accept_drink_token(token_id: str, current_user: dict = Depends(get_cur
     
     await db.drink_tokens.update_one(
         {"id": token_id}, 
-        {"$set": {"is_accepted": True, "accepted_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"status": "accepted", "is_accepted": True, "accepted_at": datetime.now(timezone.utc).isoformat()}}
     )
     
     # Notify sender
@@ -2511,6 +2511,7 @@ async def decline_drink_token(token_id: str, data: PoliteDeclineRequest, current
     await db.drink_tokens.update_one(
         {"id": token_id}, 
         {"$set": {
+            "status": "declined",
             "is_declined": True, 
             "declined_at": datetime.now(timezone.utc).isoformat(),
             "decline_message": decline_message
