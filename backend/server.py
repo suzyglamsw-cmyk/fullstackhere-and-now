@@ -2566,8 +2566,9 @@ async def delete_drink_token(token_id: str, current_user: dict = Depends(get_cur
     if not is_sender and not is_recipient:
         raise HTTPException(status_code=403, detail="Not authorized to delete this drink offer")
     
-    # Recipients can only delete accepted/declined drinks
-    if is_recipient and token.get("status") == "pending":
+    # Recipients can only delete accepted/declined drinks (check both status field and legacy is_accepted/is_declined)
+    is_pending = token.get("status") == "pending" and not token.get("is_accepted") and not token.get("is_declined")
+    if is_recipient and is_pending:
         raise HTTPException(status_code=400, detail="Respond to this drink offer first before deleting")
     
     await db.drink_tokens.delete_one({"id": token_id})
