@@ -1555,6 +1555,7 @@ async def generate_test_glance(current_user: dict = Depends(get_current_user)):
     fake_user = random.choice(FAKE_TEST_USERS)
     
     # Create a proper glance record in the database
+    # No need to create notification - the /notifications endpoint reads from glances collection
     glance_id = str(uuid.uuid4())
     glance = {
         "id": glance_id,
@@ -1565,21 +1566,6 @@ async def generate_test_glance(current_user: dict = Depends(get_current_user)):
         "is_test": True
     }
     await db.glances.insert_one(glance)
-    
-    # Create notification record
-    notification = {
-        "id": str(uuid.uuid4()),
-        "user_id": current_user["id"],
-        "type": "glance",
-        "message": "Someone glanced at you!",
-        "from_user_id": fake_user["id"],
-        "from_user_name": fake_user["display_name"],
-        "from_user_avatar": fake_user.get("avatar_url", ""),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "is_read": False,
-        "is_test": True
-    }
-    await db.notifications.insert_one(notification)
     
     # Send WebSocket notification
     await manager.send_to_user(current_user["id"], {
