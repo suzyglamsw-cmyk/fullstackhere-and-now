@@ -5,7 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { Eye, MessageCircle, Loader2, ArrowLeft, Heart, Wine, Crown, Coins, X } from "lucide-react";
+import { Eye, MessageCircle, Loader2, ArrowLeft, Heart, Wine, Crown, Coins, X, UserPlus } from "lucide-react";
 
 const UserProfile = () => {
   const { userId } = useParams();
@@ -14,6 +14,7 @@ const UserProfile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [glancing, setGlancing] = useState(false);
+  const [addingFriend, setAddingFriend] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -54,6 +55,19 @@ const UserProfile = () => {
       }
     } finally {
       setGlancing(false);
+    }
+  };
+
+  const handleAddFriend = async () => {
+    setAddingFriend(true);
+    try {
+      await axios.post(`${API}/friends/add`, { friend_id: userId });
+      toast.success(`Added ${profile.display_name} as a friend!`);
+      await fetchProfile();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to add friend");
+    } finally {
+      setAddingFriend(false);
     }
   };
 
@@ -205,46 +219,97 @@ const UserProfile = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
-              {profile.can_glance_back ? (
-                <Button
-                  data-testid="glance-back-btn"
-                  onClick={handleGlance}
-                  disabled={glancing}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-pink-500 to-indigo-500 text-white font-semibold hover:opacity-90"
-                >
-                  {glancing ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Eye className="w-4 h-4 mr-2" />
-                  )}
-                  Glance Back
-                </Button>
-              ) : !profile.i_glanced_at_them ? (
-                <Button
-                  data-testid="glance-btn"
-                  onClick={handleGlance}
-                  disabled={glancing}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-semibold hover:opacity-90"
-                >
-                  {glancing ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Eye className="w-4 h-4 mr-2" />
-                  )}
-                  Glance
-                </Button>
-              ) : null}
+            <div className="space-y-4">
+              {/* Glance Buttons */}
+              <div className="flex gap-3">
+                {profile.can_glance_back ? (
+                  <Button
+                    data-testid="glance-back-btn"
+                    onClick={handleGlance}
+                    disabled={glancing}
+                    className="flex-1 rounded-xl bg-gradient-to-r from-pink-500 to-indigo-500 text-white font-semibold hover:opacity-90"
+                  >
+                    {glancing ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Eye className="w-4 h-4 mr-2" />
+                    )}
+                    Glance Back
+                  </Button>
+                ) : !profile.i_glanced_at_them ? (
+                  <Button
+                    data-testid="glance-btn"
+                    onClick={handleGlance}
+                    disabled={glancing}
+                    className="flex-1 rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-semibold hover:opacity-90"
+                  >
+                    {glancing ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Eye className="w-4 h-4 mr-2" />
+                    )}
+                    Glance
+                  </Button>
+                ) : null}
+              </div>
               
-              {profile.is_mutual && (
-                <Button
-                  data-testid="chat-btn"
-                  onClick={() => navigate(`/chat/${userId}`)}
-                  className="flex-1 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Chat
-                </Button>
+              {/* Message & Add Friend Buttons */}
+              <div className="flex gap-3">
+                {profile.can_message ? (
+                  <Button
+                    data-testid="message-btn"
+                    onClick={() => navigate(`/chat/${userId}`)}
+                    className="flex-1 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Message
+                  </Button>
+                ) : (
+                  <Button
+                    data-testid="message-locked-btn"
+                    disabled
+                    className="flex-1 rounded-xl bg-slate-700/50 text-slate-500 cursor-not-allowed"
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Message
+                  </Button>
+                )}
+                
+                {profile.is_friend ? (
+                  <Button
+                    data-testid="friends-btn"
+                    disabled
+                    className="flex-1 rounded-xl bg-emerald-500/20 text-emerald-400 cursor-default"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Friends
+                  </Button>
+                ) : profile.can_add_friend ? (
+                  <Button
+                    data-testid="add-friend-btn"
+                    onClick={handleAddFriend}
+                    className="flex-1 rounded-xl bg-pink-500 hover:bg-pink-600 text-white"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Add Friend
+                  </Button>
+                ) : (
+                  <Button
+                    data-testid="add-friend-locked-btn"
+                    disabled
+                    className="flex-1 rounded-xl bg-slate-700/50 text-slate-500 cursor-not-allowed"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Add Friend
+                  </Button>
+                )}
+              </div>
+              
+              {/* Locked Features Info */}
+              {!profile.can_message && !profile.can_add_friend && (
+                <p className="text-center text-slate-500 text-xs">
+                  Messaging and adding friends unlock after a drink or chat request is accepted.
+                </p>
               )}
             </div>
 

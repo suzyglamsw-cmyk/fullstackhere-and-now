@@ -143,9 +143,12 @@ IS_TEST_BUILD=true
 - [x] Stale check-ins - RESOLVED (March 2026: 2-hour expiry, auto-checkout on startup/cron)
 - [x] Profile photos not displaying - RESOLVED (March 2026: photos array initialized on user creation)
 - [x] Venue people count tappable - RESOLVED (March 2026: count links to Who's Here page)
+- [x] Check-in not working - RESOLVED (March 2026: verified check-ins create proper records, debug endpoint added)
+- [x] Full profile on tap - RESOLVED (March 2026: UserProfile.js shows bio, interests, photos, Message, Add Friend)
+- [x] Message/Add Friend unlock rules - RESOLVED (March 2026: locked until drink/chat request accepted, info text shown)
 
 ### P1 (High) - For Production
-- [ ] Backend refactoring: server.py is now 4400+ lines - needs modular structure (routes/, models/, services/)
+- [ ] Backend refactoring: server.py is now 4500+ lines - needs modular structure (routes/, models/, services/)
 - [ ] Production Google Places API key
 - [ ] Google Play service account credentials
 

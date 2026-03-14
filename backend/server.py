@@ -1759,7 +1759,14 @@ async def ensure_fake_users_exist(current_user: dict = Depends(get_current_user)
                 "email": f"{fake_user['id']}@test.local",
                 "display_name": fake_user["display_name"],
                 "avatar_url": fake_user.get("avatar_url", ""),
+                "photos": [fake_user.get("avatar_url", "")],
                 "age": fake_user.get("age"),
+                "bio": f"Hey, I'm {fake_user['display_name']}! I love meeting new people.",
+                "interests": ["Music", "Travel", "Coffee", "Nightlife"],
+                "gender": "",
+                "orientation": "",
+                "relationship_status": "",
+                "seeking": "",
                 "is_visible": True,
                 "is_premium": False,
                 "token_balance": 0,
@@ -1770,6 +1777,17 @@ async def ensure_fake_users_exist(current_user: dict = Depends(get_current_user)
             }
             await db.users.insert_one(user_record)
             created.append(fake_user["display_name"])
+        else:
+            # Update existing fake user with bio and interests if missing
+            if not existing.get("bio"):
+                await db.users.update_one(
+                    {"id": fake_user["id"]},
+                    {"$set": {
+                        "bio": f"Hey, I'm {fake_user['display_name']}! I love meeting new people.",
+                        "interests": ["Music", "Travel", "Coffee", "Nightlife"],
+                        "photos": [fake_user.get("avatar_url", "")]
+                    }}
+                )
     
     return {"message": "Fake users ensured", "created": created}
 
@@ -1793,6 +1811,37 @@ async def cleanup_orphaned_checkins(current_user: dict = Depends(get_current_use
                 removed += 1
     
     return {"message": f"Cleaned up {removed} orphaned checkins", "removed": removed}
+
+@api_router.get("/test/debug-venue/{venue_id}")
+async def debug_venue(venue_id: str, current_user: dict = Depends(get_current_user)):
+    """Debug endpoint to see raw checkin data for a venue"""
+    if not IS_TEST_BUILD:
+        raise HTTPException(status_code=403, detail="Test mode only")
+    
+    checkins = await db.checkins.find({"venue_id": venue_id, "is_active": True}, {"_id": 0}).to_list(100)
+    debug_data = []
+    
+    for checkin in checkins:
+        is_valid = is_checkin_valid(checkin)
+        user = await db.users.find_one({"id": checkin["user_id"]}, {"_id": 0, "password": 0})
+        fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == checkin["user_id"]), None) if IS_TEST_BUILD else None
+        
+        debug_data.append({
+            "checkin_id": checkin.get("id"),
+            "user_id": checkin.get("user_id"),
+            "is_checkin_valid": is_valid,
+            "expires_at": checkin.get("expires_at"),
+            "last_activity_at": checkin.get("last_activity_at"),
+            "user_exists": user is not None,
+            "is_fake_user": fake_user is not None,
+            "user_display_name": user.get("display_name") if user else (fake_user.get("display_name") if fake_user else None)
+        })
+    
+    return {
+        "venue_id": venue_id,
+        "total_active_checkins": len(checkins),
+        "checkins": debug_data
+    }
 
 # Venue Routes
 @api_router.get("/venues", response_model=List[VenueResponse])
@@ -2541,8 +2590,8 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
                 "display_name": fake_user["display_name"],
                 "avatar_url": fake_user.get("avatar_url", ""),
                 "age": fake_user.get("age"),
-                "bio": "Test user profile",
-                "interests": ["Music", "Travel", "Food"],
+                "bio": "Test user profile - I love meeting new people!",
+                "interests": ["Music", "Travel", "Food", "Coffee"],
                 "gender": "",
                 "orientation": "",
                 "relationship_status": "",
@@ -2568,6 +2617,20 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
     
     is_mutual = they_glanced_at_me and i_glanced_at_them
     
+    # Check if chat is unlocked (determines Message and Add Friend availability)
+    unlock_status = await check_chat_unlocked(current_user["id"], user_id)
+    can_message = unlock_status["is_unlocked"]
+    can_add_friend = unlock_status["is_unlocked"]
+    unlock_reason = unlock_status.get("reason", "")
+    
+    # Check if already friends
+    is_friend = await db.friends.find_one({
+        "$or": [
+            {"user_id": current_user["id"], "friend_id": user_id},
+            {"user_id": user_id, "friend_id": current_user["id"]}
+        ]
+    }) is not None
+    
     # Return full profile data
     return {
         "id": user.get("id"),
@@ -2585,7 +2648,11 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "they_glanced_at_me": they_glanced_at_me,
         "i_glanced_at_them": i_glanced_at_them,
         "is_mutual": is_mutual,
-        "can_glance_back": they_glanced_at_me and not i_glanced_at_them
+        "can_glance_back": they_glanced_at_me and not i_glanced_at_them,
+        "can_message": can_message,
+        "can_add_friend": can_add_friend,
+        "is_friend": is_friend,
+        "unlock_reason": unlock_reason
     }
 
 
