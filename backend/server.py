@@ -1393,6 +1393,18 @@ async def get_test_status():
     """Check if test mode is enabled"""
     return {"is_test_mode": IS_TEST_BUILD}
 
+@api_router.post("/test/enable-bypass-limits")
+async def enable_bypass_limits(current_user: dict = Depends(get_current_user)):
+    """Enable bypass_glance_limits flag for test user"""
+    if not IS_TEST_BUILD:
+        raise HTTPException(status_code=403, detail="Test mode only")
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"bypass_glance_limits": True, "daily_glances_remaining": 999}}
+    )
+    return {"message": "Bypass limits enabled", "daily_glances_remaining": 999}
+
 @api_router.get("/test/fake-users")
 async def get_fake_users(current_user: dict = Depends(get_current_user)):
     """Get fake test users (test mode only)"""
@@ -1847,8 +1859,8 @@ async def get_people_at_venue(venue_id: str, current_user: dict = Depends(get_cu
 # Glance Routes
 @api_router.post("/glance")
 async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_current_user)):
-    # Check daily glance limit (unlimited in test mode)
-    if IS_TEST_BUILD:
+    # Check daily glance limit (unlimited in test mode or for users with bypass flag)
+    if IS_TEST_BUILD or current_user.get("bypass_glance_limits", False):
         remaining = TEST_MODE_GLANCES
     else:
         remaining = current_user.get("daily_glances_remaining", FREE_DAILY_GLANCES)

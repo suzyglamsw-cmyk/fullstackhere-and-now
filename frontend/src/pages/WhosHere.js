@@ -298,18 +298,19 @@ const WhosHere = () => {
                 <div
                   key={person.id}
                   data-testid={`person-card-${person.id}`}
-                  className={`user-card rounded-2xl p-4 border transition-all ${
+                  onClick={() => navigate(`/profile/${person.id}`)}
+                  className={`user-card rounded-2xl p-4 border transition-all cursor-pointer ${
                     person.is_revealed
-                      ? "bg-gradient-to-br from-indigo-500/10 to-pink-500/10 border-indigo-500/30"
+                      ? "bg-gradient-to-br from-indigo-500/10 to-pink-500/10 border-indigo-500/30 hover:border-indigo-500/50"
                       : person.has_glanced_at_me
-                      ? "bg-pink-500/10 border-pink-500/30"
-                      : "bg-white/5 border-white/5 hover:border-white/10"
+                      ? "bg-pink-500/10 border-pink-500/30 hover:border-pink-500/50"
+                      : "bg-white/5 border-white/5 hover:border-white/20"
                   }`}
                 >
-                  {/* Avatar */}
+                  {/* Avatar - tappable */}
                   <div className="relative mb-3">
                     <div
-                      className={`aspect-square rounded-2xl overflow-hidden ${
+                      className={`aspect-square rounded-2xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all ${
                         person.is_revealed
                           ? "avatar-ring-revealed"
                           : person.has_glanced_at_me
@@ -375,8 +376,8 @@ const WhosHere = () => {
                     </div>
                   )}
 
-                  {/* Actions */}
-                  <div className="flex gap-2">
+                  {/* Actions - stop propagation to prevent card click */}
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                     {!person.i_glanced_at && (
                       <Button
                         data-testid={`glance-btn-${person.id}`}

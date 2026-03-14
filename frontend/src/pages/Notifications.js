@@ -278,10 +278,16 @@ const Notifications = () => {
                     </p>
                   </div>
 
-                  {/* Avatar for matches, glances, and drinks */}
+                  {/* Avatar for matches, glances, and drinks - tappable to profile */}
                   {(notification.type === "mutual_glance" || notification.type === "drink_token" || notification.type === "glance") &&
                     (notification.user?.avatar_url || notification.from_user?.avatar_url || notification.from_user_avatar) && (
-                      <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
+                      <div 
+                        className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
+                        onClick={() => {
+                          const userId = notification.user?.id || notification.from_user?.id || notification.from_user_id;
+                          if (userId) navigate(`/profile/${userId}`);
+                        }}
+                      >
                         <img
                           src={
                             notification.user?.avatar_url ||

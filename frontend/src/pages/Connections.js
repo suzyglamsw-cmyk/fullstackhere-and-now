@@ -131,9 +131,15 @@ const Connections = () => {
                   onClick={() => navigate(`/chat/${thread.user_id}`)}
                   className="glass rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer"
                 >
-                  {/* Avatar */}
-                  <div className="relative">
-                    <div className="w-14 h-14 rounded-2xl overflow-hidden">
+                  {/* Avatar - tappable to profile */}
+                  <div 
+                    className="relative cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/profile/${thread.user_id}`);
+                    }}
+                  >
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
                       <img
                         src={thread.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
                         alt={thread.display_name}
@@ -189,11 +195,12 @@ const Connections = () => {
                 <div
                   key={glance.user_id}
                   data-testid={`mutual-glance-${glance.user_id}`}
-                  className="glass rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 transition-colors"
+                  onClick={() => navigate(`/profile/${glance.user_id}`)}
+                  className="glass rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer"
                 >
-                  {/* Avatar */}
+                  {/* Avatar - tappable to profile */}
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-2xl overflow-hidden">
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-pink-500 transition-all">
                       <img
                         src={glance.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
                         alt={glance.display_name}
@@ -217,7 +224,7 @@ const Connections = () => {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                     <Button
                       data-testid={`view-profile-${glance.user_id}`}
                       onClick={() => navigate(`/profile/${glance.user_id}`)}
@@ -270,9 +277,15 @@ const Connections = () => {
                   onClick={() => navigate(`/chat/${connection.user_id}`)}
                   className="glass rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer"
                 >
-                  {/* Avatar */}
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden">
+                  {/* Avatar - tappable to profile */}
+                  <div 
+                    className="relative cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/profile/${connection.user_id}`);
+                    }}
+                  >
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
                       {connection.avatar_url ? (
                         <img
                           src={connection.avatar_url}
@@ -325,7 +338,10 @@ const Connections = () => {
                   {/* Action */}
                   <Button
                     data-testid={`chat-btn-${connection.user_id}`}
-                    onClick={() => navigate(`/chat/${connection.user_id}`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/chat/${connection.user_id}`);
+                    }}
                     className="rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />

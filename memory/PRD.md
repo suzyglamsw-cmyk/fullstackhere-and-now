@@ -10,10 +10,10 @@ Real-time, Location-based, Low-pressure, Spontaneous, Venue-focused, Privacy-saf
 - [x] Profile with 3 photos + "Make Main Photo" feature
 - [x] photos[0] always used as avatar_url
 - [x] Venue discovery (Google Places)
-- [x] Check-in/checkout
-- [x] Glance & Reveal (unlimited in test mode)
+- [x] Check-in/checkout with full profile data (first name, age, photo, glance state)
+- [x] Glance & Reveal (unlimited in test mode or with bypass_glance_limits flag)
 - [x] Drink tokens
-- [x] Connections & Chat (with Mutual Glances + Messages tabs)
+- [x] Connections & Chat (with Mutual Glances + Messages tabs - unified data source)
 - [x] Message Requests (locked until mutual glance/drink/chat acceptance)
 - [x] Contact masking in message requests
 - [x] Friends list
@@ -21,6 +21,7 @@ Real-time, Location-based, Low-pressure, Spontaneous, Venue-focused, Privacy-saf
 - [x] Account deletion
 - [x] User profile page (view without counting glance)
 - [x] "No glances remaining" upgrade prompt
+- [x] All profile photos/user cards tappable to navigate to profile
 
 ### Premium System
 - Stripe payments (web)
