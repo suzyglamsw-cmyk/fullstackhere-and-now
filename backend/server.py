@@ -2203,7 +2203,8 @@ async def get_people_at_venue(venue_id: str, current_user: dict = Depends(get_cu
         # Revealed if mutual glance or connected
         is_revealed = (has_glanced_at_me and i_glanced_at) or is_connected
         
-        # Always show first name and age, but hide avatar/bio until revealed
+        # Always show first name and age
+        # Always send avatar_url so frontend can show blurred version before reveal
         first_name = get_first_name(user.get("display_name", "Someone"))
         
         people.append({
@@ -2211,7 +2212,7 @@ async def get_people_at_venue(venue_id: str, current_user: dict = Depends(get_cu
             "display_name": user["display_name"] if is_revealed else first_name,
             "first_name": first_name,
             "age": user.get("age"),
-            "avatar_url": user.get("avatar_url", "") if is_revealed else "",
+            "avatar_url": user.get("avatar_url", ""),  # Always send avatar for blur effect
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
             "checked_in_at": checkin["checked_in_at"],

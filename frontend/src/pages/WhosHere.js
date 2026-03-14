@@ -327,11 +327,13 @@ const WhosHere = () => {
                           : ""
                       }`}
                     >
-                      {person.is_revealed ? (
+                      {person.avatar_url ? (
                         <img
-                          src={person.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
+                          src={person.avatar_url}
                           alt={person.display_name}
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full object-cover transition-all duration-300 ${
+                            person.is_revealed ? "" : "blur-md scale-110"
+                          }`}
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
