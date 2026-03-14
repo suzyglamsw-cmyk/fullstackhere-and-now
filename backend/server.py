@@ -311,6 +311,8 @@ class UserResponse(BaseModel):
     daily_tokens_remaining: int = 1
     glances_reset_at: Optional[str] = None
     profile_theme: Optional[str] = None
+    active_venue_id: Optional[str] = None
+    active_venue_timestamp: Optional[str] = None
 
 class VenueCreate(BaseModel):
     name: str
@@ -661,6 +663,24 @@ async def login(data: UserLogin):
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
+    # Check for active venue check-in
+    checkin = await db.checkins.find_one({"user_id": current_user["id"], "is_active": True}, {"_id": 0})
+    
+    if checkin and is_checkin_valid(checkin):
+        # User has valid active check-in
+        current_user["active_venue_id"] = checkin.get("venue_id")
+        current_user["active_venue_timestamp"] = checkin.get("checked_in_at")
+    else:
+        # No active check-in or expired - clear any stale data
+        if checkin:
+            # Auto-checkout expired check-in
+            await db.checkins.update_one(
+                {"id": checkin["id"]},
+                {"$set": {"is_active": False, "checked_out_at": datetime.now(timezone.utc).isoformat(), "auto_checkout_reason": "expired"}}
+            )
+        current_user["active_venue_id"] = None
+        current_user["active_venue_timestamp"] = None
+    
     return current_user
 
 @api_router.put("/auth/profile")
