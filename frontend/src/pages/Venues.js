@@ -244,12 +244,17 @@ const Venues = () => {
                     : `You're at ${currentCheckin.venue?.name}`
                   }
                 </p>
-                <p className="text-slate-400 text-sm">
-                  {currentCheckin.checkin?.is_open_area 
-                    ? "Open area check-in"
-                    : `${currentCheckin.venue?.checked_in_count || 0} people here`
-                  }
-                </p>
+                {currentCheckin.checkin?.is_open_area ? (
+                  <p className="text-slate-400 text-sm">Open area check-in</p>
+                ) : (
+                  <button
+                    onClick={() => navigate(`/venue/${currentCheckin.checkin.venue_id}`)}
+                    className="text-slate-400 text-sm hover:text-indigo-400 transition-colors cursor-pointer"
+                    data-testid="people-count-link"
+                  >
+                    {currentCheckin.venue?.checked_in_count || 0} people here
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex gap-2">
@@ -335,12 +340,19 @@ const Venues = () => {
                         {venue.distance < 1000 ? `${venue.distance}m` : `${(venue.distance/1000).toFixed(1)}km`}
                       </span>
                     )}
-                    <div className="flex items-center gap-2 glass rounded-full px-3 py-1.5">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/venue/${venue.place_id || venue.id}`);
+                      }}
+                      className="flex items-center gap-2 glass rounded-full px-3 py-1.5 hover:bg-white/20 transition-colors cursor-pointer"
+                      data-testid={`venue-count-${venue.place_id || venue.id}`}
+                    >
                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-live" />
                       <span className="text-white text-sm font-medium">
                         {venue.checked_in_count || 0}
                       </span>
-                    </div>
+                    </button>
                   </div>
 
                   {/* Open/Closed Status */}

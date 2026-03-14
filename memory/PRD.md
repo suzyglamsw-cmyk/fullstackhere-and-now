@@ -140,9 +140,12 @@ IS_TEST_BUILD=true
 - [x] Venue occupancy mismatch - RESOLVED (March 2026: counts now validated against real users)
 - [x] Placeholder users appearing - RESOLVED (March 2026: presence API filters orphaned checkins)
 - [x] Profile missing bio/details - RESOLVED (March 2026: full profile data returned)
+- [x] Stale check-ins - RESOLVED (March 2026: 2-hour expiry, auto-checkout on startup/cron)
+- [x] Profile photos not displaying - RESOLVED (March 2026: photos array initialized on user creation)
+- [x] Venue people count tappable - RESOLVED (March 2026: count links to Who's Here page)
 
 ### P1 (High) - For Production
-- [ ] Backend refactoring: server.py is now 4200+ lines - needs modular structure (routes/, models/, services/)
+- [ ] Backend refactoring: server.py is now 4400+ lines - needs modular structure (routes/, models/, services/)
 - [ ] Production Google Places API key
 - [ ] Google Play service account credentials
 

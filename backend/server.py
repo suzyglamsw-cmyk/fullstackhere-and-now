@@ -65,7 +65,7 @@ if GOOGLE_PLAY_CREDENTIALS_FILE and os.path.exists(GOOGLE_PLAY_CREDENTIALS_FILE)
 STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
 
 # Auto-checkout timeout (30 minutes)
-AUTO_CHECKOUT_MINUTES = 30
+AUTO_CHECKOUT_MINUTES = 120  # 2 hours - checkins expire after this time of inactivity
 
 # Premium/Token Config
 FREE_DAILY_GLANCES = 5
@@ -153,6 +153,33 @@ def get_first_name(display_name: str) -> str:
     if not display_name:
         return "Someone"
     return display_name.split()[0]
+
+def is_checkin_valid(checkin: dict) -> bool:
+    """Check if a checkin is still valid (not expired)"""
+    if not checkin.get("is_active", False):
+        return False
+    
+    now = datetime.now(timezone.utc)
+    
+    # Check expires_at if present
+    if checkin.get("expires_at"):
+        try:
+            expires = datetime.fromisoformat(checkin["expires_at"].replace('Z', '+00:00'))
+            if expires < now:
+                return False
+        except:
+            pass
+    else:
+        # Fallback: check last_activity_at
+        if checkin.get("last_activity_at"):
+            try:
+                last_activity = datetime.fromisoformat(checkin["last_activity_at"].replace('Z', '+00:00'))
+                if last_activity < now - timedelta(minutes=AUTO_CHECKOUT_MINUTES):
+                    return False
+            except:
+                pass
+    
+    return True
 
 async def check_chat_unlocked(user1_id: str, user2_id: str) -> dict:
     """
@@ -268,6 +295,7 @@ class UserResponse(BaseModel):
     display_name: str
     bio: str = ""
     avatar_url: str = ""
+    photos: List[str] = []
     interests: List[str] = []
     age: Optional[int] = None
     gender: str = ""
@@ -523,6 +551,7 @@ async def register(data: UserCreate):
         "display_name": data.display_name,
         "bio": "",
         "avatar_url": "",
+        "photos": ["", "", ""],
         "interests": [],
         "age": None,
         "gender": "",
@@ -551,6 +580,7 @@ async def register(data: UserCreate):
             "display_name": data.display_name,
             "bio": "",
             "avatar_url": "",
+            "photos": ["", "", ""],
             "interests": [],
             "age": None,
             "gender": "",
@@ -608,6 +638,7 @@ async def login(data: UserLogin):
             "display_name": user["display_name"],
             "bio": user.get("bio", ""),
             "avatar_url": user.get("avatar_url", ""),
+            "photos": user.get("photos", ["", "", ""]),
             "interests": user.get("interests", []),
             "age": user.get("age"),
             "gender": user.get("gender", ""),
@@ -1768,10 +1799,13 @@ async def cleanup_orphaned_checkins(current_user: dict = Depends(get_current_use
 async def get_venues(current_user: dict = Depends(get_current_user)):
     venues = await db.venues.find({}, {"_id": 0}).to_list(100)
     for venue in venues:
-        # Count ONLY checkins that have valid users
+        # Count ONLY valid, non-expired checkins with real users
         checkins = await db.checkins.find({"venue_id": venue["id"], "is_active": True}, {"_id": 0}).to_list(100)
         valid_count = 0
         for checkin in checkins:
+            # Skip expired checkins
+            if not is_checkin_valid(checkin):
+                continue
             user = await db.users.find_one({"id": checkin["user_id"]}, {"_id": 0})
             if user:
                 valid_count += 1
@@ -1800,13 +1834,16 @@ async def get_venue(venue_id: str, current_user: dict = Depends(get_current_user
         # Fetch it back without _id
         venue = await db.venues.find_one({"id": venue_id}, {"_id": 0})
     
-    # Count ONLY checkins that have valid users (real users or fake users in test mode)
+    # Count ONLY valid, non-expired checkins with real users
     checkins = await db.checkins.find({"venue_id": venue_id, "is_active": True}, {"_id": 0}).to_list(100)
     valid_count = 0
     for checkin in checkins:
-        # Skip current user
+        # Skip expired checkins
+        if not is_checkin_valid(checkin):
+            continue
+        # Skip current user from validation but count them
         if checkin["user_id"] == current_user["id"]:
-            valid_count += 1  # Count current user
+            valid_count += 1
             continue
         # Check if user exists
         user = await db.users.find_one({"id": checkin["user_id"]}, {"_id": 0})
@@ -1857,6 +1894,7 @@ async def check_in(venue_id: str, current_user: dict = Depends(get_current_user)
         await db.venues.insert_one(venue)
     
     now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=AUTO_CHECKOUT_MINUTES)
     checkin_id = str(uuid.uuid4())
     checkin = {
         "id": checkin_id,
@@ -1865,6 +1903,7 @@ async def check_in(venue_id: str, current_user: dict = Depends(get_current_user)
         "is_open_area": False,
         "checked_in_at": now.isoformat(),
         "last_activity_at": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
         "is_active": True
     }
     await db.checkins.insert_one(checkin)
@@ -1902,13 +1941,26 @@ async def get_current_checkin(current_user: dict = Depends(get_current_user)):
     checkin = await db.checkins.find_one({"user_id": current_user["id"], "is_active": True}, {"_id": 0})
     if not checkin:
         return {"checked_in": False}
+    
+    # Check if current user's checkin has expired
+    if not is_checkin_valid(checkin):
+        # Auto-checkout the expired checkin
+        await db.checkins.update_one(
+            {"id": checkin["id"]},
+            {"$set": {"is_active": False, "checked_out_at": datetime.now(timezone.utc).isoformat(), "auto_checkout_reason": "expired"}}
+        )
+        return {"checked_in": False}
+    
     venue = await db.venues.find_one({"id": checkin["venue_id"]}, {"_id": 0})
     
-    # Calculate accurate occupancy count
+    # Calculate accurate occupancy count (excluding expired checkins)
     if venue:
         all_checkins = await db.checkins.find({"venue_id": checkin["venue_id"], "is_active": True}, {"_id": 0}).to_list(100)
         valid_count = 0
         for c in all_checkins:
+            # Skip expired checkins
+            if not is_checkin_valid(c):
+                continue
             user = await db.users.find_one({"id": c["user_id"]}, {"_id": 0})
             if user:
                 valid_count += 1
@@ -1957,7 +2009,12 @@ async def get_people_at_venue(venue_id: str, current_user: dict = Depends(get_cu
     
     people = []
     for checkin in checkins:
+        # Skip current user
         if checkin["user_id"] == current_user["id"]:
+            continue
+        
+        # Skip expired checkins
+        if not is_checkin_valid(checkin):
             continue
         
         # Try to find real user first
@@ -3546,28 +3603,47 @@ async def get_people_in_open_area(lat: float, lng: float, current_user: dict = D
 
 @api_router.post("/checkin/heartbeat")
 async def checkin_heartbeat(current_user: dict = Depends(get_current_user)):
-    """Update last activity to prevent auto-checkout"""
+    """Update last activity and extend expiry to prevent auto-checkout"""
     now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=AUTO_CHECKOUT_MINUTES)
     result = await db.checkins.update_one(
         {"user_id": current_user["id"], "is_active": True},
-        {"$set": {"last_activity_at": now.isoformat()}}
+        {"$set": {
+            "last_activity_at": now.isoformat(),
+            "expires_at": expires_at.isoformat()
+        }}
     )
     if result.modified_count == 0:
         return {"active": False}
-    return {"active": True, "last_activity_at": now.isoformat()}
+    return {"active": True, "last_activity_at": now.isoformat(), "expires_at": expires_at.isoformat()}
 
-@api_router.post("/checkin/auto-checkout")
+@api_router.post("/system/auto-checkout")
 async def run_auto_checkout():
-    """Background task to checkout inactive users (call periodically)"""
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=AUTO_CHECKOUT_MINUTES)
-    result = await db.checkins.update_many(
+    """Background task to checkout expired users (call periodically via cron or on startup)"""
+    now = datetime.now(timezone.utc)
+    
+    # Method 1: Check expires_at field (preferred for new checkins)
+    result1 = await db.checkins.update_many(
         {
             "is_active": True,
+            "expires_at": {"$lt": now.isoformat()}
+        },
+        {"$set": {"is_active": False, "checked_out_at": now.isoformat(), "auto_checkout_reason": "expired"}}
+    )
+    
+    # Method 2: Fallback for old checkins without expires_at - use last_activity_at
+    cutoff = now - timedelta(minutes=AUTO_CHECKOUT_MINUTES)
+    result2 = await db.checkins.update_many(
+        {
+            "is_active": True,
+            "expires_at": {"$exists": False},
             "last_activity_at": {"$lt": cutoff.isoformat()}
         },
-        {"$set": {"is_active": False, "checked_out_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"is_active": False, "checked_out_at": now.isoformat(), "auto_checkout_reason": "stale_activity"}}
     )
-    return {"checked_out_count": result.modified_count}
+    
+    total = result1.modified_count + result2.modified_count
+    return {"checked_out_count": total, "expired": result1.modified_count, "stale": result2.modified_count}
 
 # ============================================
 # ============================================
@@ -4281,3 +4357,33 @@ app.add_middleware(
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+@app.on_event("startup")
+async def startup_cleanup():
+    """Run cleanup tasks on startup"""
+    # Clean up expired checkins
+    now = datetime.now(timezone.utc)
+    
+    # Method 1: Check expires_at field
+    result1 = await db.checkins.update_many(
+        {
+            "is_active": True,
+            "expires_at": {"$lt": now.isoformat()}
+        },
+        {"$set": {"is_active": False, "checked_out_at": now.isoformat(), "auto_checkout_reason": "expired_on_startup"}}
+    )
+    
+    # Method 2: Fallback for old checkins without expires_at
+    cutoff = now - timedelta(minutes=AUTO_CHECKOUT_MINUTES)
+    result2 = await db.checkins.update_many(
+        {
+            "is_active": True,
+            "expires_at": {"$exists": False},
+            "last_activity_at": {"$lt": cutoff.isoformat()}
+        },
+        {"$set": {"is_active": False, "checked_out_at": now.isoformat(), "auto_checkout_reason": "stale_on_startup"}}
+    )
+    
+    total = result1.modified_count + result2.modified_count
+    if total > 0:
+        print(f"Startup cleanup: checked out {total} expired/stale users")
