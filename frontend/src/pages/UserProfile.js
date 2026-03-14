@@ -153,7 +153,7 @@ const UserProfile = () => {
                 src={mainPhoto}
                 alt={profile.display_name}
                 className={`w-full h-full object-cover transition-all duration-300 ${
-                  profile.is_revealed ? "" : "blur-[3px]"
+                  profile.is_revealed ? "" : "blur-[4px]"
                 }`}
               />
             </div>
