@@ -59,10 +59,17 @@ const UserProfile = () => {
   };
 
   const handleAddFriend = async () => {
+    // Double-check if friend can be added
+    if (!profile.can_add_friend) {
+      toast.error("You can only add friends after a drink or chat request is accepted.");
+      return;
+    }
+    
     setAddingFriend(true);
     try {
-      await axios.post(`${API}/friends/add`, { user_id: userId });
-      toast.success(`Added ${profile.display_name} as a friend!`);
+      const response = await axios.post(`${API}/friends/add`, { user_id: userId });
+      // Show the backend's response message
+      toast.success(response.data?.message || "Friend request sent!");
       await fetchProfile();
     } catch (error) {
       // Handle various error formats
@@ -74,7 +81,7 @@ const UserProfile = () => {
       } else if (errorData?.detail) {
         errorMessage = typeof errorData.detail === "string" 
           ? errorData.detail 
-          : "Chat must be unlocked first to add friends";
+          : "You can only add friends after a drink or chat request is accepted.";
       } else if (errorData?.msg) {
         errorMessage = errorData.msg;
       }
@@ -82,6 +89,23 @@ const UserProfile = () => {
       toast.error(errorMessage);
     } finally {
       setAddingFriend(false);
+    }
+  };
+
+  const handleAcceptFriendRequest = async () => {
+    try {
+      // Find the friend request ID
+      const friendsResponse = await axios.get(`${API}/friends/requests`);
+      const request = friendsResponse.data?.find(r => r.from_user_id === userId);
+      if (request) {
+        await axios.post(`${API}/friends/respond/${request.id}?accept=true`);
+        toast.success(`You are now friends with ${profile.display_name}!`);
+        await fetchProfile();
+      } else {
+        toast.error("Friend request not found");
+      }
+    } catch (error) {
+      toast.error("Failed to accept friend request");
     }
   };
 
@@ -298,14 +322,37 @@ const UserProfile = () => {
                     <Heart className="w-4 h-4 mr-2" />
                     Friends
                   </Button>
+                ) : profile.friend_request_sent ? (
+                  <Button
+                    data-testid="request-sent-btn"
+                    disabled
+                    className="flex-1 rounded-xl bg-amber-500/20 text-amber-400 cursor-default"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Request Sent
+                  </Button>
+                ) : profile.friend_request_received ? (
+                  <Button
+                    data-testid="accept-friend-btn"
+                    onClick={handleAcceptFriendRequest}
+                    className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Accept Request
+                  </Button>
                 ) : profile.can_add_friend ? (
                   <Button
                     data-testid="add-friend-btn"
                     onClick={handleAddFriend}
+                    disabled={addingFriend}
                     className="flex-1 rounded-xl bg-pink-500 hover:bg-pink-600 text-white"
                   >
-                    <Heart className="w-4 h-4 mr-2" />
-                    Add Friend
+                    {addingFriend ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Heart className="w-4 h-4 mr-2" />
+                    )}
+                    {addingFriend ? "Sending..." : "Send Friend Request"}
                   </Button>
                 ) : (
                   <Button

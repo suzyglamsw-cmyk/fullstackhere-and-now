@@ -2686,12 +2686,15 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
     unlock_reason = unlock_status.get("reason", "")
     
     # Check if already friends
-    is_friend = await db.friends.find_one({
+    existing_friend = await db.friends.find_one({
         "$or": [
-            {"user_id": current_user["id"], "friend_id": user_id},
-            {"user_id": user_id, "friend_id": current_user["id"]}
+            {"user1_id": current_user["id"], "user2_id": user_id},
+            {"user1_id": user_id, "user2_id": current_user["id"]}
         ]
-    }) is not None
+    })
+    is_friend = existing_friend is not None and existing_friend.get("status") == "accepted"
+    friend_request_sent = existing_friend is not None and existing_friend.get("status") == "pending" and existing_friend.get("user1_id") == current_user["id"]
+    friend_request_received = existing_friend is not None and existing_friend.get("status") == "pending" and existing_friend.get("user2_id") == current_user["id"]
     
     # Return full profile data
     return {
@@ -2712,8 +2715,10 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "is_mutual": is_mutual,
         "can_glance_back": they_glanced_at_me and not i_glanced_at_them,
         "can_message": can_message,
-        "can_add_friend": can_add_friend,
+        "can_add_friend": can_add_friend and not friend_request_sent,  # Can't send if already sent
         "is_friend": is_friend,
+        "friend_request_sent": friend_request_sent,
+        "friend_request_received": friend_request_received,
         "unlock_reason": unlock_reason
     }
 

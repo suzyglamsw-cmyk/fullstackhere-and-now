@@ -135,17 +135,18 @@ IS_TEST_BUILD=true
 ## Remaining Tasks
 
 ### P0 (Critical) - RESOLVED
-- [x] Push notifications not appearing on device - RESOLVED (push system works, test endpoints use fake FCM endpoints that return 410 Gone; real browser subscriptions will work)
-- [x] Fake events not creating DB records - RESOLVED (test endpoints now create proper database records)
-- [x] Venue occupancy mismatch - RESOLVED (March 2026: counts now validated against real users)
-- [x] Placeholder users appearing - RESOLVED (March 2026: presence API filters orphaned checkins)
-- [x] Profile missing bio/details - RESOLVED (March 2026: full profile data returned)
-- [x] Stale check-ins - RESOLVED (March 2026: 2-hour expiry, auto-checkout on startup/cron)
-- [x] Profile photos not displaying - RESOLVED (March 2026: photos array initialized on user creation)
-- [x] Venue people count tappable - RESOLVED (March 2026: count links to Who's Here page)
-- [x] Check-in not working - RESOLVED (March 2026: verified check-ins create proper records, debug endpoint added)
-- [x] Full profile on tap - RESOLVED (March 2026: UserProfile.js shows bio, interests, photos, Message, Add Friend)
-- [x] Message/Add Friend unlock rules - RESOLVED (March 2026: locked until drink/chat request accepted, info text shown)
+- [x] Push notifications not appearing on device - RESOLVED
+- [x] Fake events not creating DB records - RESOLVED
+- [x] Venue occupancy mismatch - RESOLVED
+- [x] Placeholder users appearing - RESOLVED
+- [x] Profile missing bio/details - RESOLVED
+- [x] Stale check-ins - RESOLVED (2-hour expiry, auto-checkout)
+- [x] Profile photos not displaying - RESOLVED
+- [x] Venue people count tappable - RESOLVED
+- [x] Check-in not working - RESOLVED
+- [x] Full profile on tap - RESOLVED (bio, interests, photos, gender, status)
+- [x] Message/Add Friend unlock rules - RESOLVED (locked until drink/chat accepted)
+- [x] Add Friend crash - RESOLVED (clean error messages, friend_request_sent state)
 
 ### P1 (High) - For Production
 - [ ] Backend refactoring: server.py is now 4500+ lines - needs modular structure (routes/, models/, services/)
