@@ -1339,8 +1339,14 @@ async def generate_test_glance(current_user: dict = Depends(get_current_user)):
     await send_push_notification(
         current_user["id"],
         "Someone noticed you 👀",
-        "Someone at your venue glanced at you!",
-        {"type": "glance", "glance_id": glance_id}
+        f"{fake_user['display_name']} glanced at you!",
+        {
+            "type": "glance",
+            "glance_id": glance_id,
+            "from_user_id": fake_user["id"],
+            "from_user_name": fake_user["display_name"],
+            "from_user_photo": fake_user.get("avatar_url", "")
+        }
     )
     
     return {"message": "Fake glance generated", "from": fake_user["display_name"], "glance_id": glance_id}
@@ -1403,9 +1409,16 @@ async def generate_test_drink(current_user: dict = Depends(get_current_user)):
     drink_emoji = {"cocktail": "🍸", "beer": "🍺", "wine": "🍷", "coffee": "☕", "mocktail": "🍹"}.get(drink_type, "🥂")
     await send_push_notification(
         current_user["id"],
-        f"Someone sent you a drink! {drink_emoji}",
-        f"{fake_user['display_name']} sent you a {drink_type}",
-        {"type": "drink", "from_user_id": fake_user["id"], "drink_type": drink_type, "token_id": token_id}
+        f"{fake_user['display_name']} sent you a drink! {drink_emoji}",
+        f"Tap to accept the {drink_type}",
+        {
+            "type": "drink",
+            "from_user_id": fake_user["id"],
+            "from_user_name": fake_user["display_name"],
+            "from_user_photo": fake_user.get("avatar_url", ""),
+            "drink_type": drink_type,
+            "token_id": token_id
+        }
     )
     
     return {"message": "Fake drink offer generated", "from": fake_user["display_name"], "drink_type": drink_type, "token_id": token_id}
@@ -1469,9 +1482,15 @@ async def generate_test_message(current_user: dict = Depends(get_current_user)):
     preview = message_content[:50] + "..." if len(message_content) > 50 else message_content
     await send_push_notification(
         current_user["id"],
-        f"New message from {fake_user['display_name']} 💬",
+        f"{fake_user['display_name']} 💬",
         preview,
-        {"type": "message", "from_user_id": fake_user["id"], "message_id": message_id}
+        {
+            "type": "message",
+            "from_user_id": fake_user["id"],
+            "from_user_name": fake_user["display_name"],
+            "from_user_photo": fake_user.get("avatar_url", ""),
+            "message_id": message_id
+        }
     )
     
     return {"message": "Fake message generated", "from": fake_user["display_name"], "text": message_content, "message_id": message_id}
@@ -1517,14 +1536,28 @@ async def generate_test_chat_request(current_user: dict = Depends(get_current_us
             current_user["id"],
             f"{fake_user['display_name']} wants to buy you a drink! 🍸",
             "Tap to accept or decline",
-            {"type": "chat_request", "request_id": request_id, "request_type": request_type}
+            {
+                "type": "chat_request",
+                "request_id": request_id,
+                "request_type": request_type,
+                "from_user_id": fake_user["id"],
+                "from_user_name": fake_user["display_name"],
+                "from_user_photo": fake_user.get("avatar_url", "")
+            }
         )
     else:
         await send_push_notification(
             current_user["id"],
             f"{fake_user['display_name']} wants to chat! 💬",
             "Tap to respond",
-            {"type": "chat_request", "request_id": request_id, "request_type": request_type}
+            {
+                "type": "chat_request",
+                "request_id": request_id,
+                "request_type": request_type,
+                "from_user_id": fake_user["id"],
+                "from_user_name": fake_user["display_name"],
+                "from_user_photo": fake_user.get("avatar_url", "")
+            }
         )
     
     return {"message": "Fake chat request generated", "from": fake_user["display_name"], "request_type": request_type, "request_id": request_id}
@@ -1775,7 +1808,13 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
             data.to_user_id,
             "It's a match! 🎉",
             f"You and {current_user['display_name']} both glanced at each other!",
-            {"type": "match", "user_id": current_user["id"]}
+            {
+                "type": "match",
+                "user_id": current_user["id"],
+                "from_user_id": current_user["id"],
+                "from_user_name": current_user["display_name"],
+                "from_user_photo": current_user.get("avatar_url", "")
+            }
         )
         
         return {"message": "It's a match! You can now connect.", "is_mutual": True}
@@ -1793,7 +1832,12 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
             data.to_user_id,
             "Someone noticed you 👀",
             "Someone at your venue glanced at you!",
-            {"type": "glance"}
+            {
+                "type": "glance",
+                "from_user_id": current_user["id"],
+                "from_user_name": current_user["display_name"],
+                "from_user_photo": current_user.get("avatar_url", "")
+            }
         )
     
     return {"message": "Glance sent!", "is_mutual": False}
@@ -1855,9 +1899,15 @@ async def send_drink_token(data: DrinkTokenCreate, current_user: dict = Depends(
         drink_emoji = {"cocktail": "🍸", "beer": "🍺", "wine": "🍷", "coffee": "☕", "mocktail": "🍹"}.get(data.drink_type, "🥂")
         await send_push_notification(
             data.to_user_id,
-            f"Someone sent you a drink! {drink_emoji}",
-            f"{current_user['display_name']} sent you a {data.drink_type}",
-            {"type": "drink", "from_user_id": current_user["id"], "drink_type": data.drink_type}
+            f"{current_user['display_name']} sent you a drink! {drink_emoji}",
+            f"Tap to accept the {data.drink_type}",
+            {
+                "type": "drink",
+                "from_user_id": current_user["id"],
+                "from_user_name": current_user["display_name"],
+                "from_user_photo": current_user.get("avatar_url", ""),
+                "drink_type": data.drink_type
+            }
         )
     
     return {"message": "Drink token sent!", "token_id": token_id}
@@ -1970,9 +2020,14 @@ async def send_message(data: MessageCreate, current_user: dict = Depends(get_cur
         preview = data.content[:50] + "..." if len(data.content) > 50 else data.content
         await send_push_notification(
             data.to_user_id,
-            f"New message from {current_user['display_name']} 💬",
+            f"{current_user['display_name']} 💬",
             preview,
-            {"type": "message", "from_user_id": current_user["id"]}
+            {
+                "type": "message",
+                "from_user_id": current_user["id"],
+                "from_user_name": current_user["display_name"],
+                "from_user_photo": current_user.get("avatar_url", "")
+            }
         )
     
     return {"message": "Message sent", "message_id": message_id}

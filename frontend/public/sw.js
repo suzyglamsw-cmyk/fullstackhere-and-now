@@ -103,22 +103,35 @@ self.addEventListener('notificationclick', (event) => {
   
   switch (data.type) {
     case 'match':
-    case 'glance':
-      url = '/connections';
-      break;
-    case 'drink':
-      url = '/notifications';
-      break;
-    case 'message':
+      // Navigate to chat with the matched user
       if (data.from_user_id) {
         url = `/chat/${data.from_user_id}`;
       } else {
-        url = '/connections';
+        url = '/notifications';
+      }
+      break;
+    case 'glance':
+      // Navigate to notifications to see who glanced
+      url = '/notifications';
+      break;
+    case 'drink':
+    case 'chat_request':
+      // Navigate to notifications to respond
+      url = '/notifications';
+      break;
+    case 'message':
+      // Navigate directly to chat with sender
+      if (data.from_user_id) {
+        url = `/chat/${data.from_user_id}`;
+      } else {
+        url = '/notifications';
       }
       break;
     default:
       url = '/notifications';
   }
+  
+  console.log('[SW] Navigating to:', url);
   
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })

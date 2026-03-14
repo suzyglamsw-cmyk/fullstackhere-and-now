@@ -32,7 +32,8 @@ Real-time, Location-based, Low-pressure, Spontaneous, Venue-focused, Privacy-saf
 - Per-category settings
 - VAPID keys configured and working
 - Auto-cleanup of expired/invalid subscriptions
-- Note: Requires real browser subscription to work (test endpoints return 410 Gone)
+- Notification payloads include: `from_user_id`, `from_user_name`, `from_user_photo`
+- Click navigation: messages → chat, glances/drinks → notifications, matches → chat
 
 ### Google Places API
 - Nearby venues with photos/ratings
