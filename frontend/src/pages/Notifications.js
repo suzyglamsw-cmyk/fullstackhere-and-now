@@ -18,7 +18,6 @@ const Notifications = () => {
   const [declineMessages, setDeclineMessages] = useState([]);
   const [acceptMessages, setAcceptMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [accepting, setAccepting] = useState(null);
   const [responding, setResponding] = useState(null);
   const [tab, setTab] = useState("notifications"); // "notifications" | "requests"
   const [showDeclineOptions, setShowDeclineOptions] = useState(null);
@@ -44,19 +43,6 @@ const Notifications = () => {
       toast.error("Failed to load notifications");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAcceptDrink = async (tokenId) => {
-    setAccepting(tokenId);
-    try {
-      await axios.post(`${API}/drink-token/${tokenId}/accept`);
-      toast.success("Drink accepted! Cheers!");
-      fetchData();
-    } catch (error) {
-      toast.error("Failed to accept drink");
-    } finally {
-      setAccepting(null);
     }
   };
 
@@ -243,32 +229,13 @@ const Notifications = () => {
                         </p>
                         <div className="mt-2 flex gap-2">
                           <Button
-                            data-testid={`view-profile-drink-${notification.from_user?.id || notification.from_user_id}`}
-                            onClick={() => {
-                              const userId = notification.from_user?.id || notification.from_user_id;
-                              if (userId) navigate(`/profile/${userId}`);
-                            }}
-                            size="sm"
-                            variant="outline"
-                            className="rounded-full text-xs"
-                            disabled={!notification.from_user?.id && !notification.from_user_id}
-                          >
-                            <Eye className="w-3 h-3 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            data-testid={`accept-drink-${notification.token_id || notification.id}`}
-                            onClick={() => handleAcceptDrink(notification.token_id || notification.id)}
-                            disabled={accepting === (notification.token_id || notification.id)}
+                            data-testid={`view-drinks-${notification.token_id || notification.id}`}
+                            onClick={() => navigate("/connections?tab=drinks")}
                             size="sm"
                             className="rounded-full bg-amber-500 hover:bg-amber-600 text-white text-xs"
                           >
-                            {accepting === (notification.token_id || notification.id) ? (
-                              <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                            ) : (
-                              <Check className="w-4 h-4 mr-1" />
-                            )}
-                            Accept
+                            <Wine className="w-3 h-3 mr-1" />
+                            View in Drinks
                           </Button>
                         </div>
                       </>

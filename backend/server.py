@@ -2530,6 +2530,28 @@ async def decline_drink_token(token_id: str, data: PoliteDeclineRequest, current
     
     return {"message": "Drink offer politely declined"}
 
+@api_router.delete("/drink-token/{token_id}")
+async def delete_drink_token(token_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a drink token (sender can delete any, receiver can delete accepted/declined)"""
+    token = await db.drink_tokens.find_one({"id": token_id})
+    if not token:
+        raise HTTPException(status_code=404, detail="Token not found")
+    
+    # Check if user is the sender or recipient
+    is_sender = token["from_user_id"] == current_user["id"]
+    is_recipient = token["to_user_id"] == current_user["id"]
+    
+    if not is_sender and not is_recipient:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this drink offer")
+    
+    # Recipients can only delete accepted/declined drinks
+    if is_recipient and token.get("status") == "pending":
+        raise HTTPException(status_code=400, detail="Respond to this drink offer first before deleting")
+    
+    await db.drink_tokens.delete_one({"id": token_id})
+    
+    return {"message": "Drink offer removed"}
+
 # Connection Routes
 @api_router.get("/connections")
 async def get_connections(current_user: dict = Depends(get_current_user)):

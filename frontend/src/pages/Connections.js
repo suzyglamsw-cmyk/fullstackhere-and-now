@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Wine, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare } from "lucide-react";
+import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Wine, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2 } from "lucide-react";
 
 const Connections = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [connections, setConnections] = useState([]);
   const [mutualGlances, setMutualGlances] = useState([]);
@@ -19,11 +20,19 @@ const Connections = () => {
   const [drinks, setDrinks] = useState({ incoming: [], outgoing: [] });
   const [chatRequests, setChatRequests] = useState({ incoming: [], outgoing: [] });
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("messages"); // "messages" | "glances" | "drinks" | "chats" | "requests" | "friends" | "connections"
+  const [tab, setTab] = useState(searchParams.get("tab") || "messages"); // "messages" | "glances" | "drinks" | "chats" | "requests" | "friends" | "connections"
 
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  // Handle tab parameter from URL
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["messages", "glances", "drinks", "chats", "requests", "friends", "connections"].includes(tabParam)) {
+      setTab(tabParam);
+    }
+  }, [searchParams]);
 
   const fetchAllData = async () => {
     try {
@@ -112,11 +121,21 @@ const Connections = () => {
 
   const handleAcceptDrink = async (drinkId) => {
     try {
-      await axios.post(`${API}/drink-tokens/${drinkId}/accept`);
+      await axios.post(`${API}/drink-token/${drinkId}/accept`);
       toast.success("Drink offer accepted! 🍸");
       fetchAllData();
     } catch (error) {
       toast.error("Failed to accept drink offer");
+    }
+  };
+
+  const handleDeleteDrink = async (drinkId) => {
+    try {
+      await axios.delete(`${API}/drink-token/${drinkId}`);
+      toast.success("Drink offer removed");
+      fetchAllData();
+    } catch (error) {
+      toast.error("Failed to remove drink offer");
     }
   };
 
@@ -519,8 +538,11 @@ const Connections = () => {
                           <p className="text-slate-500 text-xs mt-1">
                             {drink.status === "pending" ? "🍸 Offered you a drink" : drink.status === "accepted" ? "✅ Accepted" : "❌ Declined"} • {formatDate(drink.created_at)}
                           </p>
+                          {drink.decline_message && (
+                            <p className="text-slate-500 text-xs italic mt-1">"{drink.decline_message}"</p>
+                          )}
                         </div>
-                        {drink.status === "pending" && (
+                        {drink.status === "pending" ? (
                           <div className="flex gap-2">
                             <Button
                               data-testid={`accept-drink-${drink.id}`}
@@ -540,6 +562,16 @@ const Connections = () => {
                               <X className="w-4 h-4" />
                             </Button>
                           </div>
+                        ) : (
+                          <Button
+                            data-testid={`delete-drink-${drink.id}`}
+                            onClick={() => handleDeleteDrink(drink.id)}
+                            size="sm"
+                            variant="ghost"
+                            className="rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         )}
                       </div>
                     ))}
@@ -559,17 +591,21 @@ const Connections = () => {
                       <div
                         key={drink.id}
                         data-testid={`sent-drink-${drink.id}`}
-                        onClick={() => navigate(`/profile/${drink.user_id}`)}
-                        className="glass rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer"
+                        className="glass rounded-2xl p-4 flex items-center gap-4"
                       >
-                        <div className="w-14 h-14 rounded-2xl overflow-hidden">
-                          {drink.avatar_url ? (
-                            <img src={drink.avatar_url} alt={drink.display_name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                              <span className="text-xl text-slate-400">{drink.display_name?.charAt(0) || "?"}</span>
-                            </div>
-                          )}
+                        <div 
+                          className="cursor-pointer"
+                          onClick={() => navigate(`/profile/${drink.user_id}`)}
+                        >
+                          <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-amber-500 transition-all">
+                            {drink.avatar_url ? (
+                              <img src={drink.avatar_url} alt={drink.display_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                                <span className="text-xl text-slate-400">{drink.display_name?.charAt(0) || "?"}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white truncate">{drink.display_name}</h4>
@@ -579,7 +615,19 @@ const Connections = () => {
                           <p className="text-slate-500 text-xs mt-1">
                             {drink.status === "pending" ? "⏳ Pending" : drink.status === "accepted" ? "✅ Accepted" : "❌ Declined"} • {formatDate(drink.created_at)}
                           </p>
+                          {drink.decline_message && (
+                            <p className="text-slate-500 text-xs italic mt-1">"{drink.decline_message}"</p>
+                          )}
                         </div>
+                        <Button
+                          data-testid={`delete-sent-drink-${drink.id}`}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteDrink(drink.id); }}
+                          size="sm"
+                          variant="ghost"
+                          className="rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
