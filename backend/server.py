@@ -558,7 +558,8 @@ async def register(data: UserCreate):
         "orientation": "",
         "relationship_status": "",
         "seeking": "",
-        "is_visible": True,
+        "is_visible": False,  # Hidden until photo uploaded
+        "profile_complete": False,  # Must upload photo to complete
         "is_premium": False,
         "premium_expires_at": None,
         "token_balance": 0,
@@ -587,7 +588,8 @@ async def register(data: UserCreate):
             "orientation": "",
             "relationship_status": "",
             "seeking": "",
-            "is_visible": True,
+            "is_visible": False,
+            "profile_complete": False,
             "is_premium": False,
             "premium_expires_at": None,
             "token_balance": 0,
@@ -731,6 +733,11 @@ async def upload_photo(
     update_data = {"photos": photos}
     if slot == 0:
         update_data["avatar_url"] = photo_url
+    
+    # Mark profile as complete and visible when user uploads their first photo
+    if not current_user.get("profile_complete"):
+        update_data["profile_complete"] = True
+        update_data["is_visible"] = True
     
     await db.users.update_one(
         {"id": current_user["id"]},
@@ -2149,6 +2156,12 @@ async def update_venue(venue_id: str, data: dict, current_user: dict = Depends(g
 # Who's Here Routes
 @api_router.get("/venues/{venue_id}/people", response_model=List[WhoIsHereUser])
 async def get_people_at_venue(venue_id: str, current_user: dict = Depends(get_current_user)):
+    # Check if current user has a profile photo - required to see others
+    current_user_photos = current_user.get("photos", []) or []
+    current_user_avatar = current_user.get("avatar_url", "")
+    if not current_user_photos and not current_user_avatar:
+        raise HTTPException(status_code=403, detail="Please upload a profile photo to see who's here")
+    
     checkins = await db.checkins.find({"venue_id": venue_id, "is_active": True}, {"_id": 0}).to_list(100)
     
     people = []
@@ -2179,6 +2192,12 @@ async def get_people_at_venue(venue_id: str, current_user: dict = Depends(get_cu
                 }
         
         if not user:
+            continue
+        
+        # Skip users without profile photos
+        user_photos = user.get("photos", []) or []
+        user_avatar = user.get("avatar_url", "")
+        if not user_photos and not user_avatar:
             continue
         
         # Check glance status
@@ -3001,6 +3020,9 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
     friend_request_sent = existing_friend is not None and existing_friend.get("status") == "pending" and existing_friend.get("user1_id") == current_user["id"]
     friend_request_received = existing_friend is not None and existing_friend.get("status") == "pending" and existing_friend.get("user2_id") == current_user["id"]
     
+    # Determine if profile photo should be revealed (mutual interaction)
+    is_revealed = is_mutual or can_message or is_friend
+    
     # Return full profile data
     return {
         "id": user.get("id"),
@@ -3018,6 +3040,7 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "they_glanced_at_me": they_glanced_at_me,
         "i_glanced_at_them": i_glanced_at_them,
         "is_mutual": is_mutual,
+        "is_revealed": is_revealed,
         "can_glance_back": they_glanced_at_me and not i_glanced_at_them,
         "can_message": can_message,
         "can_add_friend": can_add_friend and not friend_request_sent,  # Can't send if already sent

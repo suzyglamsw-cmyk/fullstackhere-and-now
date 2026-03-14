@@ -146,13 +146,15 @@ const UserProfile = () => {
 
         {/* Profile Card */}
         <div className="glass rounded-3xl overflow-hidden">
-          {/* Main Photo */}
+          {/* Main Photo - blurred if not revealed */}
           {mainPhoto ? (
             <div className="aspect-square w-full max-h-96 overflow-hidden">
               <img
                 src={mainPhoto}
                 alt={profile.display_name}
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-cover transition-all duration-300 ${
+                  profile.is_revealed ? "" : "blur-[3px]"
+                }`}
               />
             </div>
           ) : (
