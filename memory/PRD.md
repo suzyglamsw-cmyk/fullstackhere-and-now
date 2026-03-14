@@ -147,6 +147,9 @@ IS_TEST_BUILD=true
 - [x] Full profile on tap - RESOLVED (bio, interests, photos, gender, status)
 - [x] Message/Add Friend unlock rules - RESOLVED (locked until drink/chat accepted)
 - [x] Add Friend crash - RESOLVED (clean error messages, friend_request_sent state)
+- [x] Friends list in Connections tab - RESOLVED (moved from Settings, Friends tab added)
+- [x] Friend request flow - RESOLVED (outgoing/incoming requests display correctly)
+- [x] Drink accept unlocking chat - RESOLVED (fixed status field to 'accepted')
 
 ### P1 (High) - For Production
 - [ ] Backend refactoring: server.py is now 4500+ lines - needs modular structure (routes/, models/, services/)
