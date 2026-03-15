@@ -56,8 +56,8 @@ const Landing = () => {
     },
     {
       icon: Wine,
-      title: "Send Drinks",
-      description: "Send a virtual drink token to break the ice",
+      title: "Send Icebreakers",
+      description: "Send an icebreaker message to break the ice",
     },
     {
       icon: MessageCircle,

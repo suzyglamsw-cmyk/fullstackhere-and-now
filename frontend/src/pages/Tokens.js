@@ -96,7 +96,7 @@ const Tokens = () => {
             <Coins className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Tokens</h1>
-          <p className="text-slate-400">Send drinks to people you're interested in</p>
+          <p className="text-slate-400">Send icebreakers to people you're interested in</p>
         </div>
 
         {/* Balance Card */}
@@ -161,7 +161,7 @@ const Tokens = () => {
 
         {/* Info */}
         <div className="mt-8 text-center text-slate-500 text-sm">
-          <p>Tokens are used to send virtual drinks to others.</p>
+          <p>Tokens are used to send icebreakers to others.</p>
           <p className="mt-1">Free users get 1 token per check-in session.</p>
         </div>
       </div>

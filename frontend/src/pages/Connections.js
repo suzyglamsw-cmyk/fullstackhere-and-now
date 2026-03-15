@@ -416,7 +416,7 @@ const Connections = () => {
               </div>
               <h2 className="text-xl font-semibold text-white mb-2">No messages yet</h2>
               <p className="text-slate-400 mb-6">
-                Start a conversation after a mutual glance or drink offer
+                Start a conversation after a mutual glance or icebreaker
               </p>
             </div>
           ) : (
@@ -944,7 +944,7 @@ const Connections = () => {
               </div>
               <h2 className="text-xl font-semibold text-white mb-2">No friend requests</h2>
               <p className="text-slate-400 mb-6">
-                Send or receive friend requests after accepting a drink or chat
+                Send or receive friend requests after accepting an icebreaker or chat
               </p>
             </div>
           ) : (
@@ -1150,7 +1150,7 @@ const Connections = () => {
               </div>
               <h2 className="text-xl font-semibold text-white mb-2">No mutual matches yet</h2>
               <p className="text-slate-400 mb-6">
-                Mutual matches appear when you have a mutual glance, accepted drink, or accepted chat request.
+                Mutual matches appear when you have a mutual glance, accepted icebreaker, or accepted chat request.
               </p>
               <Button
                 data-testid="find-venues-btn"
@@ -1194,12 +1194,12 @@ const Connections = () => {
                     </div>
                     <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${
                       connection.connection_type === "mutual_glance" ? "bg-pink-500" :
-                      connection.connection_type === "drink_accepted" ? "bg-amber-500" :
+                      connection.connection_type === "icebreaker_accepted" ? "bg-cyan-500" :
                       "bg-emerald-500"
                     }`}>
                       {connection.connection_type === "mutual_glance" ? (
                         <Heart className="w-3 h-3 text-white" />
-                      ) : connection.connection_type === "drink_accepted" ? (
+                      ) : connection.connection_type === "icebreaker_accepted" ? (
                         <Wine className="w-3 h-3 text-white" />
                       ) : (
                         <Sparkles className="w-3 h-3 text-white" />
@@ -1216,7 +1216,7 @@ const Connections = () => {
                     <div className="flex items-center gap-2 mt-1 text-slate-500 text-xs">
                       {connection.connection_type === "mutual_glance" ? (
                         <Heart className="w-3 h-3" />
-                      ) : connection.connection_type === "drink_accepted" ? (
+                      ) : connection.connection_type === "icebreaker_accepted" ? (
                         <Wine className="w-3 h-3" />
                       ) : (
                         <MapPin className="w-3 h-3" />

@@ -61,7 +61,7 @@ const UserProfile = () => {
   const handleAddFriend = async () => {
     // Double-check if friend can be added
     if (!profile.can_add_friend) {
-      toast.error("You can only add friends after a drink or chat request is accepted.");
+      toast.error("You can only add friends after an icebreaker or chat request is accepted.");
       return;
     }
     
@@ -81,7 +81,7 @@ const UserProfile = () => {
       } else if (errorData?.detail) {
         errorMessage = typeof errorData.detail === "string" 
           ? errorData.detail 
-          : "You can only add friends after a drink or chat request is accepted.";
+          : "You can only add friends after an icebreaker or chat request is accepted.";
       } else if (errorData?.msg) {
         errorMessage = errorData.msg;
       }
@@ -371,7 +371,7 @@ const UserProfile = () => {
               {/* Locked Features Info */}
               {!profile.can_message && !profile.can_add_friend && (
                 <p className="text-center text-slate-500 text-xs">
-                  Messaging and adding friends unlock after a drink or chat request is accepted.
+                  Messaging and adding friends unlock after an icebreaker or chat request is accepted.
                 </p>
               )}
             </div>
