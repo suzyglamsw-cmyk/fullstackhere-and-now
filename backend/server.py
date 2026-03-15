@@ -4491,10 +4491,14 @@ async def get_premium_packages():
 @api_router.get("/tokens/balance")
 async def get_token_balance(current_user: dict = Depends(get_current_user)):
     """Get current token balance"""
+    is_premium = current_user.get("is_premium", False)
     return {
         "balance": current_user.get("token_balance", 0),
-        "daily_remaining": current_user.get("daily_tokens_remaining", FREE_DAILY_TOKENS),
-        "is_premium": current_user.get("is_premium", False)
+        "daily_icebreakers_remaining": current_user.get("daily_tokens_remaining", PREMIUM_DAILY_TOKENS if is_premium else FREE_DAILY_TOKENS),
+        "daily_glances_remaining": current_user.get("daily_glances_remaining", PREMIUM_DAILY_GLANCES if is_premium else FREE_DAILY_GLANCES),
+        "is_premium": is_premium,
+        "daily_icebreaker_limit": PREMIUM_DAILY_TOKENS if is_premium else FREE_DAILY_TOKENS,
+        "daily_glance_limit": PREMIUM_DAILY_GLANCES if is_premium else FREE_DAILY_GLANCES
     }
 
 @api_router.get("/tokens/packages")

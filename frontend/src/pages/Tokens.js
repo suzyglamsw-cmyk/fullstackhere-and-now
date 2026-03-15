@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
-import { Coins, Loader2, Plus, Smartphone } from "lucide-react";
+import { Coins, Loader2, Plus, Smartphone, Eye, Snowflake } from "lucide-react";
 import { isGooglePlayAvailable, completePurchase, GOOGLE_PLAY_PRODUCTS } from "../utils/googlePlayBilling";
 
 const Tokens = () => {
@@ -14,7 +14,14 @@ const Tokens = () => {
   const [searchParams] = useSearchParams();
   const { user, fetchUser } = useAuth();
   const [packages, setPackages] = useState([]);
-  const [balance, setBalance] = useState({ balance: 0, daily_remaining: 0 });
+  const [balance, setBalance] = useState({ 
+    balance: 0, 
+    daily_icebreakers_remaining: 0,
+    daily_glances_remaining: 0,
+    daily_icebreaker_limit: 1,
+    daily_glance_limit: 5,
+    is_premium: false 
+  });
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(null);
   const [googlePlayAvailable, setGooglePlayAvailable] = useState(false);
@@ -102,23 +109,78 @@ const Tokens = () => {
           <p className="text-slate-400">Send icebreakers to people you're interested in</p>
         </div>
 
-        {/* Balance Card */}
-        <div className="glass rounded-2xl p-6 mb-6" data-testid="token-balance">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-slate-400">Your Balance</span>
-            <span className="text-3xl font-bold text-white">{balance.balance}</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">Daily Free Icebreakers</span>
-            <span className="text-emerald-400 font-medium">{balance.daily_remaining} / {balance.is_premium ? 5 : 1}</span>
-          </div>
-          {balance.is_premium ? (
-            <div className="mt-3 text-xs text-amber-400">
-              Premium: 5 free icebreakers daily (resets 5am)
+        {/* Balance Cards */}
+        <div className="space-y-4 mb-6" data-testid="token-balance">
+          {/* Daily Glances */}
+          <div className="glass rounded-2xl p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-pink-400" />
+                </div>
+                <div>
+                  <span className="text-white font-medium">Daily Glances</span>
+                  <p className="text-slate-500 text-xs">Resets at 5am</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-bold text-white">
+                  {balance.daily_glance_limit - balance.daily_glances_remaining}
+                </span>
+                <span className="text-slate-400 text-lg"> / {balance.daily_glance_limit}</span>
+                <p className="text-slate-500 text-xs">{balance.daily_glances_remaining} remaining</p>
+              </div>
             </div>
-          ) : (
-            <div className="mt-3 text-xs text-slate-500">
-              Free: 1 icebreaker daily (resets 5am) • Upgrade for 5/day
+          </div>
+
+          {/* Daily Icebreakers */}
+          <div className="glass rounded-2xl p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                  <Snowflake className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <span className="text-white font-medium">Daily Icebreakers</span>
+                  <p className="text-slate-500 text-xs">Resets at 5am</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-bold text-white">
+                  {balance.daily_icebreaker_limit - balance.daily_icebreakers_remaining}
+                </span>
+                <span className="text-slate-400 text-lg"> / {balance.daily_icebreaker_limit}</span>
+                <p className="text-slate-500 text-xs">{balance.daily_icebreakers_remaining} remaining</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Paid Tokens */}
+          <div className="glass rounded-2xl p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <Coins className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <span className="text-white font-medium">Paid Tokens</span>
+                  <p className="text-slate-500 text-xs">Use for Glances, Icebreakers, or Chat Requests</p>
+                </div>
+              </div>
+              <span className="text-2xl font-bold text-white">{balance.balance}</span>
+            </div>
+          </div>
+
+          {/* Premium upsell for free users */}
+          {!balance.is_premium && (
+            <div className="text-center text-xs text-slate-500 mt-2">
+              <button 
+                onClick={() => navigate("/premium")}
+                className="text-amber-400 hover:text-amber-300 underline"
+              >
+                Upgrade to Premium
+              </button>
+              {" "}for 20 glances/day and 5 icebreakers/day
             </div>
           )}
         </div>
@@ -168,9 +230,9 @@ const Tokens = () => {
 
         {/* Info */}
         <div className="mt-8 text-center text-slate-500 text-sm">
-          <p>Tokens are used to send icebreakers after your daily free allowance.</p>
-          <p className="mt-1">Free users: 1 icebreaker/day • Premium: 5/day</p>
-          <p className="mt-1">Resets at 5am local time</p>
+          <p>Paid tokens can be used for glances, icebreakers, or chat requests</p>
+          <p className="mt-1">after your daily free allowance is used.</p>
+          <p className="mt-2 text-xs">Daily limits reset at 5am local time</p>
         </div>
       </div>
     </Layout>
