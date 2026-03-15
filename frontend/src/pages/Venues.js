@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import LiveClock from "../components/LiveClock";
 
 const Venues = () => {
   const navigate = useNavigate();
+  const routeLocation = useLocation();
   const { user, fetchUser } = useAuth();
   const [venues, setVenues] = useState([]);
   const [nearbyVenues, setNearbyVenues] = useState([]);
@@ -17,28 +18,43 @@ const Venues = () => {
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [checkingIn, setCheckingIn] = useState(null);
   const [currentCheckin, setCurrentCheckin] = useState(null);
-  const [location, setLocation] = useState(null);
+  const [geoLocation, setGeoLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [showOpenArea, setShowOpenArea] = useState(false);
   const heartbeatRef = useRef(null);
 
-  // Always fetch current check-in when component mounts or becomes visible
+  // Fetch check-in on every mount, focus, and visibility change
   useEffect(() => {
     // Fetch check-in status immediately
     fetchCurrentCheckin();
     
-    // Also fetch when page becomes visible (user switches back to app)
+    // Fetch when page becomes visible (user switches back to app)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         fetchCurrentCheckin();
       }
     };
     
+    // Fetch when window gains focus (tab switch)
+    const handleFocus = () => {
+      fetchCurrentCheckin();
+    };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
+
+  // Re-fetch check-in when navigating back to this page
+  useEffect(() => {
+    if (routeLocation.pathname === '/venues') {
+      fetchCurrentCheckin();
+    }
+  }, [routeLocation.pathname]);
 
   // Update check-in state when user profile changes
   useEffect(() => {
@@ -54,7 +70,7 @@ const Venues = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLocation({
+          setGeoLocation({
             lat: position.coords.latitude,
             lng: position.coords.longitude
           });
@@ -88,10 +104,10 @@ const Venues = () => {
   }, []);
 
   useEffect(() => {
-    if (location) {
-      fetchNearbyVenues(location.lat, location.lng);
+    if (geoLocation) {
+      fetchNearbyVenues(geoLocation.lat, geoLocation.lng);
     }
-  }, [location]);
+  }, [geoLocation]);
 
   const seedVenues = async () => {
     try {
@@ -180,15 +196,15 @@ const Venues = () => {
   };
 
   const handleOpenAreaCheckIn = async () => {
-    if (!location) {
+    if (!geoLocation) {
       toast.error("Location required for open area check-in");
       return;
     }
     setCheckingIn("open-area");
     try {
       await axios.post(`${API}/checkin/open-area`, {
-        latitude: location.lat,
-        longitude: location.lng
+        latitude: geoLocation.lat,
+        longitude: geoLocation.lng
       });
       toast.success("Checked in to your area!");
       fetchCurrentCheckin();
@@ -206,8 +222,8 @@ const Venues = () => {
       // Refresh user profile to clear active_venue_id
       if (fetchUser) fetchUser();
       toast.success("Checked out");
-      if (location) {
-        fetchNearbyVenues(location.lat, location.lng);
+      if (geoLocation) {
+        fetchNearbyVenues(geoLocation.lat, geoLocation.lng);
       } else {
         fetchSeededVenues();
       }
@@ -311,7 +327,7 @@ const Venues = () => {
         )}
 
         {/* Open Area Option */}
-        {location && !currentCheckin && (
+        {geoLocation && !currentCheckin && (
           <div className="glass rounded-2xl p-4 mb-6" data-testid="open-area-card">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
