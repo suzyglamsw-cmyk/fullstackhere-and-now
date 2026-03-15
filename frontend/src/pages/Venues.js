@@ -27,11 +27,14 @@ const Venues = () => {
   // Continuous location tracking
   const {
     currentLocation,
+    currentVenue: detectedVenue,
+    nearbyVenues: trackerVenues,
     isTracking,
     startTracking,
     error: trackingError
   } = useLocationTracker({
-    enableAutoVenueDetection: false, // We handle venue detection ourselves
+    enableAutoVenueDetection: true, // Auto-detect venue as user moves
+    venueRadius: 100,
     updateInterval: 30000,
     minMovementDistance: 15
   });
@@ -50,6 +53,26 @@ const Venues = () => {
       }
     }
   }, [currentLocation]);
+
+  // Update nearby venues from tracker
+  useEffect(() => {
+    if (trackerVenues && trackerVenues.length > 0) {
+      setNearbyVenues(trackerVenues);
+    }
+  }, [trackerVenues]);
+
+  // Auto-notify when entering a new venue
+  useEffect(() => {
+    if (detectedVenue && !currentCheckin) {
+      toast.info(`You're near ${detectedVenue.name}`, {
+        description: `${Math.round(detectedVenue.distance)}m away`,
+        action: {
+          label: "Check In",
+          onClick: () => handleCheckIn(detectedVenue.id, detectedVenue)
+        }
+      });
+    }
+  }, [detectedVenue?.id]);
 
   // Start tracking on mount
   useEffect(() => {
