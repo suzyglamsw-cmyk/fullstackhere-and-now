@@ -21,9 +21,26 @@
         work correctly both with client-side routing and a non-root public URL.
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
-        <title>Emergent | Fullstack App</title>
+        <title>Here & Now | Meet People Nearby</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
+        <!-- Google Maps JavaScript API -->
+        <script>
+            (function() {
+                var apiKey = '%REACT_APP_GOOGLE_MAPS_API_KEY%';
+                if (apiKey && apiKey !== '' && !apiKey.includes('REACT_APP')) {
+                    var script = document.createElement('script');
+                    script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places,geometry&callback=initGoogleMaps';
+                    script.async = true;
+                    script.defer = true;
+                    document.head.appendChild(script);
+                }
+                window.initGoogleMaps = function() {
+                    window.googleMapsLoaded = true;
+                    window.dispatchEvent(new Event('google-maps-loaded'));
+                };
+            })();
+        </script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
