@@ -106,12 +106,16 @@ const Tokens = () => {
             <span className="text-3xl font-bold text-white">{balance.balance}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">Daily Free Remaining</span>
-            <span className="text-emerald-400 font-medium">{balance.daily_remaining}</span>
+            <span className="text-slate-400">Daily Free Icebreakers</span>
+            <span className="text-emerald-400 font-medium">{balance.daily_remaining} / {balance.is_premium ? 5 : 1}</span>
           </div>
-          {balance.is_premium && (
+          {balance.is_premium ? (
             <div className="mt-3 text-xs text-amber-400">
-              Premium: 5 free tokens daily
+              Premium: 5 free icebreakers daily (resets 5am)
+            </div>
+          ) : (
+            <div className="mt-3 text-xs text-slate-500">
+              Free: 1 icebreaker daily (resets 5am) • Upgrade for 5/day
             </div>
           )}
         </div>
@@ -161,8 +165,9 @@ const Tokens = () => {
 
         {/* Info */}
         <div className="mt-8 text-center text-slate-500 text-sm">
-          <p>Tokens are used to send icebreakers to others.</p>
-          <p className="mt-1">Free users get 1 token per check-in session.</p>
+          <p>Tokens are used to send icebreakers after your daily free allowance.</p>
+          <p className="mt-1">Free users: 1 icebreaker/day • Premium: 5/day</p>
+          <p className="mt-1">Resets at 5am local time</p>
         </div>
       </div>
     </Layout>
