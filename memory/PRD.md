@@ -1,176 +1,139 @@
 # Here & Now - Product Requirements Document
 
 ## Original Problem Statement
-Real-time, Location-based, Low-pressure, Spontaneous, Venue-focused, Privacy-safe social app.
+Build a real-time, location-based social connection app called "Here & Now". Core functionality includes JWT Auth, venue check-ins, seeing nearby users, and facilitating connections through glances and "Icebreakers".
 
-## What's Been Implemented (All Complete)
+## Core Features
 
-### Core Features
-- [x] JWT authentication
-- [x] Profile with 3 photos + "Make Main Photo" feature
-- [x] photos[0] always used as avatar_url
-- [x] Venue discovery (Google Places)
-- [x] Check-in/checkout with full profile data (first name, age, photo, glance state)
-- [x] Glance & Reveal (unlimited in test mode or with bypass_glance_limits flag)
-- [x] Drink tokens
-- [x] Connections & Chat (with Mutual Glances + Messages tabs - unified data source)
-- [x] Message Requests (locked until mutual glance/drink/chat acceptance)
-- [x] Contact masking in message requests
-- [x] Friends list
-- [x] Block/Report
-- [x] Account deletion
-- [x] User profile page (view without counting glance)
-- [x] "No glances remaining" upgrade prompt
-- [x] All profile photos/user cards tappable to navigate to profile
+### 1. Authentication
+- JWT-based authentication with email/password
+- User registration with display name
+- Password reset flow
 
-### Premium System
-- Stripe payments (web)
-- Google Play Billing (Android)
-- Monthly: £7.99, Yearly: £59.99
+### 2. Venues & Check-ins
+- Browse nearby venues (Google Places API or seeded venues in test mode)
+- Check-in to venues with 2-hour expiry
+- Heartbeat system to maintain check-in state
+- **IMPORTANT:** Check-in persists across app navigation, app switching, and phone locking
 
-### Token System
-- 5 Tokens: £3.99
-- 15 Tokens: £7.99
-- 50 Tokens: £19.99
+### 3. Social Interactions - Icebreaker System (replaced "Drinks")
+- **Sending:** Users can send predefined icebreaker messages ("Hello", "Fancy a chat?", etc.)
+- **Cost:** 1 token after daily free allowance is used
+- **Allowances:** 1 free for standard users, 5 for premium, reset at 5am local time
+- **Recipient Actions:**
+  - Accept (opens chat)
+  - "Not right now" (soft decline)
+  - Decline (firm decline)
+  - Block Icebreakers (soft block)
+  - Block User (full block)
+- **Cooldowns:** 30-minute cooldown after decline, max 2 attempts per user per day
+- **Notifications:** Generic notification without message preview
+- **Premium Features:** "Viewed" status with timestamp on sent icebreakers
 
-### Push Notifications
-- Service Worker + pywebpush
-- Per-category settings
-- VAPID keys configured and working
-- Auto-cleanup of expired/invalid subscriptions
-- Notification payloads include: `from_user_id`, `from_user_name`, `from_user_photo`
-- Click navigation: messages → chat, glances/drinks → notifications, matches → chat
-- In-app notifications display sender name, avatar, and action buttons
+### 4. Glances
+- Send glances to users at the same venue
+- Daily limit: 5 glances for standard users
+- Mutual glances create a connection
 
-### App Sharing Features (March 2026)
-- **Share Here & Now**: Opens native device share sheet with pre-filled message "I'm using Here & Now — join me on it." and app download link
-- **Scan Here & Now**: Displays scannable QR code linking to app download page
-- Download URL: `https://hereandnow.app/download` (configurable for iOS release)
-- Fallback: Copy to clipboard for browsers without native share support
+### 5. Privacy & Connections
+- Profile images blurred until mutual connection (mutual glance or accepted icebreaker)
+- Messaging and friend requests locked until mutual connection
 
-### Google Places API
-- Nearby venues with photos/ratings
-- Place details & caching
+### 6. Premium Features
+- 5 free icebreakers daily (vs 1 for standard)
+- See "Viewed" status on icebreakers
+- See who viewed your profile
+- Priority visibility at venues
 
-### Google Play Billing
-- Purchase verification
-- Subscription management
-- Webhook handling
+### 7. Additional Features
+- Share app via native share sheet
+- Scan QR code for app download
+- 2.5s splash screen on app launch
+- Test Tools for development (generate test events)
 
-### Message Read Receipts (NEW)
-- **Backend:**
-  - Messages include `is_read` (boolean) and `read_at` (timestamp)
-  - GET /api/messages/{user_id} auto-marks messages as read
-  - POST /api/messages/mark-read for explicit marking
-  - GET /api/messages/unread/count for badge counts
-  - WebSocket `messages_read` event for real-time updates
-- **Frontend:**
-  - Single checkmark (✓) = message sent
-  - Double blue checkmark (✓✓) = message read
-  - "Read [time]" text for premium users
-  - Real-time update via WebSocket
-- **Premium Feature:**
-  - Only premium users see "Read [time]" text
-  - Only premium senders receive read receipt notifications
+## Technical Architecture
+
+### Backend
+- FastAPI (Python)
+- MongoDB via motor
+- JWT authentication
+- WebSockets for real-time updates
+- pywebpush for push notifications
+- pytz for timezone handling
+
+### Frontend
+- React with react-router-dom
+- TailwindCSS
+- Shadcn/UI components
+- Service Workers for PWA
+- sonner for toasts
+- qrcode.react for QR codes
+
+### Database Collections
+- **users**: User accounts and profiles
+- **icebreakers**: Icebreaker messages and status
+- **icebreaker_blocks**: Soft and full blocks
+- **icebreaker_cooldowns**: Cooldown tracking
+- **glances**: Glance interactions
+- **checkins**: Venue check-ins
+- **messages**: Chat messages
+- **friends**: Friend connections
+- **notifications**: User notifications
+
+## What's Been Implemented (as of March 2026)
+
+### Completed
+- ✅ Full authentication flow (register, login, logout)
+- ✅ Venue browsing and check-ins with persistence fix
+- ✅ Complete Icebreaker system (replaced Drinks)
+- ✅ Glance system
+- ✅ Friend requests and connections
+- ✅ Real-time messaging
+- ✅ Push notifications
+- ✅ Premium subscription UI
+- ✅ Token purchase UI
+- ✅ Profile management with photo uploads
+- ✅ Share and QR code features
+- ✅ Splash screen
+- ✅ Test Tools for development
+- ✅ Admin reports inbox
+
+### Bug Fixes Applied
+- ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)
+- ✅ Test Tools crash (Wine icon import missing)
+- ✅ Friend request visibility for test users
+
+## Known Technical Debt
+
+### CRITICAL
+- `server.py` is 5100+ lines - needs modularization with APIRouter
+- Route ordering is critical (heartbeat must come before venue_id route)
+
+### HIGH
+- `Connections.js` is 1300+ lines - should be split into smaller components
+
+## Backlog / Future Tasks
+
+### P1 - High Priority
+- Production API keys (Google Places, Google Play Billing)
+
+### P2 - Medium Priority
+- Cloud storage for photos (S3/GCS)
+
+### P3 - Lower Priority
+- Group check-ins
 
 ## Environment Variables
-```
-# Backend
-MONGO_URL=mongodb://localhost:27017
-DB_NAME=test_database
-JWT_SECRET=xxx
-STRIPE_API_KEY=sk_test_xxx
-GOOGLE_PLACES_API_KEY=xxx
-VAPID_PUBLIC_KEY=xxx
-VAPID_PRIVATE_KEY_FILE=/app/backend/vapid_private.pem
-GOOGLE_PLAY_CREDENTIALS_FILE=/path/to/credentials.json
-GOOGLE_PLAY_PACKAGE_NAME=com.hereandnow.app
-IS_TEST_BUILD=true
-```
 
-## Database Collections (17)
-- users, photos, venues, checkins
-- glances, drink_tokens, connections, messages
-- friends, reports, password_resets
-- push_subscriptions, push_settings, push_queue
-- places_cache, google_play_purchases
+### Backend (.env)
+- MONGO_URL
+- DB_NAME
+- JWT_SECRET
+- GOOGLE_PLACES_API_KEY (optional, uses seeded venues if missing)
+- IS_TEST_BUILD
 
-## API Endpoints (80+)
+### Frontend (.env)
+- REACT_APP_BACKEND_URL
 
-### Photos
-- POST /api/photos/upload/{slot} - Upload photo to slot (0-2)
-- DELETE /api/photos/{slot} - Delete photo
-- POST /api/photos/make-main/{slot} - Move photo to slot 0
-
-### Venue Presence API
-- GET /api/venues/{venue_id}/people - Returns full profile data:
-  - first_name, age, avatar (if revealed), glance state
-  - Shows "Alex, 28" instead of "Someone" before reveal
-  - Only returns valid users (real or fake test users in test mode)
-  - Orphaned checkins are automatically filtered out
-
-### User Profile API
-- GET /api/users/{user_id}/profile - Returns full profile:
-  - display_name, bio, age, interests, photos
-  - gender, orientation, relationship_status, seeking, profile_theme
-  - Glance state: they_glanced_at_me, i_glanced_at_them, is_mutual, can_glance_back
-  - For fake test users: returns mock data (bio, interests, photos from avatar_url)
-
-### Venue Occupancy Sync (Fixed March 2026)
-- GET /api/venues - Venue list with accurate checked_in_count
-- GET /api/venues/{venue_id} - Single venue with accurate checked_in_count
-- GET /api/checkin/current - Current checkin with accurate venue.checked_in_count
-- All counts now calculated by validating each checkin has a real user
-- POST /api/test/cleanup-orphaned-checkins - Remove invalid checkins (test mode)
-
-### Connections
-- GET /api/connections - Unified list includes:
-  - Explicit connections (from connections collection)
-  - Mutual glances (both users glanced)
-  - Accepted drinks
-  - Shows connection_type badge (heart/wine/sparkle)
-
-### Messages
-- GET /api/messages/{user_id} - Get conversation (returns unlock status + masked content if locked)
-- POST /api/messages - Send message (or message request if not unlocked)
-- POST /api/messages/mark-read - Explicitly mark as read
-- POST /api/messages/accept-request/{from_user_id} - Accept message request (unlocks chat)
-- POST /api/messages/decline-request/{from_user_id} - Decline message request
-- GET /api/messages/unread/count - Get unread count
-
-## Remaining Tasks
-
-### P0 (Critical) - RESOLVED
-- [x] Push notifications not appearing on device - RESOLVED
-- [x] Fake events not creating DB records - RESOLVED
-- [x] Venue occupancy mismatch - RESOLVED
-- [x] Placeholder users appearing - RESOLVED
-- [x] Profile missing bio/details - RESOLVED
-- [x] Stale check-ins - RESOLVED (2-hour expiry, auto-checkout)
-- [x] Profile photos not displaying - RESOLVED
-- [x] Venue people count tappable - RESOLVED
-- [x] Check-in not working - RESOLVED
-- [x] Full profile on tap - RESOLVED (bio, interests, photos, gender, status)
-- [x] Message/Add Friend unlock rules - RESOLVED (locked until drink/chat accepted)
-- [x] Add Friend crash - RESOLVED (clean error messages, friend_request_sent state)
-- [x] Friends list in Connections tab - RESOLVED (moved from Settings, Friends tab added)
-- [x] Friend request flow - RESOLVED (outgoing/incoming requests display correctly)
-- [x] Drink accept unlocking chat - RESOLVED (fixed status field to 'accepted')
-- [x] Drink accept failing in Drinks tab - RESOLVED (fixed endpoint from /drink-tokens/ to /drink-token/)
-- [x] Remove drink accept from Notifications - RESOLVED (now shows "View in Drinks" button only)
-- [x] Add delete functionality for drinks - RESOLVED (DELETE /api/drink-token/{id} + trash icons in UI)
-- [x] Chat Request flow matches Drink flow - RESOLVED (View in Chat Requests button in notifications)
-- [x] Remove Requests tab from Notifications - RESOLVED (all actions in Connections only)
-- [x] Notifications limited to 20 with Clear All - RESOLVED
-- [x] Profile Viewers (premium) - RESOLVED (last 48 hours, auto-cleanup)
-
-### P1 (High) - For Production
-- [ ] Backend refactoring: server.py is now 4970+ lines - needs modular structure (routes/, models/, services/)
-- [ ] Production Google Places API key
-- [ ] Google Play service account credentials
-
-### P2 (Medium)
-- [ ] Cloud storage for photos (S3/GCS)
-
-### P3 (Nice to Have)
-- [ ] Group check-ins
+---
+*Last Updated: March 15, 2026*

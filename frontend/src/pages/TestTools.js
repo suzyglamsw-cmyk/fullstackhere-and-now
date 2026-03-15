@@ -7,7 +7,7 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import { 
   Wrench, Eye, Snowflake, MessageCircle, Users, 
-  Loader2, AlertTriangle, Sparkles, RefreshCw 
+  Loader2, AlertTriangle, Sparkles, RefreshCw, Coins 
 } from "lucide-react";
 
 const TestTools = () => {
@@ -247,7 +247,7 @@ const TestTools = () => {
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
               <div className="flex items-center gap-3">
-                <Wine className="w-5 h-5 text-purple-400" />
+                <Coins className="w-5 h-5 text-yellow-400" />
                 <span className="text-white">Token Balance</span>
               </div>
               <span className="text-slate-300">{user?.token_balance || 0}</span>
