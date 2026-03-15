@@ -10,7 +10,7 @@ import LiveClock from "../components/LiveClock";
 
 const Venues = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, fetchUser } = useAuth();
   const [venues, setVenues] = useState([]);
   const [nearbyVenues, setNearbyVenues] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +21,16 @@ const Venues = () => {
   const [locationError, setLocationError] = useState(null);
   const [showOpenArea, setShowOpenArea] = useState(false);
   const heartbeatRef = useRef(null);
+
+  // Fetch current check-in on mount and when user changes
+  useEffect(() => {
+    if (user?.active_venue_id) {
+      // User has active venue from profile - fetch full check-in details
+      fetchCurrentCheckin();
+    } else {
+      setCurrentCheckin(null);
+    }
+  }, [user?.active_venue_id]);
 
   useEffect(() => {
     // Request geolocation
@@ -44,6 +54,7 @@ const Venues = () => {
       fetchSeededVenues();
     }
     
+    // Also fetch check-in on mount (in case user context hasn't loaded yet)
     fetchCurrentCheckin();
     seedVenues();
     
@@ -124,6 +135,9 @@ const Venues = () => {
       // First check in to the venue
       await axios.post(`${API}/checkin/${venueId}`);
       
+      // Refresh user profile to update active_venue_id
+      if (fetchUser) fetchUser();
+      
       // Then save the venue details if we have them
       if (venue && (venue.name || venue.address)) {
         try {
@@ -174,6 +188,8 @@ const Venues = () => {
     try {
       await axios.post(`${API}/checkout`);
       setCurrentCheckin(null);
+      // Refresh user profile to clear active_venue_id
+      if (fetchUser) fetchUser();
       toast.success("Checked out");
       if (location) {
         fetchNearbyVenues(location.lat, location.lng);
