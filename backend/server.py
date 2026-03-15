@@ -2063,6 +2063,22 @@ async def create_venue(data: VenueCreate, current_user: dict = Depends(get_curre
     return {**venue, "checked_in_count": 0}
 
 # Check-in Routes
+@api_router.post("/checkin/heartbeat")
+async def checkin_heartbeat(current_user: dict = Depends(get_current_user)):
+    """Update last activity and extend expiry to prevent auto-checkout"""
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=AUTO_CHECKOUT_MINUTES)
+    result = await db.checkins.update_one(
+        {"user_id": current_user["id"], "is_active": True},
+        {"$set": {
+            "last_activity_at": now.isoformat(),
+            "expires_at": expires_at.isoformat()
+        }}
+    )
+    if result.modified_count == 0:
+        return {"active": False}
+    return {"active": True, "last_activity_at": now.isoformat(), "expires_at": expires_at.isoformat()}
+
 @api_router.post("/checkin/{venue_id}")
 async def check_in(venue_id: str, current_user: dict = Depends(get_current_user)):
     # Check out from any existing venue
@@ -4205,22 +4221,6 @@ async def get_people_in_open_area(lat: float, lng: float, current_user: dict = D
 # ============================================
 # Auto-checkout & Activity Update
 # ============================================
-
-@api_router.post("/checkin/heartbeat")
-async def checkin_heartbeat(current_user: dict = Depends(get_current_user)):
-    """Update last activity and extend expiry to prevent auto-checkout"""
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(minutes=AUTO_CHECKOUT_MINUTES)
-    result = await db.checkins.update_one(
-        {"user_id": current_user["id"], "is_active": True},
-        {"$set": {
-            "last_activity_at": now.isoformat(),
-            "expires_at": expires_at.isoformat()
-        }}
-    )
-    if result.modified_count == 0:
-        return {"active": False}
-    return {"active": True, "last_activity_at": now.isoformat(), "expires_at": expires_at.isoformat()}
 
 @api_router.post("/system/auto-checkout")
 async def run_auto_checkout():
