@@ -1260,6 +1260,9 @@ async def get_friend_requests(current_user: dict = Depends(get_current_user)):
     incoming_result = []
     for r in incoming:
         user = await db.users.find_one({"id": r["user1_id"]}, {"_id": 0, "password": 0})
+        if not user and IS_TEST_BUILD:
+            # Check fake test users
+            user = next((u for u in FAKE_TEST_USERS if u["id"] == r["user1_id"]), None)
         if user:
             incoming_result.append({
                 "id": r["id"],
@@ -1279,6 +1282,9 @@ async def get_friend_requests(current_user: dict = Depends(get_current_user)):
     outgoing_result = []
     for r in outgoing:
         user = await db.users.find_one({"id": r["user2_id"]}, {"_id": 0, "password": 0})
+        if not user and IS_TEST_BUILD:
+            # Check fake test users
+            user = next((u for u in FAKE_TEST_USERS if u["id"] == r["user2_id"]), None)
         if user:
             outgoing_result.append({
                 "id": r["id"],
