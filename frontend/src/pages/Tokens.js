@@ -5,6 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
+import PageHeader from "../components/PageHeader";
 import { Coins, Loader2, Plus, Smartphone } from "lucide-react";
 import { isGooglePlayAvailable, completePurchase, GOOGLE_PLAY_PRODUCTS } from "../utils/googlePlayBilling";
 
@@ -90,12 +91,14 @@ const Tokens = () => {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 pb-32" data-testid="tokens-page">
-        {/* Header */}
+        {/* Page Header with Back Button */}
+        <PageHeader title="Tokens" backTo="/settings" />
+
+        {/* Hero Section */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-400 flex items-center justify-center mx-auto mb-4">
             <Coins className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Tokens</h1>
           <p className="text-slate-400">Send icebreakers to people you're interested in</p>
         </div>
 

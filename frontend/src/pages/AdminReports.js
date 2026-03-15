@@ -5,6 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
+import PageHeader from "../components/PageHeader";
 import { 
   Shield, AlertTriangle, Ban, Check, 
   Loader2, ChevronRight, Clock, User 
@@ -87,18 +88,12 @@ const AdminReports = () => {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 pb-32" data-testid="admin-reports-page">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Admin Inbox</h1>
-            <p className="text-slate-400 text-sm">
-              {reports.filter(r => r.status === "pending").length} pending reports
-            </p>
-          </div>
-        </div>
+        {/* Page Header with Back Button */}
+        <PageHeader 
+          title="Admin Inbox" 
+          subtitle={`${reports.filter(r => r.status === "pending").length} pending reports`}
+          backTo="/settings" 
+        />
 
         {/* Reports List */}
         {loading ? (

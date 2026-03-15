@@ -5,6 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
+import PageHeader from "../components/PageHeader";
 import { 
   Eye, Snowflake, Sparkles, Bell, Loader2, 
   MessageCircle, Trash2
@@ -166,29 +167,28 @@ const Notifications = () => {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 pb-32" data-testid="notifications-page">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Notifications</h1>
-            <p className="text-slate-400">Recent activity</p>
-          </div>
-          {notifications.length > 0 && (
+        {/* Page Header with Back Button */}
+        <PageHeader 
+          title="Notifications" 
+          subtitle="Recent activity"
+          rightAction={notifications.length > 0 ? (
             <Button
               data-testid="clear-all-btn"
               onClick={handleClearAll}
               disabled={clearing}
               variant="ghost"
+              size="sm"
               className="text-slate-400 hover:text-red-400 hover:bg-red-500/10"
             >
               {clearing ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <Loader2 className="w-4 h-4 animate-spin mr-1" />
               ) : (
-                <Trash2 className="w-4 h-4 mr-2" />
+                <Trash2 className="w-4 h-4 mr-1" />
               )}
-              Clear All
+              Clear
             </Button>
-          )}
-        </div>
+          ) : null}
+        />
 
         {loading ? (
           <div className="flex items-center justify-center py-20">

@@ -5,6 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
+import PageHeader from "../components/PageHeader";
 import { 
   Wrench, Eye, Snowflake, MessageCircle, Users, 
   Loader2, AlertTriangle, Sparkles, RefreshCw, Coins 
@@ -95,21 +96,18 @@ const TestTools = () => {
     return (
       <Layout>
         <div className="max-w-2xl mx-auto px-4 py-6 pb-32" data-testid="test-tools-disabled">
+          {/* Page Header with Back Button */}
+          <PageHeader title="Test Tools" backTo="/settings" />
+          
           <div className="glass rounded-2xl p-8 text-center">
             <AlertTriangle className="w-16 h-16 text-amber-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-white mb-2">Test Mode Disabled</h1>
+            <h2 className="text-xl font-bold text-white mb-2">Test Mode Disabled</h2>
             <p className="text-slate-400 mb-6">
               Test tools are only available in development builds.
             </p>
             <p className="text-slate-500 text-sm">
               Set IS_TEST_BUILD=true in environment to enable.
             </p>
-            <Button
-              onClick={() => navigate("/settings")}
-              className="mt-6 rounded-xl"
-            >
-              Back to Settings
-            </Button>
           </div>
         </div>
       </Layout>
@@ -119,23 +117,15 @@ const TestTools = () => {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 pb-32" data-testid="test-tools-page">
+        {/* Page Header with Back Button */}
+        <PageHeader title="Test Tools" subtitle="Developer tools" backTo="/settings" />
+
         {/* Test Mode Banner */}
         <div className="bg-amber-500/20 border border-amber-500/30 rounded-2xl p-4 mb-6 flex items-center gap-3">
           <Wrench className="w-6 h-6 text-amber-400" />
           <div>
             <p className="text-amber-400 font-semibold">TEST MODE ACTIVE</p>
             <p className="text-amber-400/70 text-sm">Developer tools enabled</p>
-          </div>
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-            <Wrench className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Test Tools</h1>
-            <p className="text-slate-400 text-sm">Generate test events</p>
           </div>
         </div>
 

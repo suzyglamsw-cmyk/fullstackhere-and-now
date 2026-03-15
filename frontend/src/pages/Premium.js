@@ -5,6 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
+import PageHeader from "../components/PageHeader";
 import { Crown, Check, Loader2, Sparkles, Smartphone } from "lucide-react";
 import { isAndroidEnvironment, isGooglePlayAvailable, completePurchase, GOOGLE_PLAY_PRODUCTS } from "../utils/googlePlayBilling";
 
@@ -93,12 +94,14 @@ const Premium = () => {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 pb-32" data-testid="premium-page">
-        {/* Header */}
+        {/* Page Header with Back Button */}
+        <PageHeader title="Premium" backTo="/settings" />
+
+        {/* Hero Section */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4">
             <Crown className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Premium</h1>
           <p className="text-slate-400">Unlock the full experience</p>
         </div>
 

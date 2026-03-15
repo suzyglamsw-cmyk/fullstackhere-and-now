@@ -5,7 +5,8 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { Eye, MessageCircle, Loader2, ArrowLeft, Heart, Wine, Crown, Coins, X, UserPlus } from "lucide-react";
+import PageHeader from "../components/PageHeader";
+import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflake } from "lucide-react";
 
 const UserProfile = () => {
   const { userId } = useParams();
@@ -134,15 +135,8 @@ const UserProfile = () => {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 pb-32" data-testid="user-profile-page">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors"
-          data-testid="back-btn"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
+        {/* Page Header with Back Button */}
+        <PageHeader title="Profile" />
 
         {/* Profile Card */}
         <div className="glass rounded-3xl overflow-hidden">

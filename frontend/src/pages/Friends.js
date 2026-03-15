@@ -5,6 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
+import PageHeader from "../components/PageHeader";
 import { Users, UserPlus, UserMinus, MessageCircle, Loader2, Check, X } from "lucide-react";
 
 const Friends = () => {
@@ -73,16 +74,12 @@ const Friends = () => {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 pb-32" data-testid="friends-page">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Users className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Friends</h1>
-            <p className="text-slate-400 text-sm">{friends.length} friend{friends.length !== 1 ? 's' : ''}</p>
-          </div>
-        </div>
+        {/* Page Header with Back Button */}
+        <PageHeader 
+          title="Friends" 
+          subtitle={`${friends.length} friend${friends.length !== 1 ? 's' : ''}`}
+          backTo="/connections" 
+        />
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
