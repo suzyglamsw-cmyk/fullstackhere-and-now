@@ -21,10 +21,27 @@ const TestTools = () => {
   const [fakeUsers, setFakeUsers] = useState([]);
   const [togglingPremium, setTogglingPremium] = useState(false);
   const [resettingState, setResettingState] = useState(false);
+  const [balance, setBalance] = useState({
+    daily_glances_used: 0,
+    daily_icebreakers_used: 0,
+    daily_glance_limit: 5,
+    daily_icebreaker_limit: 1,
+    balance: 0
+  });
 
   useEffect(() => {
     checkTestMode();
+    fetchBalance();
   }, []);
+
+  const fetchBalance = async () => {
+    try {
+      const response = await axios.get(`${API}/tokens/balance`);
+      setBalance(response.data);
+    } catch (error) {
+      console.error("Failed to fetch balance");
+    }
+  };
 
   const checkTestMode = async () => {
     try {
@@ -90,10 +107,11 @@ const TestTools = () => {
     try {
       const response = await axios.post(`${API}/test/toggle-premium`);
       toast.success(response.data.message);
-      // Refresh user data to update UI
+      // Refresh user data and balance to update UI
       if (fetchUser) {
         await fetchUser();
       }
+      await fetchBalance();
     } catch (error) {
       toast.error("Failed to toggle premium status");
     } finally {
@@ -109,10 +127,11 @@ const TestTools = () => {
       toast.success(
         `Reset complete: ${details.outgoing_icebreakers_deleted + details.incoming_icebreakers_deleted} icebreakers, ${details.glances_deleted} glances cleared`
       );
-      // Refresh user data to update counters
+      // Refresh user data and balance to update counters
       if (fetchUser) {
         await fetchUser();
       }
+      await fetchBalance();
     } catch (error) {
       toast.error("Failed to reset test state");
     } finally {
@@ -294,23 +313,29 @@ const TestTools = () => {
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
               <div className="flex items-center gap-3">
                 <Coins className="w-5 h-5 text-yellow-400" />
-                <span className="text-white">Token Balance</span>
+                <span className="text-white">Paid Tokens</span>
               </div>
-              <span className="text-slate-300">{user?.token_balance || 0}</span>
+              <span className="text-slate-300">{balance.balance}</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
               <div className="flex items-center gap-3">
                 <Eye className="w-5 h-5 text-pink-400" />
                 <span className="text-white">Daily Glances</span>
               </div>
-              <span className="text-slate-300">{user?.daily_glances_remaining || 0}</span>
+              <span className="text-slate-300">
+                {balance.daily_glances_used} / {balance.daily_glance_limit}
+                <span className="text-slate-500 text-xs ml-1">({balance.daily_glance_limit - balance.daily_glances_used} left)</span>
+              </span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
               <div className="flex items-center gap-3">
                 <Snowflake className="w-5 h-5 text-cyan-400" />
-                <span className="text-white">Daily Free Icebreakers</span>
+                <span className="text-white">Daily Icebreakers</span>
               </div>
-              <span className="text-slate-300">{user?.is_premium ? "5" : "1"}</span>
+              <span className="text-slate-300">
+                {balance.daily_icebreakers_used} / {balance.daily_icebreaker_limit}
+                <span className="text-slate-500 text-xs ml-1">({balance.daily_icebreaker_limit - balance.daily_icebreakers_used} left)</span>
+              </span>
             </div>
           </div>
         </div>
