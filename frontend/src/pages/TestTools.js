@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
@@ -8,16 +9,17 @@ import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
 import { 
   Wrench, Eye, Snowflake, MessageCircle, Users, 
-  Loader2, AlertTriangle, Sparkles, RefreshCw, Coins 
+  Loader2, AlertTriangle, Sparkles, RefreshCw, Coins, Crown 
 } from "lucide-react";
 
 const TestTools = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, fetchUser } = useAuth();
   const [isTestMode, setIsTestMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(null);
   const [fakeUsers, setFakeUsers] = useState([]);
+  const [togglingPremium, setTogglingPremium] = useState(false);
 
   useEffect(() => {
     checkTestMode();
@@ -79,6 +81,22 @@ const TestTools = () => {
       toast.error("Failed to generate message");
     } finally {
       setGenerating(null);
+    }
+  };
+
+  const togglePremium = async () => {
+    setTogglingPremium(true);
+    try {
+      const response = await axios.post(`${API}/test/toggle-premium`);
+      toast.success(response.data.message);
+      // Refresh user data to update UI
+      if (fetchUser) {
+        await fetchUser();
+      }
+    } catch (error) {
+      toast.error("Failed to toggle premium status");
+    } finally {
+      setTogglingPremium(false);
     }
   };
 
@@ -226,15 +244,33 @@ const TestTools = () => {
         <div className="glass rounded-2xl p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Account Status</h2>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+            {/* Premium Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
               <div className="flex items-center gap-3">
-                <Sparkles className="w-5 h-5 text-amber-400" />
-                <span className="text-white">Premium Status</span>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <span className="text-white font-medium">Premium Status</span>
+                  <p className="text-xs text-slate-400">
+                    {user?.is_premium ? "5 free icebreakers/day, 20 glances" : "1 free icebreaker/day, 5 glances"}
+                  </p>
+                </div>
               </div>
-              <span className={`text-sm ${user?.is_premium ? "text-emerald-400" : "text-slate-400"}`}>
-                {user?.is_premium ? "Active" : "Inactive"}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className={`text-sm font-medium ${user?.is_premium ? "text-emerald-400" : "text-slate-500"}`}>
+                  {user?.is_premium ? "ON" : "OFF"}
+                </span>
+                <Switch
+                  data-testid="premium-toggle"
+                  checked={user?.is_premium || false}
+                  onCheckedChange={togglePremium}
+                  disabled={togglingPremium}
+                  className="data-[state=checked]:bg-amber-500"
+                />
+              </div>
             </div>
+
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
               <div className="flex items-center gap-3">
                 <Coins className="w-5 h-5 text-yellow-400" />
@@ -248,6 +284,13 @@ const TestTools = () => {
                 <span className="text-white">Daily Glances</span>
               </div>
               <span className="text-slate-300">{user?.daily_glances_remaining || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+              <div className="flex items-center gap-3">
+                <Snowflake className="w-5 h-5 text-cyan-400" />
+                <span className="text-white">Daily Free Icebreakers</span>
+              </div>
+              <span className="text-slate-300">{user?.is_premium ? "5" : "1"}</span>
             </div>
           </div>
         </div>

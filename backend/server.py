@@ -1547,6 +1547,37 @@ async def enable_bypass_limits(current_user: dict = Depends(get_current_user)):
     )
     return {"message": "Bypass limits enabled", "daily_glances_remaining": 999}
 
+@api_router.post("/test/toggle-premium")
+async def toggle_premium_status(current_user: dict = Depends(get_current_user)):
+    """Toggle premium status for testing"""
+    if not IS_TEST_BUILD:
+        raise HTTPException(status_code=403, detail="Test mode only")
+    
+    current_premium = current_user.get("is_premium", False)
+    new_premium = not current_premium
+    
+    # Set premium status and expiration (30 days from now if enabling)
+    update_data = {"is_premium": new_premium}
+    if new_premium:
+        update_data["premium_expires_at"] = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+        # Also give premium daily allowances
+        update_data["daily_glances_remaining"] = PREMIUM_DAILY_GLANCES
+    else:
+        update_data["premium_expires_at"] = None
+        update_data["daily_glances_remaining"] = FREE_DAILY_GLANCES
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": update_data}
+    )
+    
+    return {
+        "message": f"Premium {'enabled' if new_premium else 'disabled'}",
+        "is_premium": new_premium,
+        "premium_expires_at": update_data.get("premium_expires_at"),
+        "daily_glances_remaining": update_data.get("daily_glances_remaining")
+    }
+
 @api_router.post("/test/populate-venue/{venue_id}")
 async def populate_venue_with_fake_users(venue_id: str, current_user: dict = Depends(get_current_user)):
     """Populate a venue with fake users for testing"""
