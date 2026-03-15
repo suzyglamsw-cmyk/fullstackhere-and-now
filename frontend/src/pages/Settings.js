@@ -748,7 +748,7 @@ const Settings = () => {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300">Drink Offers</span>
+                    <span className="text-slate-300">Icebreakers</span>
                     <Switch
                       data-testid="push-drinks-toggle"
                       checked={pushSettings.drinks}

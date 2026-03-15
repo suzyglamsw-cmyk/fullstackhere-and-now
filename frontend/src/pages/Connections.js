@@ -5,7 +5,14 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Wine, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2 } from "lucide-react";
+import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Snowflake, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2, Ban } from "lucide-react";
+
+const ICEBREAKER_MESSAGES = [
+  "Hello",
+  "You seem interesting",
+  "Fancy a chat?",
+  "Can I buy you a drink?"
+];
 
 const Connections = () => {
   const navigate = useNavigate();
@@ -17,10 +24,11 @@ const Connections = () => {
   const [friendRequests, setFriendRequests] = useState({ incoming: [], outgoing: [] });
   const [friends, setFriends] = useState([]);
   const [glances, setGlances] = useState({ incoming: [], outgoing: [] });
-  const [drinks, setDrinks] = useState({ incoming: [], outgoing: [] });
+  const [icebreakers, setIcebreakers] = useState({ incoming: [], outgoing: [] });
   const [chatRequests, setChatRequests] = useState({ incoming: [], outgoing: [] });
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState(searchParams.get("tab") || "messages"); // "messages" | "glances" | "drinks" | "chats" | "requests" | "friends" | "connections"
+  const [actionSheet, setActionSheet] = useState(null); // For icebreaker actions
+  const [tab, setTab] = useState(searchParams.get("tab") || "messages"); // "messages" | "glances" | "icebreakers" | "chats" | "requests" | "friends" | "connections"
 
   useEffect(() => {
     fetchAllData();
@@ -29,21 +37,22 @@ const Connections = () => {
   // Handle tab parameter from URL
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam && ["messages", "glances", "drinks", "chats", "requests", "friends", "connections"].includes(tabParam)) {
-      setTab(tabParam);
+    if (tabParam && ["messages", "glances", "icebreakers", "drinks", "chats", "requests", "friends", "connections"].includes(tabParam)) {
+      // Map legacy "drinks" to "icebreakers"
+      setTab(tabParam === "drinks" ? "icebreakers" : tabParam);
     }
   }, [searchParams]);
 
   const fetchAllData = async () => {
     try {
-      const [connectionsRes, mutualRes, threadsRes, requestsRes, friendsRes, glancesRes, drinksRes, chatRequestsRes] = await Promise.all([
+      const [connectionsRes, mutualRes, threadsRes, requestsRes, friendsRes, glancesRes, icebreakersRes, chatRequestsRes] = await Promise.all([
         axios.get(`${API}/connections`),
         axios.get(`${API}/connections/mutual-glances`),
         axios.get(`${API}/messages/threads`),
         axios.get(`${API}/friends/requests`),
         axios.get(`${API}/friends/list`),
         axios.get(`${API}/connections/glances`),
-        axios.get(`${API}/connections/drinks`),
+        axios.get(`${API}/connections/icebreakers`),
         axios.get(`${API}/connections/chat-requests`)
       ]);
       setConnections(connectionsRes.data);
@@ -52,7 +61,7 @@ const Connections = () => {
       setFriendRequests(requestsRes.data);
       setFriends(friendsRes.data);
       setGlances(glancesRes.data);
-      setDrinks(drinksRes.data);
+      setIcebreakers(icebreakersRes.data);
       setChatRequests(chatRequestsRes.data);
     } catch (error) {
       console.error("Failed to load data:", error);
@@ -81,8 +90,8 @@ const Connections = () => {
   const totalUnread = messageThreads.reduce((sum, t) => sum + t.unread_count, 0);
   const totalRequests = (friendRequests.incoming?.length || 0) + (friendRequests.outgoing?.length || 0);
   const totalGlances = (glances.incoming?.length || 0) + (glances.outgoing?.length || 0);
-  const totalDrinks = (drinks.incoming?.length || 0) + (drinks.outgoing?.length || 0);
-  const pendingDrinks = drinks.incoming?.filter(d => d.status === "pending").length || 0;
+  const totalIcebreakers = (icebreakers.incoming?.length || 0) + (icebreakers.outgoing?.length || 0);
+  const pendingIcebreakers = icebreakers.incoming?.filter(d => d.status === "pending").length || 0;
   const totalChatRequests = (chatRequests.incoming?.length || 0) + (chatRequests.outgoing?.length || 0);
   const pendingChatRequests = chatRequests.incoming?.filter(c => c.status === "pending").length || 0;
   const [declineModalOpen, setDeclineModalOpen] = useState(false);
@@ -154,6 +163,36 @@ const Connections = () => {
       fetchAllData();
     } catch (error) {
       toast.error("Failed to decline drink offer");
+    }
+  };
+
+  // Icebreaker handlers
+  const handleIcebreakerAction = async (icebreakerId, action) => {
+    try {
+      await axios.post(`${API}/icebreaker/${icebreakerId}/respond`, { action });
+      if (action === "accept") {
+        toast.success("Icebreaker accepted! You can now chat.");
+      } else if (action === "block_icebreakers") {
+        toast.success("User blocked from sending icebreakers");
+      } else if (action === "block_user") {
+        toast.success("User blocked");
+      } else {
+        toast.success("Response recorded");
+      }
+      setActionSheet(null);
+      fetchAllData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to respond");
+    }
+  };
+
+  const handleDeleteIcebreaker = async (icebreakerId) => {
+    try {
+      await axios.delete(`${API}/icebreaker/${icebreakerId}`);
+      toast.success("Icebreaker removed");
+      fetchAllData();
+    } catch (error) {
+      toast.error("Failed to remove icebreaker");
     }
   };
 
@@ -298,16 +337,16 @@ const Connections = () => {
             )}
           </Button>
           <Button
-            data-testid="drinks-tab"
-            variant={tab === "drinks" ? "default" : "ghost"}
-            onClick={() => setTab("drinks")}
-            className={`rounded-xl flex-shrink-0 ${tab === "drinks" ? "bg-white/10" : "text-slate-400"}`}
+            data-testid="icebreakers-tab"
+            variant={tab === "icebreakers" ? "default" : "ghost"}
+            onClick={() => setTab("icebreakers")}
+            className={`rounded-xl flex-shrink-0 ${tab === "icebreakers" ? "bg-white/10" : "text-slate-400"}`}
           >
-            <Wine className="w-4 h-4 mr-2" />
-            Drinks
-            {pendingDrinks > 0 && (
-              <span className="ml-2 text-xs bg-amber-500 px-2 py-0.5 rounded-full">
-                {pendingDrinks}
+            <Snowflake className="w-4 h-4 mr-2" />
+            Icebreakers
+            {pendingIcebreakers > 0 && (
+              <span className="ml-2 text-xs bg-cyan-500 px-2 py-0.5 rounded-full">
+                {pendingIcebreakers}
               </span>
             )}
           </Button>
@@ -579,84 +618,68 @@ const Connections = () => {
               )}
             </div>
           )
-        ) : tab === "drinks" ? (
-          /* Drinks Tab */
-          totalDrinks === 0 ? (
+        ) : tab === "icebreakers" ? (
+          /* Icebreakers Tab */
+          totalIcebreakers === 0 ? (
             <div className="text-center py-20">
               <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                <Wine className="w-10 h-10 text-slate-600" />
+                <Snowflake className="w-10 h-10 text-slate-600" />
               </div>
-              <h2 className="text-xl font-semibold text-white mb-2">No drink offers yet</h2>
+              <h2 className="text-xl font-semibold text-white mb-2">No icebreakers yet</h2>
               <p className="text-slate-400 mb-6">
-                Send a drink offer to someone or receive one to see them here
+                Send an icebreaker to someone or receive one to see them here
               </p>
             </div>
           ) : (
-            <div className="space-y-6" data-testid="drinks-list">
-              {/* Received Drinks */}
-              {drinks.incoming?.length > 0 && (
+            <div className="space-y-6" data-testid="icebreakers-list">
+              {/* Received Icebreakers */}
+              {icebreakers.incoming?.length > 0 && (
                 <div>
                   <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
                     <ArrowDownLeft className="w-4 h-4" />
-                    Received ({drinks.incoming.length})
+                    Received ({icebreakers.incoming.length})
                   </h3>
                   <div className="space-y-3">
-                    {sortByDate(drinks.incoming).map((drink) => (
+                    {sortByDate(icebreakers.incoming).map((ib) => (
                       <div
-                        key={drink.id}
-                        data-testid={`received-drink-${drink.id}`}
+                        key={ib.id}
+                        data-testid={`received-icebreaker-${ib.id}`}
                         className="glass rounded-2xl p-4 flex items-center gap-4"
                       >
                         <div 
                           className="cursor-pointer"
-                          onClick={() => navigate(`/profile/${drink.user_id}`)}
+                          onClick={() => navigate(`/profile/${ib.user_id}`)}
                         >
-                          <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-amber-500 transition-all">
-                            {drink.avatar_url ? (
-                              <img src={drink.avatar_url} alt={drink.display_name} className={`w-full h-full object-cover ${drink.status !== "accepted" ? "blur-[4px]" : ""}`} />
+                          <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-cyan-500 transition-all">
+                            {ib.avatar_url ? (
+                              <img src={ib.avatar_url} alt={ib.display_name} className={`w-full h-full object-cover ${ib.status !== "accepted" ? "blur-[4px]" : ""}`} />
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                                <span className="text-xl text-white">{drink.display_name?.charAt(0) || "?"}</span>
+                              <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                                <span className="text-xl text-white">{ib.display_name?.charAt(0) || "?"}</span>
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-white truncate">{drink.display_name}</h4>
-                          {drink.message && (
-                            <p className="text-slate-400 text-sm truncate">"{drink.message}"</p>
-                          )}
+                          <h4 className="font-semibold text-white truncate">{ib.display_name}</h4>
+                          <p className="text-slate-400 text-sm truncate">"{ib.message || ICEBREAKER_MESSAGES[ib.message_type || 0]}"</p>
                           <p className="text-slate-500 text-xs mt-1">
-                            {drink.status === "pending" ? "🍸 Offered you a drink" : drink.status === "accepted" ? "✅ Accepted" : "❌ Declined"} • {formatDate(drink.created_at)}
+                            {ib.status === "pending" ? "❄️ Sent you an icebreaker" : ib.status === "accepted" ? "✅ Accepted" : "Response recorded"} • {formatDate(ib.created_at)}
                           </p>
-                          {drink.decline_message && (
-                            <p className="text-slate-500 text-xs italic mt-1">"{drink.decline_message}"</p>
-                          )}
                         </div>
-                        {drink.status === "pending" ? (
-                          <div className="flex gap-2">
-                            <Button
-                              data-testid={`accept-drink-${drink.id}`}
-                              onClick={() => handleAcceptDrink(drink.id)}
-                              size="sm"
-                              className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              data-testid={`decline-drink-${drink.id}`}
-                              onClick={() => handleDeclineDrink(drink.id)}
-                              size="sm"
-                              variant="ghost"
-                              className="rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
+                        {ib.status === "pending" ? (
+                          <Button
+                            data-testid={`respond-icebreaker-${ib.id}`}
+                            onClick={() => setActionSheet(ib)}
+                            size="sm"
+                            className="rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white"
+                          >
+                            Respond
+                          </Button>
                         ) : (
                           <Button
-                            data-testid={`delete-drink-${drink.id}`}
-                            onClick={() => handleDeleteDrink(drink.id)}
+                            data-testid={`delete-icebreaker-${ib.id}`}
+                            onClick={() => handleDeleteIcebreaker(ib.id)}
                             size="sm"
                             variant="ghost"
                             className="rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10"
@@ -670,49 +693,44 @@ const Connections = () => {
                 </div>
               )}
               
-              {/* Sent Drinks */}
-              {drinks.outgoing?.length > 0 && (
+              {/* Sent Icebreakers */}
+              {icebreakers.outgoing?.length > 0 && (
                 <div>
                   <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
                     <ArrowUpRight className="w-4 h-4" />
-                    Sent ({drinks.outgoing.length})
+                    Sent ({icebreakers.outgoing.length})
                   </h3>
                   <div className="space-y-3">
-                    {sortByDate(drinks.outgoing).map((drink) => (
+                    {sortByDate(icebreakers.outgoing).map((ib) => (
                       <div
-                        key={drink.id}
-                        data-testid={`sent-drink-${drink.id}`}
+                        key={ib.id}
+                        data-testid={`sent-icebreaker-${ib.id}`}
                         className="glass rounded-2xl p-4 flex items-center gap-4"
                       >
                         <div 
                           className="cursor-pointer"
-                          onClick={() => navigate(`/profile/${drink.user_id}`)}
+                          onClick={() => navigate(`/profile/${ib.user_id}`)}
                         >
-                          <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-amber-500 transition-all">
-                            {drink.avatar_url ? (
-                              <img src={drink.avatar_url} alt={drink.display_name} className={`w-full h-full object-cover ${drink.status !== "accepted" ? "blur-[4px]" : ""}`} />
+                          <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-cyan-500 transition-all">
+                            {ib.avatar_url ? (
+                              <img src={ib.avatar_url} alt={ib.display_name} className={`w-full h-full object-cover ${ib.status !== "accepted" ? "blur-[4px]" : ""}`} />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                                <span className="text-xl text-slate-400">{drink.display_name?.charAt(0) || "?"}</span>
+                                <span className="text-xl text-slate-400">{ib.display_name?.charAt(0) || "?"}</span>
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-white truncate">{drink.display_name}</h4>
-                          {drink.message && (
-                            <p className="text-slate-400 text-sm truncate">"{drink.message}"</p>
-                          )}
+                          <h4 className="font-semibold text-white truncate">{ib.display_name}</h4>
+                          <p className="text-slate-400 text-sm truncate">"{ib.message || ICEBREAKER_MESSAGES[ib.message_type || 0]}"</p>
                           <p className="text-slate-500 text-xs mt-1">
-                            {drink.status === "pending" ? "⏳ Pending" : drink.status === "accepted" ? "✅ Accepted" : "❌ Declined"} • {formatDate(drink.created_at)}
+                            {ib.display_status || (ib.status === "pending" ? "Sent" : ib.status === "accepted" ? "✅ Accepted" : "Response received")} • {formatDate(ib.created_at)}
                           </p>
-                          {drink.decline_message && (
-                            <p className="text-slate-500 text-xs italic mt-1">"{drink.decline_message}"</p>
-                          )}
                         </div>
                         <Button
-                          data-testid={`delete-sent-drink-${drink.id}`}
-                          onClick={(e) => { e.stopPropagation(); handleDeleteDrink(drink.id); }}
+                          data-testid={`delete-sent-icebreaker-${ib.id}`}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteIcebreaker(ib.id); }}
                           size="sm"
                           variant="ghost"
                           className="rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10"
@@ -1259,6 +1277,82 @@ const Connections = () => {
               }}
               variant="ghost"
               className="w-full mt-4 text-slate-400"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Icebreaker Action Sheet */}
+      {actionSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm" onClick={() => setActionSheet(null)}>
+          <div 
+            className="w-full max-w-md bg-slate-900 rounded-t-3xl p-6 pb-10 border-t border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full overflow-hidden mx-auto mb-3">
+                {actionSheet.avatar_url ? (
+                  <img src={actionSheet.avatar_url} alt="" className="w-full h-full object-cover blur-[4px]" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                    <span className="text-2xl text-white">{actionSheet.display_name?.charAt(0)}</span>
+                  </div>
+                )}
+              </div>
+              <h3 className="text-lg font-semibold text-white">{actionSheet.display_name}</h3>
+              <p className="text-slate-400 text-sm">"{actionSheet.message || ICEBREAKER_MESSAGES[actionSheet.message_type || 0]}"</p>
+            </div>
+
+            <div className="space-y-2">
+              <Button
+                onClick={() => handleIcebreakerAction(actionSheet.id, "accept")}
+                className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white py-3"
+              >
+                <Check className="w-5 h-5 mr-2" />
+                Accept
+              </Button>
+              <Button
+                onClick={() => handleIcebreakerAction(actionSheet.id, "not_right_now")}
+                variant="ghost"
+                className="w-full rounded-xl text-slate-300 hover:bg-white/5 py-3"
+              >
+                <Clock className="w-5 h-5 mr-2" />
+                Not right now
+              </Button>
+              <Button
+                onClick={() => handleIcebreakerAction(actionSheet.id, "decline")}
+                variant="ghost"
+                className="w-full rounded-xl text-slate-400 hover:bg-white/5 py-3"
+              >
+                <X className="w-5 h-5 mr-2" />
+                Decline
+              </Button>
+              <div className="border-t border-white/10 pt-2 mt-2">
+                <Button
+                  onClick={() => handleIcebreakerAction(actionSheet.id, "block_icebreakers")}
+                  variant="ghost"
+                  className="w-full rounded-xl text-orange-400 hover:bg-orange-500/10 py-3"
+                >
+                  <Snowflake className="w-5 h-5 mr-2" />
+                  Block icebreakers from this user
+                </Button>
+                <Button
+                  onClick={() => handleIcebreakerAction(actionSheet.id, "block_user")}
+                  variant="ghost"
+                  className="w-full rounded-xl text-red-400 hover:bg-red-500/10 py-3"
+                >
+                  <Ban className="w-5 h-5 mr-2" />
+                  Block user
+                </Button>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setActionSheet(null)}
+              variant="ghost"
+              className="w-full mt-4 rounded-xl text-slate-500"
             >
               Cancel
             </Button>

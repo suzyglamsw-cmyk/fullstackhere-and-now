@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { 
-  Wrench, Eye, Wine, MessageCircle, Users, 
+  Wrench, Eye, Snowflake, MessageCircle, Users, 
   Loader2, AlertTriangle, Sparkles, RefreshCw 
 } from "lucide-react";
 
@@ -57,13 +57,13 @@ const TestTools = () => {
     }
   };
 
-  const generateDrink = async () => {
-    setGenerating("drink");
+  const generateIcebreaker = async () => {
+    setGenerating("icebreaker");
     try {
-      const response = await axios.post(`${API}/test/generate-drink`);
-      toast.success(`Drink offer from ${response.data.from}!`);
+      const response = await axios.post(`${API}/test/generate-icebreaker`);
+      toast.success(`Icebreaker from ${response.data.from}!`);
     } catch (error) {
-      toast.error("Failed to generate drink offer");
+      toast.error("Failed to generate icebreaker");
     } finally {
       setGenerating(null);
     }
@@ -161,19 +161,19 @@ const TestTools = () => {
             </Button>
 
             <Button
-              data-testid="generate-drink-btn"
-              onClick={generateDrink}
-              disabled={generating === "drink"}
-              className="w-full h-14 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 justify-start gap-4"
+              data-testid="generate-icebreaker-btn"
+              onClick={generateIcebreaker}
+              disabled={generating === "icebreaker"}
+              className="w-full h-14 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 justify-start gap-4"
             >
-              {generating === "drink" ? (
+              {generating === "icebreaker" ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <Wine className="w-5 h-5" />
+                <Snowflake className="w-5 h-5" />
               )}
               <div className="text-left">
-                <p className="font-semibold">Generate Drink Offer</p>
-                <p className="text-xs text-purple-400/70">Receive a drink offer from a fake user</p>
+                <p className="font-semibold">Generate Icebreaker</p>
+                <p className="text-xs text-cyan-400/70">Receive an icebreaker from a fake user</p>
               </div>
             </Button>
 

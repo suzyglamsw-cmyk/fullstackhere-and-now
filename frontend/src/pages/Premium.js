@@ -85,8 +85,8 @@ const Premium = () => {
 
   const benefits = [
     "20 daily glances (vs 5 free)",
-    "5 daily drink tokens (vs 1 free)",
-    "See if your glance was viewed",
+    "5 free icebreakers/day (vs 1 free)",
+    "See when your icebreaker was viewed",
     "See who viewed your profile (last 48h)"
   ];
 

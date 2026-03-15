@@ -212,16 +212,16 @@ async def check_chat_unlocked(user1_id: str, user2_id: str) -> dict:
     if chat_request:
         return {"is_unlocked": True, "reason": "chat_accepted"}
     
-    # Check for accepted drink
-    accepted_drink = await db.drink_tokens.find_one({
+    # Check for accepted icebreaker
+    accepted_icebreaker = await db.icebreakers.find_one({
         "$or": [
             {"from_user_id": user1_id, "to_user_id": user2_id, "status": "accepted"},
             {"from_user_id": user2_id, "to_user_id": user1_id, "status": "accepted"}
         ]
     })
     
-    if accepted_drink:
-        return {"is_unlocked": True, "reason": "drink_accepted"}
+    if accepted_icebreaker:
+        return {"is_unlocked": True, "reason": "icebreaker_accepted"}
     
     return {"is_unlocked": False, "reason": None}
 
@@ -445,12 +445,20 @@ class GlanceCreate(BaseModel):
     to_user_id: str
     venue_id: str
 
-class DrinkTokenCreate(BaseModel):
+# Icebreaker message types
+ICEBREAKER_MESSAGES = [
+    "Hello",
+    "You seem interesting",
+    "Fancy a chat?",
+    "Can I buy you a drink?"
+]
+
+class IcebreakerCreate(BaseModel):
     to_user_id: str
     venue_id: str
-    drink_type: str  # cocktail, beer, wine, coffee, mocktail
+    message_type: int  # 0-3 index into ICEBREAKER_MESSAGES
 
-class DrinkTokenResponse(BaseModel):
+class IcebreakerResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     from_user_id: str
@@ -458,14 +466,18 @@ class DrinkTokenResponse(BaseModel):
     from_user_avatar: str
     to_user_id: str
     venue_id: str
-    drink_type: str
+    message_type: int
     message: str = ""
     created_at: str
-    is_accepted: bool = False
+    status: str = "pending"  # pending, accepted, declined, not_right_now
+    viewed_at: Optional[str] = None
 
 class MessageCreate(BaseModel):
     to_user_id: str
     content: str
+
+class IcebreakerActionRequest(BaseModel):
+    action: str  # "accept", "not_right_now", "decline", "block_icebreakers", "block_user"
 
 class MessageResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -882,7 +894,7 @@ async def delete_account(current_user: dict = Depends(get_current_user)):
     await db.users.delete_one({"id": user_id})
     await db.checkins.delete_many({"user_id": user_id})
     await db.glances.delete_many({"$or": [{"from_user_id": user_id}, {"to_user_id": user_id}]})
-    await db.drink_tokens.delete_many({"$or": [{"from_user_id": user_id}, {"to_user_id": user_id}]})
+    await db.icebreakers.delete_many({"$or": [{"from_user_id": user_id}, {"to_user_id": user_id}]})
     await db.connections.delete_many({"$or": [{"user1_id": user_id}, {"user2_id": user_id}]})
     await db.messages.delete_many({"$or": [{"from_user_id": user_id}, {"to_user_id": user_id}]})
     return {"message": "Account deleted successfully"}
@@ -1616,42 +1628,42 @@ async def generate_test_glance(current_user: dict = Depends(get_current_user)):
     
     return {"message": "Fake glance generated", "from": fake_user["display_name"], "glance_id": glance_id}
 
-@api_router.post("/test/generate-drink")
-async def generate_test_drink(current_user: dict = Depends(get_current_user)):
-    """Generate a fake drink offer (test mode only)"""
+@api_router.post("/test/generate-icebreaker")
+async def generate_test_icebreaker(current_user: dict = Depends(get_current_user)):
+    """Generate a fake icebreaker (test mode only)"""
     if not IS_TEST_BUILD:
         raise HTTPException(status_code=403, detail="Test mode only")
     
     import random
     fake_user = random.choice(FAKE_TEST_USERS)
-    drink_types = ["cocktail", "beer", "wine", "coffee", "mocktail"]
-    drink_type = random.choice(drink_types)
+    message_type = random.randint(0, len(ICEBREAKER_MESSAGES) - 1)
     
-    # Create a proper drink token record in the database
-    token_id = str(uuid.uuid4())
-    drink_token = {
-        "id": token_id,
+    # Create icebreaker record
+    icebreaker_id = str(uuid.uuid4())
+    icebreaker = {
+        "id": icebreaker_id,
         "from_user_id": fake_user["id"],
         "to_user_id": current_user["id"],
         "venue_id": "test_venue",
-        "drink_type": drink_type,
+        "message_type": message_type,
+        "message": ICEBREAKER_MESSAGES[message_type],
         "status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "viewed_at": None,
         "is_test": True
     }
-    await db.drink_tokens.insert_one(drink_token)
+    await db.icebreakers.insert_one(icebreaker)
     
     # Create notification record
     notification = {
         "id": str(uuid.uuid4()),
         "user_id": current_user["id"],
-        "type": "drink_token",
-        "message": f"{fake_user['display_name']} sent you a {drink_type}!",
+        "type": "icebreaker",
+        "message": f"{fake_user['display_name']} sent you an icebreaker",
         "from_user_id": fake_user["id"],
         "from_user_name": fake_user["display_name"],
         "from_user_avatar": fake_user.get("avatar_url", ""),
-        "drink_type": drink_type,
-        "token_id": token_id,
+        "icebreaker_id": icebreaker_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "is_read": False,
         "is_test": True
@@ -1660,33 +1672,36 @@ async def generate_test_drink(current_user: dict = Depends(get_current_user)):
     
     # Send WebSocket notification
     await manager.send_to_user(current_user["id"], {
-        "type": "drink_token_received",
+        "type": "icebreaker_received",
         "from_user": {
             "id": fake_user["id"],
             "display_name": fake_user["display_name"],
             "avatar_url": fake_user.get("avatar_url", "")
         },
-        "drink_type": drink_type,
-        "token_id": token_id
+        "icebreaker_id": icebreaker_id
     })
     
     # Send push notification
-    drink_emoji = {"cocktail": "🍸", "beer": "🍺", "wine": "🍷", "coffee": "☕", "mocktail": "🍹"}.get(drink_type, "🥂")
     await send_push_notification(
         current_user["id"],
-        f"{fake_user['display_name']} sent you a drink! {drink_emoji}",
-        f"Tap to accept the {drink_type}",
+        f"{fake_user['display_name']} sent you an icebreaker",
+        "Tap to view",
         {
-            "type": "drink",
+            "type": "icebreaker",
             "from_user_id": fake_user["id"],
             "from_user_name": fake_user["display_name"],
             "from_user_photo": fake_user.get("avatar_url", ""),
-            "drink_type": drink_type,
-            "token_id": token_id
+            "icebreaker_id": icebreaker_id
         }
     )
     
-    return {"message": "Fake drink offer generated", "from": fake_user["display_name"], "drink_type": drink_type, "token_id": token_id}
+    return {"message": "Fake icebreaker generated", "from": fake_user["display_name"], "icebreaker_id": icebreaker_id}
+
+# Legacy endpoint
+@api_router.post("/test/generate-drink")
+async def generate_test_drink_legacy(current_user: dict = Depends(get_current_user)):
+    """Legacy endpoint - generates icebreaker"""
+    return await generate_test_icebreaker(current_user)
 
 @api_router.post("/test/generate-message")
 async def generate_test_message(current_user: dict = Depends(get_current_user)):
@@ -2420,177 +2435,293 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
     
     return {"message": "Glance sent!", "is_mutual": False}
 
-# Drink Token Routes
-@api_router.post("/drink-token")
-async def send_drink_token(data: DrinkTokenCreate, current_user: dict = Depends(get_current_user)):
-    # Check token balance (daily free + purchased)
-    daily_remaining = current_user.get("daily_tokens_remaining", FREE_DAILY_TOKENS)
-    balance = current_user.get("token_balance", 0)
+# Icebreaker Routes
+@api_router.post("/icebreaker")
+async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(get_current_user)):
+    """Send an icebreaker to another user"""
+    now = datetime.now(timezone.utc)
     
-    if daily_remaining <= 0 and balance <= 0:
-        raise HTTPException(status_code=429, detail="No tokens remaining. Purchase more tokens!")
-    
-    # Check if target is blocked
+    # Check if target user exists
     target_user = await db.users.find_one({"id": data.to_user_id}, {"_id": 0})
-    if target_user and current_user["id"] in target_user.get("blocked_users", []):
-        raise HTTPException(status_code=403, detail="Cannot send token to this user")
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
     
-    # Deduct from daily first, then balance
-    if daily_remaining > 0:
+    # Check if user has blocked icebreakers from sender (soft block)
+    icebreaker_blocks = target_user.get("icebreaker_blocked_users", [])
+    if current_user["id"] in icebreaker_blocks:
+        raise HTTPException(status_code=403, detail="You can't send an icebreaker to this person.")
+    
+    # Check if user is fully blocked
+    if current_user["id"] in target_user.get("blocked_users", []):
+        raise HTTPException(status_code=403, detail="You can't send an icebreaker to this person.")
+    
+    # Check if current user is blocked by target
+    if data.to_user_id in current_user.get("blocked_users", []):
+        raise HTTPException(status_code=403, detail="You can't send an icebreaker to this person.")
+    
+    # Check cooldown (30 min after decline/not_right_now)
+    last_declined = await db.icebreakers.find_one({
+        "from_user_id": current_user["id"],
+        "to_user_id": data.to_user_id,
+        "status": {"$in": ["declined", "not_right_now"]}
+    }, sort=[("created_at", -1)])
+    
+    if last_declined:
+        declined_at = datetime.fromisoformat(last_declined.get("responded_at", last_declined["created_at"]).replace("Z", "+00:00"))
+        cooldown_end = declined_at + timedelta(minutes=30)
+        if now < cooldown_end:
+            raise HTTPException(status_code=429, detail="You can send another icebreaker to this person in a little while.")
+    
+    # Check daily attempt limit (max 2 per recipient per night, reset at 5am)
+    # Get today's 5am in UTC as baseline
+    today_5am = now.replace(hour=5, minute=0, second=0, microsecond=0)
+    if now.hour < 5:
+        today_5am = today_5am - timedelta(days=1)
+    
+    attempts_today = await db.icebreakers.count_documents({
+        "from_user_id": current_user["id"],
+        "to_user_id": data.to_user_id,
+        "created_at": {"$gte": today_5am.isoformat()}
+    })
+    
+    if attempts_today >= 2:
+        raise HTTPException(status_code=429, detail="You've reached the limit for today.")
+    
+    # Check icebreaker allowance
+    is_premium = current_user.get("is_premium", False)
+    daily_limit = 5 if is_premium else 1
+    
+    # Get daily icebreakers used (reset at 5am)
+    icebreakers_reset_at = current_user.get("icebreakers_reset_at")
+    daily_used = current_user.get("daily_icebreakers_used", 0)
+    
+    if icebreakers_reset_at:
+        reset_time = datetime.fromisoformat(icebreakers_reset_at.replace("Z", "+00:00"))
+        if now >= reset_time:
+            daily_used = 0
+            # Set next reset to 5am
+            next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
+            if now.hour >= 5:
+                next_reset = next_reset + timedelta(days=1)
+            await db.users.update_one(
+                {"id": current_user["id"]},
+                {"$set": {"daily_icebreakers_used": 0, "icebreakers_reset_at": next_reset.isoformat()}}
+            )
+    
+    # Check if free allowance available, otherwise use tokens
+    token_balance = current_user.get("token_balance", 0)
+    
+    if daily_used < daily_limit:
+        # Use free allowance
         await db.users.update_one(
             {"id": current_user["id"]},
-            {"$inc": {"daily_tokens_remaining": -1}}
+            {"$inc": {"daily_icebreakers_used": 1}}
         )
-    else:
+    elif token_balance > 0:
+        # Use token
         await db.users.update_one(
             {"id": current_user["id"]},
             {"$inc": {"token_balance": -1}}
         )
+    else:
+        raise HTTPException(status_code=429, detail="No icebreakers remaining. Purchase more tokens!")
     
-    token_id = str(uuid.uuid4())
-    drink_token = {
-        "id": token_id,
+    # Validate message type
+    if data.message_type < 0 or data.message_type >= len(ICEBREAKER_MESSAGES):
+        data.message_type = 0
+    
+    icebreaker_id = str(uuid.uuid4())
+    icebreaker = {
+        "id": icebreaker_id,
         "from_user_id": current_user["id"],
         "to_user_id": data.to_user_id,
         "venue_id": data.venue_id,
-        "drink_type": data.drink_type,
-        "message": "",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "is_accepted": False
+        "message_type": data.message_type,
+        "message": ICEBREAKER_MESSAGES[data.message_type],
+        "created_at": now.isoformat(),
+        "status": "pending",
+        "viewed_at": None
     }
-    await db.drink_tokens.insert_one(drink_token)
+    await db.icebreakers.insert_one(icebreaker)
     
     # Notify recipient via WebSocket
     await manager.send_to_user(data.to_user_id, {
-        "type": "drink_token_received",
+        "type": "icebreaker_received",
         "from_user": {
             "id": current_user["id"],
             "display_name": current_user["display_name"],
             "avatar_url": current_user.get("avatar_url", "")
-        },
-        "drink_type": data.drink_type
+        }
     })
     
-    # Send push notification for drink
+    # Send push notification
     settings = await db.push_settings.find_one({"user_id": data.to_user_id})
-    if not settings or settings.get("drinks", True):
-        drink_emoji = {"cocktail": "🍸", "beer": "🍺", "wine": "🍷", "coffee": "☕", "mocktail": "🍹"}.get(data.drink_type, "🥂")
+    if not settings or settings.get("drinks", True):  # Use drinks setting for icebreakers
         await send_push_notification(
             data.to_user_id,
-            f"{current_user['display_name']} sent you a drink! {drink_emoji}",
-            f"Tap to accept the {data.drink_type}",
+            f"{current_user['display_name']} sent you an icebreaker",
+            "Tap to view",
             {
-                "type": "drink",
+                "type": "icebreaker",
                 "from_user_id": current_user["id"],
                 "from_user_name": current_user["display_name"],
-                "from_user_photo": current_user.get("avatar_url", ""),
-                "drink_type": data.drink_type
+                "from_user_photo": current_user.get("avatar_url", "")
             }
         )
     
-    return {"message": "Drink token sent!", "token_id": token_id}
+    return {"message": "Icebreaker sent!", "icebreaker_id": icebreaker_id}
 
-@api_router.get("/drink-tokens/received", response_model=List[DrinkTokenResponse])
-async def get_received_drink_tokens(current_user: dict = Depends(get_current_user)):
-    tokens = await db.drink_tokens.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(50)
+@api_router.get("/icebreakers/received")
+async def get_received_icebreakers(current_user: dict = Depends(get_current_user)):
+    """Get icebreakers received by current user"""
+    icebreakers = await db.icebreakers.find(
+        {"to_user_id": current_user["id"]}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
     
     result = []
-    for token in tokens:
-        from_user = await db.users.find_one({"id": token["from_user_id"]}, {"_id": 0, "password": 0})
+    for ib in icebreakers:
+        from_user = await db.users.find_one({"id": ib["from_user_id"]}, {"_id": 0, "password": 0})
         if from_user:
             result.append({
-                **token,
+                **ib,
                 "from_user_name": from_user["display_name"],
-                "from_user_avatar": from_user.get("avatar_url", "")
+                "from_user_avatar": from_user.get("avatar_url") or (from_user.get("photos", [""])[0] if from_user.get("photos") else "")
             })
     
     return result
 
-@api_router.post("/drink-token/{token_id}/accept")
-async def accept_drink_token(token_id: str, current_user: dict = Depends(get_current_user)):
-    token = await db.drink_tokens.find_one({"id": token_id, "to_user_id": current_user["id"]})
-    if not token:
-        raise HTTPException(status_code=404, detail="Token not found")
+@api_router.post("/icebreaker/{icebreaker_id}/view")
+async def mark_icebreaker_viewed(icebreaker_id: str, current_user: dict = Depends(get_current_user)):
+    """Mark an icebreaker as viewed (for premium sender tracking)"""
+    icebreaker = await db.icebreakers.find_one({"id": icebreaker_id, "to_user_id": current_user["id"]})
+    if not icebreaker:
+        raise HTTPException(status_code=404, detail="Icebreaker not found")
     
-    await db.drink_tokens.update_one(
-        {"id": token_id}, 
-        {"$set": {"status": "accepted", "is_accepted": True, "accepted_at": datetime.now(timezone.utc).isoformat()}}
-    )
+    if not icebreaker.get("viewed_at"):
+        await db.icebreakers.update_one(
+            {"id": icebreaker_id},
+            {"$set": {"viewed_at": datetime.now(timezone.utc).isoformat()}}
+        )
     
-    # Notify sender
-    await manager.send_to_user(token["from_user_id"], {
-        "type": "drink_token_accepted",
-        "by_user": {
-            "id": current_user["id"],
-            "display_name": current_user["display_name"]
-        }
-    })
-    
-    return {"message": "Drink accepted! Cheers!"}
+    return {"message": "Marked as viewed"}
 
-class PoliteDeclineRequest(BaseModel):
-    decline_reason: str = "not_right_now"  # "not_right_now", "leaving_soon", "already_have_one", "thanks_but_no"
+@api_router.post("/icebreaker/{icebreaker_id}/respond")
+async def respond_to_icebreaker(icebreaker_id: str, data: IcebreakerActionRequest, current_user: dict = Depends(get_current_user)):
+    """Respond to an icebreaker with various actions"""
+    icebreaker = await db.icebreakers.find_one({"id": icebreaker_id, "to_user_id": current_user["id"]})
+    if not icebreaker:
+        raise HTTPException(status_code=404, detail="Icebreaker not found")
+    
+    now = datetime.now(timezone.utc)
+    
+    if data.action == "accept":
+        # Accept - opens chat, removes icebreaker
+        await db.icebreakers.update_one(
+            {"id": icebreaker_id},
+            {"$set": {"status": "accepted", "responded_at": now.isoformat()}}
+        )
+        
+        # Create connection/chat unlock
+        connection_id = str(uuid.uuid4())
+        await db.connections.insert_one({
+            "id": connection_id,
+            "user1_id": icebreaker["from_user_id"],
+            "user2_id": current_user["id"],
+            "status": "connected",
+            "connection_type": "icebreaker_accepted",
+            "created_at": now.isoformat()
+        })
+        
+        # Notify sender (but don't reveal the action type for non-accept)
+        await manager.send_to_user(icebreaker["from_user_id"], {
+            "type": "icebreaker_accepted",
+            "by_user": {
+                "id": current_user["id"],
+                "display_name": current_user["display_name"]
+            }
+        })
+        
+        return {"message": "Icebreaker accepted! You can now chat."}
+    
+    elif data.action == "not_right_now":
+        # Soft decline - removes icebreaker, silent, triggers cooldown
+        await db.icebreakers.update_one(
+            {"id": icebreaker_id},
+            {"$set": {"status": "not_right_now", "responded_at": now.isoformat()}}
+        )
+        # Silent - sender gets no notification
+        return {"message": "Response recorded"}
+    
+    elif data.action == "decline":
+        # Firm decline - removes icebreaker, silent, triggers cooldown
+        await db.icebreakers.update_one(
+            {"id": icebreaker_id},
+            {"$set": {"status": "declined", "responded_at": now.isoformat()}}
+        )
+        # Silent - sender gets no notification
+        return {"message": "Response recorded"}
+    
+    elif data.action == "block_icebreakers":
+        # Soft block - can't send icebreakers, but still visible in venues
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$addToSet": {"icebreaker_blocked_users": icebreaker["from_user_id"]}}
+        )
+        # Remove the icebreaker
+        await db.icebreakers.delete_one({"id": icebreaker_id})
+        # Silent - no notification to sender
+        return {"message": "User blocked from sending icebreakers"}
+    
+    elif data.action == "block_user":
+        # Full block - completely hidden from each other
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$addToSet": {"blocked_users": icebreaker["from_user_id"]}}
+        )
+        # Remove all icebreakers between users
+        await db.icebreakers.delete_many({
+            "$or": [
+                {"from_user_id": icebreaker["from_user_id"], "to_user_id": current_user["id"]},
+                {"from_user_id": current_user["id"], "to_user_id": icebreaker["from_user_id"]}
+            ]
+        })
+        # Silent - no notification to sender
+        return {"message": "User blocked"}
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
 
-POLITE_DECLINE_MESSAGES = {
-    "not_right_now": "Thanks for the offer, but I'm not looking for drinks right now. Maybe another time!",
-    "leaving_soon": "I appreciate the thought, but I'm actually about to head out. Thanks though!",
-    "already_have_one": "That's really kind of you, but I already have a drink. Thanks for thinking of me!",
-    "thanks_but_no": "Thank you for the offer, but I'll have to pass this time. Enjoy your night!"
-}
-
-@api_router.post("/drinks/decline/{token_id}")
-async def decline_drink_token(token_id: str, data: PoliteDeclineRequest, current_user: dict = Depends(get_current_user)):
-    """Decline a drink offer with a polite pre-set message"""
-    token = await db.drink_tokens.find_one({"id": token_id, "to_user_id": current_user["id"]})
-    if not token:
-        raise HTTPException(status_code=404, detail="Token not found")
+@api_router.delete("/icebreaker/{icebreaker_id}")
+async def delete_icebreaker(icebreaker_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete an icebreaker (sender can delete sent, recipient can delete responded)"""
+    icebreaker = await db.icebreakers.find_one({"id": icebreaker_id})
+    if not icebreaker:
+        raise HTTPException(status_code=404, detail="Icebreaker not found")
     
-    decline_message = POLITE_DECLINE_MESSAGES.get(data.decline_reason, POLITE_DECLINE_MESSAGES["thanks_but_no"])
-    
-    await db.drink_tokens.update_one(
-        {"id": token_id}, 
-        {"$set": {
-            "status": "declined",
-            "is_declined": True, 
-            "declined_at": datetime.now(timezone.utc).isoformat(),
-            "decline_message": decline_message
-        }}
-    )
-    
-    # Notify sender with polite message
-    await manager.send_to_user(token["from_user_id"], {
-        "type": "drink_token_declined",
-        "by_user": {
-            "id": current_user["id"],
-            "display_name": current_user["display_name"]
-        },
-        "message": decline_message
-    })
-    
-    return {"message": "Drink offer politely declined"}
-
-@api_router.delete("/drink-token/{token_id}")
-async def delete_drink_token(token_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a drink token (sender can delete any, receiver can delete accepted/declined)"""
-    token = await db.drink_tokens.find_one({"id": token_id})
-    if not token:
-        raise HTTPException(status_code=404, detail="Token not found")
-    
-    # Check if user is the sender or recipient
-    is_sender = token["from_user_id"] == current_user["id"]
-    is_recipient = token["to_user_id"] == current_user["id"]
+    is_sender = icebreaker["from_user_id"] == current_user["id"]
+    is_recipient = icebreaker["to_user_id"] == current_user["id"]
     
     if not is_sender and not is_recipient:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this drink offer")
+        raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Recipients can only delete accepted/declined drinks (check both status field and legacy is_accepted/is_declined)
-    is_pending = token.get("status") == "pending" and not token.get("is_accepted") and not token.get("is_declined")
-    if is_recipient and is_pending:
-        raise HTTPException(status_code=400, detail="Respond to this drink offer first before deleting")
+    # Recipients can only delete non-pending icebreakers
+    if is_recipient and icebreaker.get("status") == "pending":
+        raise HTTPException(status_code=400, detail="Respond to this icebreaker first")
     
-    await db.drink_tokens.delete_one({"id": token_id})
-    
-    return {"message": "Drink offer removed"}
+    await db.icebreakers.delete_one({"id": icebreaker_id})
+    return {"message": "Icebreaker removed"}
+
+# Legacy drink-token endpoints for backward compatibility (redirect to icebreakers)
+@api_router.post("/drink-token")
+async def send_drink_token_legacy(data: IcebreakerCreate, current_user: dict = Depends(get_current_user)):
+    """Legacy endpoint - redirects to icebreaker"""
+    return await send_icebreaker(data, current_user)
+
+@api_router.get("/drink-tokens/received")
+async def get_received_drink_tokens_legacy(current_user: dict = Depends(get_current_user)):
+    """Legacy endpoint - redirects to icebreakers"""
+    return await get_received_icebreakers(current_user)
 
 # Connection Routes
 @api_router.get("/connections")
@@ -2678,16 +2809,16 @@ async def get_connections(current_user: dict = Depends(get_current_user)):
                     "connection_type": "mutual_glance"
                 })
     
-    # 3. Get accepted drink tokens that aren't already in connections
-    accepted_drinks = await db.drink_tokens.find({
+    # 3. Get accepted icebreakers that aren't already in connections
+    accepted_icebreakers = await db.icebreakers.find({
         "$or": [
             {"from_user_id": current_user["id"], "status": "accepted"},
             {"to_user_id": current_user["id"], "status": "accepted"}
         ]
     }, {"_id": 0}).to_list(100)
     
-    for drink in accepted_drinks:
-        other_user_id = drink["to_user_id"] if drink["from_user_id"] == current_user["id"] else drink["from_user_id"]
+    for ib in accepted_icebreakers:
+        other_user_id = ib["to_user_id"] if ib["from_user_id"] == current_user["id"] else ib["from_user_id"]
         if other_user_id in seen_users:
             continue
         seen_users.add(other_user_id)
@@ -2701,16 +2832,16 @@ async def get_connections(current_user: dict = Depends(get_current_user)):
                 user = fake_user
         
         if user:
-            venue = await db.venues.find_one({"id": drink.get("venue_id", "")}, {"_id": 0})
+            venue = await db.venues.find_one({"id": ib.get("venue_id", "")}, {"_id": 0})
             all_connections.append({
-                "id": f"drink-{drink['id']}",
+                "id": f"icebreaker-{ib['id']}",
                 "user_id": user.get("id"),
                 "display_name": user.get("display_name", "Someone"),
                 "avatar_url": user.get("avatar_url", ""),
                 "bio": user.get("bio", ""),
-                "connected_at": drink.get("accepted_at", drink.get("created_at")),
-                "venue_name": venue.get("name", "Via Drink") if venue else "Via Drink",
-                "connection_type": "drink_accepted"
+                "connected_at": ib.get("responded_at", ib.get("created_at")),
+                "venue_name": venue.get("name", "Via Icebreaker") if venue else "Via Icebreaker",
+                "connection_type": "icebreaker_accepted"
             })
     
     # Sort by connected_at descending
@@ -2833,54 +2964,69 @@ async def delete_glance(glance_id: str, current_user: dict = Depends(get_current
     
     return {"message": "Glance removed"}
 
-@api_router.get("/connections/drinks")
-async def get_all_drinks(current_user: dict = Depends(get_current_user)):
-    """Get all drink tokens - both sent and received"""
-    # Drinks I sent (from drink_tokens collection)
-    sent_drinks = await db.drink_tokens.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+@api_router.get("/connections/icebreakers")
+async def get_all_icebreakers(current_user: dict = Depends(get_current_user)):
+    """Get all icebreakers - both sent and received"""
+    is_premium = current_user.get("is_premium", False)
+    
+    # Icebreakers I sent
+    sent_icebreakers = await db.icebreakers.find({"from_user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
     outgoing = []
-    for drink in sent_drinks:
-        user = await db.users.find_one({"id": drink["to_user_id"]}, {"_id": 0, "password": 0})
+    for ib in sent_icebreakers:
+        user = await db.users.find_one({"id": ib["to_user_id"]}, {"_id": 0, "password": 0})
         if not user and IS_TEST_BUILD:
-            fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == drink["to_user_id"]), None)
+            fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == ib["to_user_id"]), None)
             if fake_user:
                 user = {"id": fake_user["id"], "display_name": fake_user["display_name"], "avatar_url": fake_user.get("avatar_url", "")}
         if user:
-            status = "accepted" if drink.get("is_accepted") else ("declined" if drink.get("is_declined") else "pending")
+            # Determine display status for sender
+            display_status = "Sent"
+            if is_premium and ib.get("viewed_at"):
+                display_status = f"Viewed · {ib['viewed_at'][:16].replace('T', ' ')}"
+            elif is_premium and ib.get("status") == "pending":
+                display_status = "Sent"
+            
             outgoing.append({
-                "id": drink["id"],
+                "id": ib["id"],
                 "user_id": user["id"],
                 "display_name": user.get("display_name", "Someone"),
                 "avatar_url": user.get("avatar_url", ""),
-                "drink_type": drink.get("drink_type", "cocktail"),
-                "message": drink.get("message", ""),
-                "status": status,
-                "created_at": drink["created_at"]
+                "message_type": ib.get("message_type", 0),
+                "message": ib.get("message", ICEBREAKER_MESSAGES[0]),
+                "status": ib.get("status", "pending"),
+                "display_status": display_status,
+                "viewed_at": ib.get("viewed_at") if is_premium else None,
+                "created_at": ib["created_at"]
             })
     
-    # Drinks I received
-    received_drinks = await db.drink_tokens.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    # Icebreakers I received
+    received_icebreakers = await db.icebreakers.find({"to_user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
     incoming = []
-    for drink in received_drinks:
-        user = await db.users.find_one({"id": drink["from_user_id"]}, {"_id": 0, "password": 0})
+    for ib in received_icebreakers:
+        user = await db.users.find_one({"id": ib["from_user_id"]}, {"_id": 0, "password": 0})
         if not user and IS_TEST_BUILD:
-            fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == drink["from_user_id"]), None)
+            fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == ib["from_user_id"]), None)
             if fake_user:
                 user = {"id": fake_user["id"], "display_name": fake_user["display_name"], "avatar_url": fake_user.get("avatar_url", "")}
         if user:
-            status = "accepted" if drink.get("is_accepted") else ("declined" if drink.get("is_declined") else "pending")
             incoming.append({
-                "id": drink["id"],
+                "id": ib["id"],
                 "user_id": user["id"],
                 "display_name": user.get("display_name", "Someone"),
                 "avatar_url": user.get("avatar_url", ""),
-                "drink_type": drink.get("drink_type", "cocktail"),
-                "message": drink.get("message", ""),
-                "status": status,
-                "created_at": drink["created_at"]
+                "message_type": ib.get("message_type", 0),
+                "message": ib.get("message", ICEBREAKER_MESSAGES[0]),
+                "status": ib.get("status", "pending"),
+                "created_at": ib["created_at"]
             })
     
     return {"incoming": incoming, "outgoing": outgoing}
+
+# Legacy endpoint for backward compatibility
+@api_router.get("/connections/drinks")
+async def get_all_drinks_legacy(current_user: dict = Depends(get_current_user)):
+    """Legacy endpoint - redirects to icebreakers"""
+    return await get_all_icebreakers(current_user)
 
 @api_router.get("/connections/chat-requests")
 async def get_all_chat_requests(current_user: dict = Depends(get_current_user)):
@@ -3491,14 +3637,14 @@ async def decline_message_request(from_user_id: str, current_user: dict = Depend
     
     return {"message": "Message request declined", "deleted_count": result.deleted_count}
 
-# Notifications (recent glances and drink tokens)
+# Notifications (recent glances and icebreakers)
 @api_router.get("/notifications")
 async def get_notifications(current_user: dict = Depends(get_current_user)):
     # Get recent glances at me
     glances = await db.glances.find({"to_user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(20)
     
-    # Get drink tokens
-    tokens = await db.drink_tokens.find({"to_user_id": current_user["id"], "status": "pending"}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    # Get pending icebreakers
+    icebreakers = await db.icebreakers.find({"to_user_id": current_user["id"], "status": "pending"}, {"_id": 0}).sort("created_at", -1).to_list(20)
     
     # Get chat requests
     chat_requests = await db.chat_requests.find({"to_user_id": current_user["id"], "status": "pending"}, {"_id": 0}).sort("created_at", -1).to_list(20)
@@ -3584,33 +3730,33 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
                 "created_at": g["created_at"]
             })
     
-    # Process drink tokens (avoid duplicates)
-    stored_token_ids = {n.get("token_id") for n in stored_notifications if n.get("type") == "drink_token"}
+    # Process icebreakers (avoid duplicates)
+    stored_icebreaker_ids = {n.get("icebreaker_id") for n in stored_notifications if n.get("type") == "icebreaker"}
     
-    for t in tokens:
-        if t.get("id") in stored_token_ids:
+    for ib in icebreakers:
+        if ib.get("id") in stored_icebreaker_ids:
             continue
             
-        from_user = await db.users.find_one({"id": t["from_user_id"]}, {"_id": 0, "password": 0})
+        from_user = await db.users.find_one({"id": ib["from_user_id"]}, {"_id": 0, "password": 0})
         
         # Also check fake users for test mode
         if not from_user and IS_TEST_BUILD:
-            fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == t["from_user_id"]), None)
+            fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == ib["from_user_id"]), None)
             if fake_user:
                 from_user = fake_user
         
         if from_user:
             notifications.append({
-                "id": t["id"],
-                "type": "drink_token",
-                "token_id": t["id"],
+                "id": ib["id"],
+                "type": "icebreaker",
+                "icebreaker_id": ib["id"],
                 "from_user": {
                     "id": from_user.get("id"),
                     "display_name": from_user.get("display_name", "Someone"),
                     "avatar_url": from_user.get("avatar_url", "")
                 },
-                "drink_type": t["drink_type"],
-                "created_at": t["created_at"]
+                "message": f"{from_user.get('display_name', 'Someone')} sent you an icebreaker",
+                "created_at": ib["created_at"]
             })
     
     # Process chat requests (avoid duplicates)

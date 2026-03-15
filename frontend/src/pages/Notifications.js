@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { 
-  Eye, Wine, Sparkles, Bell, Loader2, 
+  Eye, Snowflake, Sparkles, Bell, Loader2, 
   MessageCircle, Trash2
 } from "lucide-react";
 
@@ -64,8 +64,9 @@ const Notifications = () => {
         return <Sparkles className="w-5 h-5 text-emerald-400" />;
       case "glance":
         return <Eye className="w-5 h-5 text-pink-400" />;
+      case "icebreaker":
       case "drink_token":
-        return <Wine className="w-5 h-5 text-amber-400" />;
+        return <Snowflake className="w-5 h-5 text-cyan-400" />;
       case "chat_request":
         return <MessageCircle className="w-5 h-5 text-indigo-400" />;
       default:
@@ -99,16 +100,17 @@ const Notifications = () => {
             View in Glances
           </Button>
         );
+      case "icebreaker":
       case "drink_token":
         return (
           <Button
-            data-testid={`view-drinks-${notification.token_id || notification.id}`}
-            onClick={() => navigate("/connections?tab=drinks")}
+            data-testid={`view-icebreakers-${notification.icebreaker_id || notification.token_id || notification.id}`}
+            onClick={() => navigate("/connections?tab=icebreakers")}
             size="sm"
-            className="rounded-full bg-amber-500 hover:bg-amber-600 text-white text-xs"
+            className="rounded-full bg-cyan-500 hover:bg-cyan-600 text-white text-xs"
           >
-            <Wine className="w-3 h-3 mr-1" />
-            View in Drinks
+            <Snowflake className="w-3 h-3 mr-1" />
+            View in Icebreakers
           </Button>
         );
       case "chat_request":
@@ -142,10 +144,11 @@ const Notifications = () => {
           title: `${userName} glanced at you`,
           subtitle: "They noticed you at the venue"
         };
+      case "icebreaker":
       case "drink_token":
         return {
-          title: `${userName} offered you a drink`,
-          subtitle: notification.drink_type || "A drink"
+          title: `${userName} sent you an icebreaker`,
+          subtitle: "Tap to respond"
         };
       case "chat_request":
         return {

@@ -7,15 +7,12 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import {
   Eye,
-  Wine,
+  Snowflake,
   MessageCircle,
   ArrowLeft,
   Loader2,
   Sparkles,
   Users,
-  Beer,
-  Coffee,
-  GlassWater,
   MoreVertical,
   Ban,
   Flag,
@@ -36,12 +33,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const DRINK_TYPES = [
-  { id: "cocktail", name: "Cocktail", icon: Wine, color: "text-pink-400" },
-  { id: "beer", name: "Beer", icon: Beer, color: "text-amber-400" },
-  { id: "wine", name: "Wine", icon: Wine, color: "text-red-400" },
-  { id: "coffee", name: "Coffee", icon: Coffee, color: "text-amber-600" },
-  { id: "mocktail", name: "Mocktail", icon: GlassWater, color: "text-emerald-400" },
+const ICEBREAKER_MESSAGES = [
+  { id: 0, name: "Hello", icon: "👋" },
+  { id: 1, name: "You seem interesting", icon: "✨" },
+  { id: 2, name: "Fancy a chat?", icon: "💬" },
+  { id: 3, name: "Can I buy you a drink?", icon: "🍸" },
 ];
 
 const WhosHere = () => {
@@ -52,10 +48,10 @@ const WhosHere = () => {
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
   const [glancing, setGlancing] = useState(null);
-  const [showDrinkModal, setShowDrinkModal] = useState(false);
+  const [showIcebreakerModal, setShowIcebreakerModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
-  const [sendingDrink, setSendingDrink] = useState(false);
+  const [sendingIcebreaker, setSendingIcebreaker] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [glancesRemaining, setGlancesRemaining] = useState(5);
   const wsRef = useRef(null);
@@ -118,9 +114,9 @@ const WhosHere = () => {
         });
         fetchPeople();
         break;
-      case "drink_token_received":
-        toast.success(`${data.from_user.display_name} sent you a ${data.drink_type}!`, {
-          icon: <Wine className="w-4 h-4" />,
+      case "icebreaker_received":
+        toast.success(`${data.from_user.display_name} sent you an icebreaker!`, {
+          icon: <Snowflake className="w-4 h-4" />,
         });
         break;
       default:
@@ -236,28 +232,28 @@ const WhosHere = () => {
     }
   };
 
-  const handleSendDrink = async (drinkType) => {
+  const handleSendIcebreaker = async (messageType) => {
     if (!selectedPerson) return;
-    setSendingDrink(true);
+    setSendingIcebreaker(true);
     try {
-      await axios.post(`${API}/drink-token`, {
+      await axios.post(`${API}/icebreaker`, {
         to_user_id: selectedPerson.id,
         venue_id: venueId,
-        drink_type: drinkType,
+        message_type: messageType,
       });
-      toast.success(`Drink sent to ${selectedPerson.is_revealed ? selectedPerson.display_name : "someone"}!`);
-      setShowDrinkModal(false);
+      toast.success(`Icebreaker sent to ${selectedPerson.is_revealed ? selectedPerson.display_name : "someone"}!`);
+      setShowIcebreakerModal(false);
       setSelectedPerson(null);
     } catch (error) {
-      toast.error("Failed to send drink");
+      toast.error(error.response?.data?.detail || "Failed to send icebreaker");
     } finally {
-      setSendingDrink(false);
+      setSendingIcebreaker(false);
     }
   };
 
-  const openDrinkModal = (person) => {
+  const openIcebreakerModal = (person) => {
     setSelectedPerson(person);
-    setShowDrinkModal(true);
+    setShowIcebreakerModal(true);
   };
 
   return (
@@ -405,12 +401,12 @@ const WhosHere = () => {
                       </Button>
                     )}
                     <Button
-                      data-testid={`drink-btn-${person.id}`}
-                      onClick={() => openDrinkModal(person)}
+                      data-testid={`icebreaker-btn-${person.id}`}
+                      onClick={() => openIcebreakerModal(person)}
                       size="sm"
-                      className="flex-1 h-9 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-0"
+                      className="flex-1 h-9 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border-0"
                     >
-                      <Wine className="w-4 h-4" />
+                      <Snowflake className="w-4 h-4" />
                     </Button>
                     {person.is_connected && (
                       <Button
@@ -463,25 +459,25 @@ const WhosHere = () => {
           )}
         </div>
 
-        {/* Drink Modal */}
-        <Dialog open={showDrinkModal} onOpenChange={setShowDrinkModal}>
-          <DialogContent className="bg-slate-900 border-white/10 max-w-sm" data-testid="drink-modal">
+        {/* Icebreaker Modal */}
+        <Dialog open={showIcebreakerModal} onOpenChange={setShowIcebreakerModal}>
+          <DialogContent className="bg-slate-900 border-white/10 max-w-sm" data-testid="icebreaker-modal">
             <DialogHeader>
               <DialogTitle className="text-white text-center">
-                Send a drink to {selectedPerson?.is_revealed ? selectedPerson?.display_name : "someone"}
+                Send an icebreaker to {selectedPerson?.is_revealed ? selectedPerson?.display_name : "someone"}
               </DialogTitle>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              {DRINK_TYPES.map((drink) => (
+            <div className="space-y-2 mt-4">
+              {ICEBREAKER_MESSAGES.map((msg) => (
                 <Button
-                  key={drink.id}
-                  data-testid={`drink-option-${drink.id}`}
-                  onClick={() => handleSendDrink(drink.id)}
-                  disabled={sendingDrink}
-                  className={`h-20 flex-col gap-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 ${drink.color}`}
+                  key={msg.id}
+                  data-testid={`icebreaker-option-${msg.id}`}
+                  onClick={() => handleSendIcebreaker(msg.id)}
+                  disabled={sendingIcebreaker}
+                  className="w-full h-14 justify-start gap-3 rounded-xl bg-white/5 hover:bg-cyan-500/20 border border-white/5 text-left"
                 >
-                  <drink.icon className="w-6 h-6" />
-                  <span className="text-sm font-medium text-white">{drink.name}</span>
+                  <span className="text-2xl">{msg.icon}</span>
+                  <span className="text-sm font-medium text-white">{msg.name}</span>
                 </Button>
               ))}
             </div>
