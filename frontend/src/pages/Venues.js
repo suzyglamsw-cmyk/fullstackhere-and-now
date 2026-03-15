@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { MapPin, Users, LogOut, Loader2, Navigation, MapPinOff, Star, Clock } from "lucide-react";
+import { MapPin, Users, LogOut, Loader2, Navigation, MapPinOff, Star, Clock, Radio } from "lucide-react";
 import LiveClock from "../components/LiveClock";
+import useLocationTracker from "../hooks/useLocationTracker";
 
 const Venues = () => {
   const navigate = useNavigate();
@@ -22,6 +23,38 @@ const Venues = () => {
   const [locationError, setLocationError] = useState(null);
   const [showOpenArea, setShowOpenArea] = useState(false);
   const heartbeatRef = useRef(null);
+
+  // Continuous location tracking
+  const {
+    currentLocation,
+    isTracking,
+    startTracking,
+    error: trackingError
+  } = useLocationTracker({
+    enableAutoVenueDetection: false, // We handle venue detection ourselves
+    updateInterval: 30000,
+    minMovementDistance: 15
+  });
+
+  // Update geoLocation when tracker detects movement
+  useEffect(() => {
+    if (currentLocation && currentLocation.lat && currentLocation.lng) {
+      const newLoc = { lat: currentLocation.lat, lng: currentLocation.lng };
+      
+      // Only update if location changed significantly (> 10 meters)
+      if (!geoLocation || 
+          Math.abs(geoLocation.lat - newLoc.lat) > 0.0001 || 
+          Math.abs(geoLocation.lng - newLoc.lng) > 0.0001) {
+        setGeoLocation(newLoc);
+        setLocationError(null);
+      }
+    }
+  }, [currentLocation]);
+
+  // Start tracking on mount
+  useEffect(() => {
+    startTracking();
+  }, []);
 
   // Fetch check-in on every mount, focus, and visibility change
   useEffect(() => {
@@ -66,25 +99,33 @@ const Venues = () => {
   }, [user?.active_venue_id]);
 
   useEffect(() => {
-    // Request geolocation
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setGeoLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.log("Location error:", error);
-          setLocationError("Location access needed for nearby venues");
-          // Fallback to seeded venues
-          fetchSeededVenues();
-        },
-        { enableHighAccuracy: false, timeout: 10000 }
-      );
-    } else {
-      fetchSeededVenues();
+    // The location tracker handles continuous GPS updates
+    // This fallback only runs if tracker hasn't provided location yet
+    if (!geoLocation && !isTracking) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setGeoLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            });
+          },
+          (error) => {
+            console.log("Location error:", error);
+            setLocationError("Location access needed for nearby venues");
+            // Fallback to seeded venues
+            fetchSeededVenues();
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      } else {
+        fetchSeededVenues();
+      }
+    }
+    
+    // Handle tracking errors
+    if (trackingError) {
+      setLocationError(trackingError);
     }
     
     seedVenues();
@@ -101,7 +142,7 @@ const Venues = () => {
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
-  }, []);
+  }, [isTracking, trackingError]);
 
   useEffect(() => {
     if (geoLocation) {
@@ -253,6 +294,18 @@ const Venues = () => {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Discover</h1>
             <p className="text-slate-400">Find your vibe and see who's around</p>
+            {/* Location Tracking Status */}
+            {isTracking && (
+              <div className="flex items-center gap-2 mt-2">
+                <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+                <span className="text-xs text-emerald-400">Live tracking</span>
+                {geoLocation && (
+                  <span className="text-xs text-slate-500">
+                    ({geoLocation.lat.toFixed(4)}, {geoLocation.lng.toFixed(4)})
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <LiveClock className="w-16 h-16" />
         </div>
