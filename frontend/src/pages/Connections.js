@@ -360,7 +360,7 @@ const Connections = () => {
             className={`rounded-xl flex-shrink-0 ${tab === "connections" ? "bg-white/10" : "text-slate-400"}`}
           >
             <Users className="w-4 h-4 mr-2" />
-            All
+            Mutual Matches
           </Button>
         </div>
 
@@ -1130,9 +1130,9 @@ const Connections = () => {
               <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
                 <Users className="w-10 h-10 text-slate-600" />
               </div>
-              <h2 className="text-xl font-semibold text-white mb-2">No connections yet</h2>
+              <h2 className="text-xl font-semibold text-white mb-2">No mutual matches yet</h2>
               <p className="text-slate-400 mb-6">
-                Check in to a venue and start glancing at people to make connections!
+                Mutual matches appear when you have a mutual glance, accepted drink, or accepted chat request.
               </p>
               <Button
                 data-testid="find-venues-btn"
