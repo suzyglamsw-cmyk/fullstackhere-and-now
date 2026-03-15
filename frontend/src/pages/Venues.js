@@ -22,12 +22,29 @@ const Venues = () => {
   const [showOpenArea, setShowOpenArea] = useState(false);
   const heartbeatRef = useRef(null);
 
-  // Fetch current check-in on mount and when user changes
+  // Always fetch current check-in when component mounts or becomes visible
   useEffect(() => {
-    if (user?.active_venue_id) {
-      // User has active venue from profile - fetch full check-in details
+    // Fetch check-in status immediately
+    fetchCurrentCheckin();
+    
+    // Also fetch when page becomes visible (user switches back to app)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchCurrentCheckin();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Update check-in state when user profile changes
+  useEffect(() => {
+    if (user?.active_venue_id && !currentCheckin) {
       fetchCurrentCheckin();
-    } else {
+    } else if (!user?.active_venue_id && currentCheckin) {
       setCurrentCheckin(null);
     }
   }, [user?.active_venue_id]);
@@ -54,8 +71,6 @@ const Venues = () => {
       fetchSeededVenues();
     }
     
-    // Also fetch check-in on mount (in case user context hasn't loaded yet)
-    fetchCurrentCheckin();
     seedVenues();
     
     // Heartbeat for auto-checkout prevention
