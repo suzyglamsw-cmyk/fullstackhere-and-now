@@ -2228,7 +2228,7 @@ async def debug_venue(venue_id: str, current_user: dict = Depends(get_current_us
 TEST_USERS_CONFIG = [
     {
         "id": "testuser-a-fixed",
-        "email": "testuser.a@test.local",
+        "email": "testuser.a@example.com",
         "display_name": "Alex",
         "avatar_url": "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
         "age": 25,
@@ -2239,7 +2239,7 @@ TEST_USERS_CONFIG = [
     },
     {
         "id": "testuser-b-fixed",
-        "email": "testuser.b@test.local",
+        "email": "testuser.b@example.com",
         "display_name": "Jordan",
         "avatar_url": "https://images.unsplash.com/photo-1655249481446-25d575f1c054?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzF8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBoZWFkc2hvdCUyMHBvcnRyYWl0JTIwcGVyc29ufGVufDB8fHx8MTc3NDMwNTE2OHww&ixlib=rb-4.1.0&q=85",
         "age": 28,
@@ -2250,7 +2250,7 @@ TEST_USERS_CONFIG = [
     },
     {
         "id": "testuser-c-fixed",
-        "email": "testuser.c@test.local",
+        "email": "testuser.c@example.com",
         "display_name": "Sam",
         "avatar_url": "https://images.unsplash.com/photo-1769636929130-56648d6e9c6d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzF8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBoZWFkc2hvdCUyMHBvcnRyYWl0JTIwcGVyc29ufGVufDB8fHx8MTc3NDMwNTE2OHww&ixlib=rb-4.1.0&q=85",
         "age": 30,
