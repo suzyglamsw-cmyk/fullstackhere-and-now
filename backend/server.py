@@ -2224,6 +2224,247 @@ async def debug_venue(venue_id: str, current_user: dict = Depends(get_current_us
         "checkins": debug_data
     }
 
+# Test Users Configuration
+TEST_USERS_CONFIG = [
+    {
+        "id": "testuser-a-fixed",
+        "email": "testuser.a@test.local",
+        "display_name": "Alex",
+        "avatar_url": "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "age": 25,
+        "bio": "Just here to meet new people! Love coffee and good conversations.",
+        "interests": ["Coffee", "Music", "Travel", "Movies"],
+        "gender": "male",
+        "is_premium": False,
+    },
+    {
+        "id": "testuser-b-fixed",
+        "email": "testuser.b@test.local",
+        "display_name": "Jordan",
+        "avatar_url": "https://images.unsplash.com/photo-1655249481446-25d575f1c054?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzF8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBoZWFkc2hvdCUyMHBvcnRyYWl0JTIwcGVyc29ufGVufDB8fHx8MTc3NDMwNTE2OHww&ixlib=rb-4.1.0&q=85",
+        "age": 28,
+        "bio": "Premium member here! Let's connect and see where it goes.",
+        "interests": ["Fitness", "Tech", "Wine", "Photography"],
+        "gender": "female",
+        "is_premium": True,
+    },
+    {
+        "id": "testuser-c-fixed",
+        "email": "testuser.c@test.local",
+        "display_name": "Sam",
+        "avatar_url": "https://images.unsplash.com/photo-1769636929130-56648d6e9c6d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzF8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBoZWFkc2hvdCUyMHBvcnRyYWl0JTIwcGVyc29ufGVufDB8fHx8MTc3NDMwNTE2OHww&ixlib=rb-4.1.0&q=85",
+        "age": 30,
+        "bio": "Looking for genuine connections! I'll send an icebreaker your way.",
+        "interests": ["Reading", "Hiking", "Art", "Food"],
+        "gender": "female",
+        "is_premium": False,
+        "sends_icebreakers": True,
+    },
+]
+
+@api_router.post("/test/seed-interactive-users")
+async def seed_interactive_test_users(current_user: dict = Depends(get_current_user)):
+    """
+    Create/update the three persistent interactive test users (TestUser_A, B, C)
+    and check them into a default venue. These users can interact with each other
+    and with the main account for testing blur, icebreakers, chat requests, etc.
+    """
+    if not IS_TEST_BUILD:
+        raise HTTPException(status_code=403, detail="Test mode only")
+    
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(hours=24)  # Longer expiry for test users
+    
+    # Get or create the default test venue
+    default_venue = await db.venues.find_one({"is_default_test": True}, {"_id": 0})
+    if not default_venue:
+        # Create a default test venue
+        default_venue = {
+            "id": "default-test-venue",
+            "name": "Test Lounge",
+            "address": "123 Test Street, Demo City",
+            "lat": 37.7749,
+            "lng": -122.4194,
+            "type": "bar",
+            "is_default_test": True,
+            "created_at": now.isoformat()
+        }
+        await db.venues.insert_one(default_venue)
+    
+    created_users = []
+    
+    for config in TEST_USERS_CONFIG:
+        # Check if user already exists
+        existing = await db.users.find_one({"id": config["id"]}, {"_id": 0})
+        
+        if existing:
+            # Update existing user to ensure they're properly configured
+            await db.users.update_one(
+                {"id": config["id"]},
+                {"$set": {
+                    "is_visible": True,
+                    "is_premium": config["is_premium"],
+                    "last_active_at": now.isoformat(),
+                    "age": config["age"],
+                    "bio": config["bio"],
+                    "avatar_url": config["avatar_url"],
+                }}
+            )
+        else:
+            # Create new test user
+            test_user = {
+                "id": config["id"],
+                "email": config["email"],
+                "password": hash_password("test123"),
+                "display_name": config["display_name"],
+                "original_display_name": config["display_name"],
+                "avatar_url": config["avatar_url"],
+                "photos": [config["avatar_url"]],
+                "age": config["age"],
+                "bio": config["bio"],
+                "interests": config["interests"],
+                "gender": config["gender"],
+                "orientation": "",
+                "relationship_status": "single",
+                "seeking": "connections",
+                "is_visible": True,
+                "profile_complete": True,
+                "is_premium": config["is_premium"],
+                "premium_expires_at": (now + timedelta(days=365)).isoformat() if config["is_premium"] else None,
+                "token_balance": 100,
+                "daily_glances_remaining": PREMIUM_DAILY_GLANCES if config["is_premium"] else FREE_DAILY_GLANCES,
+                "daily_tokens_remaining": PREMIUM_DAILY_TOKENS if config["is_premium"] else FREE_DAILY_TOKENS,
+                "glances_reset_at": now.isoformat(),
+                "profile_theme": None,
+                "blocked_users": [],
+                "last_active_at": now.isoformat(),
+                "age_confirmed": True,
+                "is_test": True,
+                "created_at": now.isoformat()
+            }
+            await db.users.insert_one(test_user)
+        
+        # Ensure user is checked into the default venue
+        existing_checkin = await db.checkins.find_one({
+            "user_id": config["id"],
+            "venue_id": default_venue["id"],
+            "is_active": True
+        })
+        
+        if not existing_checkin:
+            checkin = {
+                "id": str(uuid.uuid4()),
+                "user_id": config["id"],
+                "venue_id": default_venue["id"],
+                "is_open_area": False,
+                "checked_in_at": now.isoformat(),
+                "last_activity_at": now.isoformat(),
+                "expires_at": expires_at.isoformat(),
+                "is_active": True
+            }
+            await db.checkins.insert_one(checkin)
+        else:
+            # Refresh the existing checkin
+            await db.checkins.update_one(
+                {"id": existing_checkin["id"]},
+                {"$set": {
+                    "last_activity_at": now.isoformat(),
+                    "expires_at": expires_at.isoformat(),
+                    "is_active": True
+                }}
+            )
+        
+        created_users.append({
+            "id": config["id"],
+            "display_name": config["display_name"],
+            "is_premium": config["is_premium"],
+            "age": config["age"],
+            "email": config["email"],
+            "password": "test123"
+        })
+    
+    # TestUser_C sends interactions to the current user
+    testuser_c = TEST_USERS_CONFIG[2]
+    
+    # Check if TestUser_C already sent icebreaker to current user
+    existing_icebreaker = await db.icebreakers.find_one({
+        "from_user_id": testuser_c["id"],
+        "to_user_id": current_user["id"]
+    })
+    
+    if not existing_icebreaker:
+        # Create an icebreaker from TestUser_C to current user
+        icebreaker = {
+            "id": str(uuid.uuid4()),
+            "from_user_id": testuser_c["id"],
+            "to_user_id": current_user["id"],
+            "from_display_name": testuser_c["display_name"],
+            "from_avatar_url": testuser_c["avatar_url"],
+            "venue_id": default_venue["id"],
+            "venue_name": default_venue["name"],
+            "message_type": 0,  # "Hello" 
+            "message_name": "Hello",
+            "message_icon": "👋",
+            "status": "pending",
+            "created_at": now.isoformat()
+        }
+        await db.icebreakers.insert_one(icebreaker)
+    
+    # Check if TestUser_C already sent chat request to current user
+    existing_chat_request = await db.chat_requests.find_one({
+        "from_user_id": testuser_c["id"],
+        "to_user_id": current_user["id"]
+    })
+    
+    if not existing_chat_request:
+        # Create a chat request from TestUser_C to current user
+        chat_request = {
+            "id": str(uuid.uuid4()),
+            "from_user_id": testuser_c["id"],
+            "to_user_id": current_user["id"],
+            "from_display_name": testuser_c["display_name"],
+            "from_avatar_url": testuser_c["avatar_url"],
+            "venue_id": default_venue["id"],
+            "venue_name": default_venue["name"],
+            "status": "pending",
+            "created_at": now.isoformat()
+        }
+        await db.chat_requests.insert_one(chat_request)
+    
+    # Also check current user into the default venue
+    current_checkin = await db.checkins.find_one({
+        "user_id": current_user["id"],
+        "venue_id": default_venue["id"],
+        "is_active": True
+    })
+    
+    if not current_checkin:
+        checkin = {
+            "id": str(uuid.uuid4()),
+            "user_id": current_user["id"],
+            "venue_id": default_venue["id"],
+            "is_open_area": False,
+            "checked_in_at": now.isoformat(),
+            "last_activity_at": now.isoformat(),
+            "expires_at": expires_at.isoformat(),
+            "is_active": True
+        }
+        await db.checkins.insert_one(checkin)
+    
+    return {
+        "message": "Interactive test users created and checked into venue",
+        "venue": {
+            "id": default_venue["id"],
+            "name": default_venue["name"]
+        },
+        "users": created_users,
+        "interactions_created": {
+            "icebreaker_from_c": not existing_icebreaker,
+            "chat_request_from_c": not existing_chat_request
+        },
+        "current_user_checked_in": not current_checkin
+    }
+
 # Venue Routes
 @api_router.get("/venues", response_model=List[VenueResponse])
 async def get_venues(current_user: dict = Depends(get_current_user)):

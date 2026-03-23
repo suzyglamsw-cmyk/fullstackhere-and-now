@@ -542,7 +542,7 @@ const Connections = () => {
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
                             {glance.avatar_url ? (
-                              <img src={glance.avatar_url} alt={glance.display_name} className={`w-full h-full object-cover ${!glance.is_mutual ? "motion-blur" : "motion-blur-reveal"}`} />
+                              <img src={glance.avatar_url} alt={glance.display_name} className={`w-full h-full object-cover ${!glance.is_mutual ? "motion-blur-sm" : "motion-blur-reveal"}`} />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-pink-500 flex items-center justify-center">
                                 <span className="text-xl text-white">{glance.display_name?.charAt(0) || "?"}</span>
@@ -607,7 +607,7 @@ const Connections = () => {
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
                             {glance.avatar_url ? (
-                              <img src={glance.avatar_url} alt={glance.display_name} className={`w-full h-full object-cover ${!glance.is_mutual ? "motion-blur" : "motion-blur-reveal"}`} />
+                              <img src={glance.avatar_url} alt={glance.display_name} className={`w-full h-full object-cover ${!glance.is_mutual ? "motion-blur-sm" : "motion-blur-reveal"}`} />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
                                 <span className="text-xl text-slate-400">{glance.display_name?.charAt(0) || "?"}</span>
@@ -676,7 +676,7 @@ const Connections = () => {
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-cyan-500 transition-all">
                             {ib.avatar_url ? (
-                              <img src={ib.avatar_url} alt={ib.display_name} className={`w-full h-full object-cover ${ib.status !== "accepted" ? "motion-blur" : "motion-blur-reveal"}`} />
+                              <img src={ib.avatar_url} alt={ib.display_name} className={`w-full h-full object-cover ${ib.status !== "accepted" ? "motion-blur-sm" : "motion-blur-reveal"}`} />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
                                 <span className="text-xl text-white">{ib.display_name?.charAt(0) || "?"}</span>
@@ -737,7 +737,7 @@ const Connections = () => {
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-cyan-500 transition-all">
                             {ib.avatar_url ? (
-                              <img src={ib.avatar_url} alt={ib.display_name} className={`w-full h-full object-cover ${ib.status !== "accepted" ? "motion-blur" : "motion-blur-reveal"}`} />
+                              <img src={ib.avatar_url} alt={ib.display_name} className={`w-full h-full object-cover ${ib.status !== "accepted" ? "motion-blur-sm" : "motion-blur-reveal"}`} />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
                                 <span className="text-xl text-slate-400">{ib.display_name?.charAt(0) || "?"}</span>
@@ -814,7 +814,7 @@ const Connections = () => {
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-pink-500 transition-all">
                             {request.avatar_url ? (
-                              <img src={request.avatar_url} alt={request.display_name} className={`w-full h-full object-cover ${request.status !== "accepted" ? "motion-blur" : "motion-blur-reveal"}`} />
+                              <img src={request.avatar_url} alt={request.display_name} className={`w-full h-full object-cover ${request.status !== "accepted" ? "motion-blur-sm" : "motion-blur-reveal"}`} />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-pink-500 to-indigo-500 flex items-center justify-center">
                                 <span className="text-xl text-white">{request.display_name?.charAt(0) || "?"}</span>
@@ -901,7 +901,7 @@ const Connections = () => {
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-pink-500 transition-all">
                             {request.avatar_url ? (
-                              <img src={request.avatar_url} alt={request.display_name} className={`w-full h-full object-cover ${request.status !== "accepted" ? "motion-blur" : "motion-blur-reveal"}`} />
+                              <img src={request.avatar_url} alt={request.display_name} className={`w-full h-full object-cover ${request.status !== "accepted" ? "motion-blur-sm" : "motion-blur-reveal"}`} />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
                                 <span className="text-xl text-slate-400">{request.display_name?.charAt(0) || "?"}</span>
@@ -1339,7 +1339,7 @@ const Connections = () => {
             <div className="text-center mb-6">
               <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 ring-2 ring-cyan-500/50">
                 {actionSheet.avatar_url ? (
-                  <img src={actionSheet.avatar_url} alt="" className="w-full h-full object-cover motion-blur" />
+                  <img src={actionSheet.avatar_url} alt="" className="w-full h-full object-cover motion-blur-sm" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
                     <span className="text-2xl text-white font-bold">{actionSheet.display_name?.charAt(0)}</span>
@@ -1434,7 +1434,7 @@ const Connections = () => {
             <div className="text-center mb-6">
               <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 ring-2 ring-indigo-500/50">
                 {chatActionSheet.avatar_url ? (
-                  <img src={chatActionSheet.avatar_url} alt="" className="w-full h-full object-cover motion-blur" />
+                  <img src={chatActionSheet.avatar_url} alt="" className="w-full h-full object-cover motion-blur-sm" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
                     <span className="text-2xl text-white font-bold">{chatActionSheet.display_name?.charAt(0)}</span>

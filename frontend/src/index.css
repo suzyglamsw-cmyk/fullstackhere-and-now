@@ -162,11 +162,20 @@ code {
 }
 
 /* Motion blur effect for profile photos (directional blur) */
+/* Full-size photos (e.g., WhosHere cards, profile pages) - strength 8 */
 .motion-blur {
     filter: blur(8px);
     -webkit-filter: blur(8px);
     /* Directional motion effect achieved through transform */
     transform: scale(1.05);
+    transition: all 0.3s ease;
+}
+
+/* Small thumbnails (e.g., Connections, Icebreakers, Chat Requests) - strength 3 */
+.motion-blur-sm {
+    filter: blur(3px);
+    -webkit-filter: blur(3px);
+    transform: scale(1.02);
     transition: all 0.3s ease;
 }
 

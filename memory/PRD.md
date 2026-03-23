@@ -101,8 +101,9 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 - ✅ **Who's Here Enhancements:**
   - ✅ Premium users sorted first
   - ✅ Last Active filter (now/recent/hour/all)
-  - ✅ Motion blur (strength 8) on non-revealed photos
+  - ✅ Motion blur: Full-size photos (8px), Thumbnails (3px)
   - ✅ Premium badge indicator
+- ✅ **Interactive Test Users** (Alex, Jordan, Sam) for testing blur, icebreakers, matches
 - ✅ Complete Icebreaker system (replaced Drinks)
 - ✅ Glance system with mutual unblur
 - ✅ Friend requests and connections
