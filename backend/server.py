@@ -2432,6 +2432,12 @@ async def seed_interactive_test_users(current_user: dict = Depends(get_current_u
         await db.chat_requests.insert_one(chat_request)
     
     # Also check current user into the default venue
+    # First, checkout from any other venue
+    await db.checkins.update_many(
+        {"user_id": current_user["id"], "is_active": True, "venue_id": {"$ne": default_venue["id"]}},
+        {"$set": {"is_active": False, "checked_out_at": now.isoformat()}}
+    )
+    
     current_checkin = await db.checkins.find_one({
         "user_id": current_user["id"],
         "venue_id": default_venue["id"],
@@ -2450,6 +2456,15 @@ async def seed_interactive_test_users(current_user: dict = Depends(get_current_u
             "is_active": True
         }
         await db.checkins.insert_one(checkin)
+    else:
+        # Refresh the checkin expiry
+        await db.checkins.update_one(
+            {"id": current_checkin["id"]},
+            {"$set": {
+                "last_activity_at": now.isoformat(),
+                "expires_at": expires_at.isoformat()
+            }}
+        )
     
     return {
         "message": "Interactive test users created and checked into venue",
