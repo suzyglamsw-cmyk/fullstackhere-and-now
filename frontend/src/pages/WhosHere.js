@@ -386,7 +386,7 @@ const WhosHere = () => {
                         src={person.avatar_url}
                         alt={person.display_name}
                         isRevealed={person.is_revealed}
-                        isThumbnail={true}
+                        isThumbnail={false}
                         fallbackInitial={(person.first_name || person.display_name?.split(' ')[0] || "?").charAt(0)}
                       />
                     </div>
