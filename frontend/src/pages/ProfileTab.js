@@ -22,6 +22,9 @@ import {
   X,
   Check,
   Plus,
+  Play,
+  Pause,
+  Volume2,
 } from "lucide-react";
 
 const MAX_BIO_LENGTH = 500;
@@ -39,12 +42,14 @@ const Profile = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [uploadingVoice, setUploadingVoice] = useState(false);
   const [micPermissionDenied, setMicPermissionDenied] = useState(false);
+  const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const streamRef = useRef(null);
   const recordingTimeRef = useRef(0); // Track time in ref for accurate access in callbacks
+  const audioPlayerRef = useRef(null); // Audio element for playback
 
   const [formData, setFormData] = useState({
     display_name: "",
@@ -288,6 +293,12 @@ const Profile = () => {
   };
 
   const removeVoiceIntro = async () => {
+    // Stop playback if playing
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      setIsPlayingVoice(false);
+    }
+    
     try {
       await axios.delete(`${API}/profile/voice-intro`);
       setFormData(prev => ({ ...prev, voice_intro_url: "" }));
@@ -297,6 +308,71 @@ const Profile = () => {
       toast.error("Failed to remove voice intro");
     }
   };
+
+  // Get the full URL for voice intro playback
+  const getVoiceIntroFullUrl = () => {
+    if (!formData.voice_intro_url) return null;
+    // If it's already a full URL, return as-is
+    if (formData.voice_intro_url.startsWith('http')) {
+      return formData.voice_intro_url;
+    }
+    // If it's an API path, prepend the API base URL
+    if (formData.voice_intro_url.startsWith('/api/')) {
+      // Remove /api prefix since API already includes it
+      const path = formData.voice_intro_url.replace('/api/', '/');
+      return `${API}${path}`;
+    }
+    // Otherwise prepend API
+    return `${API}${formData.voice_intro_url}`;
+  };
+
+  const playVoiceIntro = () => {
+    const audioUrl = getVoiceIntroFullUrl();
+    if (!audioUrl) {
+      toast.error("No voice intro to play");
+      return;
+    }
+
+    // Create audio element if it doesn't exist
+    if (!audioPlayerRef.current) {
+      audioPlayerRef.current = new Audio();
+      audioPlayerRef.current.onended = () => {
+        setIsPlayingVoice(false);
+      };
+      audioPlayerRef.current.onerror = (e) => {
+        console.error("Audio playback error:", e);
+        toast.error("Failed to play voice intro");
+        setIsPlayingVoice(false);
+      };
+    }
+
+    if (isPlayingVoice) {
+      // Pause
+      audioPlayerRef.current.pause();
+      setIsPlayingVoice(false);
+    } else {
+      // Play
+      audioPlayerRef.current.src = audioUrl;
+      audioPlayerRef.current.play()
+        .then(() => {
+          setIsPlayingVoice(true);
+        })
+        .catch((error) => {
+          console.error("Playback failed:", error);
+          toast.error("Failed to play voice intro");
+        });
+    }
+  };
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current = null;
+      }
+    };
+  }, []);
 
   const mainPhoto = formData.photos[0] || user?.avatar_url;
   const hasSafetyHalo = user?.reports_count === 0 && user?.blocks_received_count === 0;
@@ -481,23 +557,55 @@ const Profile = () => {
                   <span className="text-indigo-300">Uploading voice intro...</span>
                 </div>
               ) : formData.voice_intro_url ? (
-                /* Voice Intro Recorded */
-                <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <Check className="w-5 h-5 text-emerald-400" />
+                /* Voice Intro Recorded - with Play button */
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                    {/* Play/Pause Button */}
+                    <button
+                      onClick={playVoiceIntro}
+                      className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                        isPlayingVoice 
+                          ? "bg-emerald-500 text-white" 
+                          : "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                      }`}
+                    >
+                      {isPlayingVoice ? (
+                        <Pause className="w-5 h-5" />
+                      ) : (
+                        <Play className="w-5 h-5 ml-0.5" />
+                      )}
+                    </button>
+                    
+                    <div className="flex-1">
+                      <span className="text-emerald-300 font-medium">
+                        {isPlayingVoice ? "Playing..." : "Voice intro recorded"}
+                      </span>
+                      <p className="text-xs text-emerald-400/70">
+                        {isPlayingVoice ? "Tap to pause" : "Tap play to listen"}
+                      </p>
+                    </div>
+                    
+                    {/* Remove Button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={removeVoiceIntro}
+                      disabled={isPlayingVoice}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <div className="flex-1">
-                    <span className="text-emerald-300 font-medium">Voice intro recorded</span>
-                    <p className="text-xs text-emerald-400/70">Tap to play or remove</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={removeVoiceIntro}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  
+                  {/* Re-record option */}
+                  <button
+                    onClick={startVoiceRecording}
+                    disabled={isPlayingVoice}
+                    className="w-full text-sm text-slate-400 hover:text-white transition-colors py-2"
                   >
-                    <X className="w-4 h-4" />
-                  </Button>
+                    <Mic className="w-4 h-4 inline mr-1" />
+                    Record a new one
+                  </button>
                 </div>
               ) : recordingVoice ? (
                 /* Recording in Progress */
