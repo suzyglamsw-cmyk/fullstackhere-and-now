@@ -36,9 +36,14 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(null);
   const [recordingVoice, setRecordingVoice] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [uploadingVoice, setUploadingVoice] = useState(false);
+  const [micPermissionDenied, setMicPermissionDenied] = useState(false);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const streamRef = useRef(null);
 
   const [formData, setFormData] = useState({
     display_name: "",
@@ -130,46 +135,90 @@ const Profile = () => {
 
   const startVoiceRecording = async () => {
     try {
+      // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      streamRef.current = stream;
+      setMicPermissionDenied(false);
+      
+      // Use mp4 container with AAC codec for better compatibility
+      const mimeType = MediaRecorder.isTypeSupported('audio/mp4') 
+        ? 'audio/mp4' 
+        : MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm';
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        stream.getTracks().forEach(track => track.stop());
+        // Stop all tracks
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        
+        // Clear timer
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+        
+        const recordedTime = recordingTime;
+        setRecordingTime(0);
+        
+        // Check minimum recording time (5 seconds)
+        if (recordedTime < 5) {
+          toast.error("Please record at least 5 seconds");
+          return;
+        }
+        
+        // Create audio blob
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        
+        // Check if blob is valid
+        if (audioBlob.size < 1000) {
+          toast.error("Recording failed. Please try again.");
+          return;
+        }
         
         // Upload voice intro
-        const formDataUpload = new FormData();
-        formDataUpload.append("audio", audioBlob, "voice_intro.webm");
-        
-        try {
-          const response = await axios.post(`${API}/voice-intro/upload`, formDataUpload, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-          setFormData({ ...formData, voice_intro_url: response.data.url });
-          toast.success("Voice intro saved!");
-        } catch (error) {
-          toast.error("Failed to save voice intro");
-        }
+        await uploadVoiceIntro(audioBlob, mimeType);
       };
 
-      mediaRecorder.start();
+      // Start recording
+      mediaRecorder.start(1000); // Collect data every second
       setRecordingVoice(true);
-
-      // Auto-stop after 10 seconds
-      setTimeout(() => {
-        if (mediaRecorderRef.current?.state === "recording") {
-          mediaRecorderRef.current.stop();
-          setRecordingVoice(false);
-        }
-      }, 10000);
+      setRecordingTime(0);
+      
+      // Start timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          const newTime = prev + 1;
+          // Auto-stop at 10 seconds
+          if (newTime >= 10) {
+            stopVoiceRecording();
+          }
+          return newTime;
+        });
+      }, 1000);
+      
     } catch (error) {
-      toast.error("Could not access microphone");
+      console.error("Microphone access error:", error);
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setMicPermissionDenied(true);
+        toast.error("Microphone access denied. Please enable microphone permissions in your browser settings.");
+      } else if (error.name === 'NotFoundError') {
+        toast.error("No microphone found. Please connect a microphone and try again.");
+      } else {
+        toast.error("Could not access microphone. Please check your permissions.");
+      }
     }
   };
 
@@ -178,10 +227,61 @@ const Profile = () => {
       mediaRecorderRef.current.stop();
       setRecordingVoice(false);
     }
+    
+    // Cleanup timer
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
   };
 
-  const removeVoiceIntro = () => {
-    setFormData({ ...formData, voice_intro_url: "" });
+  const uploadVoiceIntro = async (audioBlob, mimeType) => {
+    setUploadingVoice(true);
+    
+    try {
+      // Determine file extension based on mime type
+      let fileExt = '.mp3';
+      if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+        fileExt = '.m4a';
+      } else if (mimeType.includes('wav')) {
+        fileExt = '.wav';
+      } else if (mimeType.includes('webm')) {
+        // Convert webm to a format the backend accepts
+        // For now, we'll send as .mp3 and let the backend handle it
+        fileExt = '.mp3';
+      }
+      
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", audioBlob, `voice_intro${fileExt}`);
+      
+      const response = await axios.post(`${API}/profile/voice-intro`, formDataUpload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      
+      // Update local form state
+      setFormData(prev => ({ ...prev, voice_intro_url: response.data.url }));
+      
+      // Update user context
+      updateUser({ voice_intro_url: response.data.url });
+      
+      toast.success("Voice intro saved!");
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || "Failed to save voice intro";
+      toast.error(errorMsg);
+    } finally {
+      setUploadingVoice(false);
+    }
+  };
+
+  const removeVoiceIntro = async () => {
+    try {
+      await axios.delete(`${API}/profile/voice-intro`);
+      setFormData(prev => ({ ...prev, voice_intro_url: "" }));
+      updateUser({ voice_intro_url: "" });
+      toast.success("Voice intro removed");
+    } catch (error) {
+      toast.error("Failed to remove voice intro");
+    }
   };
 
   const mainPhoto = formData.photos[0] || user?.avatar_url;
@@ -351,39 +451,86 @@ const Profile = () => {
               <Label className="text-slate-300">Voice Intro (5-10 seconds)</Label>
               <p className="text-xs text-slate-500">Record a short voice message. Only plays after mutual curiosity.</p>
               
-              {formData.voice_intro_url ? (
-                <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl">
-                  <Mic className="w-5 h-5 text-indigo-400" />
-                  <span className="text-white flex-1">Voice intro recorded</span>
+              {/* Mic Permission Denied Warning */}
+              {micPermissionDenied && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                  <p className="text-amber-300 text-sm">
+                    Microphone access was denied. Please enable it in your browser settings and refresh the page.
+                  </p>
+                </div>
+              )}
+              
+              {/* Uploading State */}
+              {uploadingVoice ? (
+                <div className="flex items-center gap-3 p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-xl">
+                  <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+                  <span className="text-indigo-300">Uploading voice intro...</span>
+                </div>
+              ) : formData.voice_intro_url ? (
+                /* Voice Intro Recorded */
+                <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <Check className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-emerald-300 font-medium">Voice intro recorded</span>
+                    <p className="text-xs text-emerald-400/70">Tap to play or remove</p>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={removeVoiceIntro}
-                    className="text-red-400 hover:text-red-300"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
+              ) : recordingVoice ? (
+                /* Recording in Progress */
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center relative">
+                      <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-red-300 font-medium">Recording...</span>
+                      <p className="text-xs text-red-400/70">
+                        {recordingTime}s / 10s {recordingTime < 5 && "(min 5s)"}
+                      </p>
+                    </div>
+                    <span className="text-2xl font-mono text-red-400">{recordingTime}s</span>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-1000"
+                      style={{ width: `${(recordingTime / 10) * 100}%` }}
+                    />
+                  </div>
+                  
+                  <Button
+                    onClick={stopVoiceRecording}
+                    disabled={recordingTime < 5}
+                    className={`w-full h-12 rounded-xl ${
+                      recordingTime < 5
+                        ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                        : "bg-red-500 hover:bg-red-600 text-white"
+                    }`}
+                  >
+                    <MicOff className="w-5 h-5 mr-2" />
+                    {recordingTime < 5 ? `Wait ${5 - recordingTime}s more...` : "Stop & Save Recording"}
+                  </Button>
+                </div>
               ) : (
+                /* Start Recording Button */
                 <Button
-                  onClick={recordingVoice ? stopVoiceRecording : startVoiceRecording}
-                  className={`w-full h-12 rounded-xl ${
-                    recordingVoice
-                      ? "bg-red-500 hover:bg-red-600"
-                      : "bg-white/5 hover:bg-white/10 text-white"
-                  }`}
+                  onClick={startVoiceRecording}
+                  disabled={micPermissionDenied}
+                  className="w-full h-12 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10"
                 >
-                  {recordingVoice ? (
-                    <>
-                      <MicOff className="w-5 h-5 mr-2" />
-                      Stop Recording
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="w-5 h-5 mr-2" />
-                      Record Voice Intro
-                    </>
-                  )}
+                  <Mic className="w-5 h-5 mr-2" />
+                  Record Voice Intro
                 </Button>
               )}
             </div>

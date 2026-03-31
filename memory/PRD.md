@@ -235,6 +235,7 @@ Comprehensive list including:
 - ✅ Continuous location tracking with auto venue detection
 - ✅ **Back to Discovery Button** on `/discover/here` and `/discover/not-here` screens (March 2026)
 - ✅ **Separated Profile from Settings** - Top-right avatar navigates to Profile tab, Settings only contains account/privacy/notifications (March 2026)
+- ✅ **Voice Intro Component Fixed** - Full microphone recording with progress UI, 5-10s validation, webm support (March 2026)
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)

@@ -14,8 +14,11 @@ router = APIRouter(prefix="/profile", tags=["Voice Intro"])
 
 # Voice intro configuration
 MAX_VOICE_INTRO_SIZE = 10 * 1024 * 1024  # 10MB max
-ALLOWED_AUDIO_TYPES = ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/x-m4a", "audio/m4a"]
-ALLOWED_AUDIO_EXTENSIONS = [".mp3", ".wav", ".m4a"]
+ALLOWED_AUDIO_TYPES = [
+    "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", 
+    "audio/x-m4a", "audio/m4a", "audio/webm", "audio/ogg"
+]
+ALLOWED_AUDIO_EXTENSIONS = [".mp3", ".wav", ".m4a", ".webm", ".ogg"]
 
 
 async def check_voice_intro_safety(audio_data: bytes, filename: str) -> dict:
@@ -88,7 +91,9 @@ async def upload_voice_intro(
         ext_to_type = {
             ".mp3": "audio/mpeg",
             ".wav": "audio/wav",
-            ".m4a": "audio/mp4"
+            ".m4a": "audio/mp4",
+            ".webm": "audio/webm",
+            ".ogg": "audio/ogg"
         }
         stored_content_type = ext_to_type.get(file_ext, "audio/mpeg")
     
