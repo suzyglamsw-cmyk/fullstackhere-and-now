@@ -31,7 +31,7 @@ const MIN_BIO_LENGTH = 10;
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(null);
@@ -87,10 +87,11 @@ const Profile = () => {
       newPhotos[index] = response.data.url;
       setFormData({ ...formData, photos: newPhotos });
       
+      // Update user context with new photo
+      updateUser({ photos: newPhotos, avatar_url: index === 0 ? response.data.url : user?.avatar_url });
+      
       // Show photo age reminder
       toast.success("Photo uploaded! Try to choose photos that feel like you today.");
-      
-      refreshUser();
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to upload photo"));
     } finally {
@@ -107,7 +108,7 @@ const Profile = () => {
 
     setSaving(true);
     try {
-      await axios.put(`${API}/auth/profile`, {
+      const response = await axios.put(`${API}/auth/profile`, {
         display_name: formData.display_name,
         bio: formData.bio,
         photos: formData.photos,
@@ -116,8 +117,10 @@ const Profile = () => {
         shy_indicator: formData.shy_indicator,
         voice_intro_url: formData.voice_intro_url,
       });
+      
+      // Update user context with saved data
+      updateUser(response.data);
       toast.success("Profile saved!");
-      refreshUser();
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to save profile"));
     } finally {
