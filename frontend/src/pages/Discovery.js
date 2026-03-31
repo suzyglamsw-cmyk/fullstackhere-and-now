@@ -337,6 +337,16 @@ const Discovery = ({ defaultMode = null }) => {
         {/* Header with Tabs */}
         <div className="sticky top-0 z-40 glass border-b border-white/5">
           <div className="max-w-4xl mx-auto px-4 py-4">
+            {/* Back to Discovery Button */}
+            <button
+              data-testid="back-to-discovery"
+              onClick={() => navigate("/discover/select")}
+              className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">Back to Discovery</span>
+            </button>
+
             {/* Mode Toggle Tabs */}
             <div className="flex rounded-xl bg-white/5 p-1 mb-4">
               <button
