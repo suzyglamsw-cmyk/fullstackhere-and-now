@@ -110,7 +110,8 @@ const Discovery = ({ defaultMode = null }) => {
   // Handle mode selection - navigate to proper route
   const handleSelectMode = (selectedMode) => {
     if (selectedMode === "here") {
-      navigate("/discover/here");
+      // Always go to venues page for Here & Now
+      navigate("/venues");
     } else {
       navigate("/discover/not-here");
     }
