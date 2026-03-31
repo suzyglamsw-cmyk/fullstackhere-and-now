@@ -234,6 +234,7 @@ Comprehensive list including:
 - ✅ Modern Action Sheets for Icebreaker and Chat Request responses (March 2026)
 - ✅ Continuous location tracking with auto venue detection
 - ✅ **Back to Discovery Button** on `/discover/here` and `/discover/not-here` screens (March 2026)
+- ✅ **Separated Profile from Settings** - Top-right avatar navigates to Profile tab, Settings only contains account/privacy/notifications (March 2026)
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)

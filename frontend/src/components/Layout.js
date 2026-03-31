@@ -70,7 +70,7 @@ const Layout = ({ children, hideNav = false }) => {
               </div>
               <div
                 className="w-10 h-10 rounded-xl overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
-                onClick={() => navigate("/settings")}
+                onClick={() => navigate("/profile-tab")}
                 data-testid="user-avatar-btn"
               >
                 <img
