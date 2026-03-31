@@ -21,7 +21,7 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      navigate("/venues");
+      navigate("/discovery");
     }
   }, [user, navigate]);
 
@@ -33,7 +33,7 @@ const Login = () => {
       const response = await axios.post(`${API}/auth/login`, formData);
       login(response.data.token, response.data.user);
       toast.success("Welcome back!");
-      navigate("/venues");
+      navigate("/discovery");
     } catch (error) {
       toast.error(getErrorMessage(error, "Invalid credentials"));
     } finally {

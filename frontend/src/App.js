@@ -12,9 +12,12 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ProfileSetup from "./pages/ProfileSetup";
 import Venues from "./pages/Venues";
 import WhosHere from "./pages/WhosHere";
+import Discovery from "./pages/Discovery";
 import Connections from "./pages/Connections";
 import Chat from "./pages/Chat";
 import Settings from "./pages/Settings";
+import SettingsNew from "./pages/SettingsNew";
+import ProfileTab from "./pages/ProfileTab";
 import Notifications from "./pages/Notifications";
 import Premium from "./pages/Premium";
 import Tokens from "./pages/Tokens";
@@ -146,6 +149,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <WhosHere />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/discovery"
+              element={
+                <ProtectedRoute>
+                  <Discovery />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile-tab"
+              element={
+                <ProtectedRoute>
+                  <ProfileTab />
                 </ProtectedRoute>
               }
             />

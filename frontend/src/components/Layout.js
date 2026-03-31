@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { MapPin, Users, Bell, Settings } from "lucide-react";
+import { Compass, Users, Bell, Settings, User } from "lucide-react";
 import { useAuth, API } from "@/App";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -29,13 +29,14 @@ const Layout = ({ children, hideNav = false }) => {
   };
 
   const navItems = [
-    { path: "/venues", icon: MapPin, label: "Venues" },
-    { path: "/connections", icon: Users, label: "Connections" },
+    { path: "/discovery", icon: Compass, label: "Discover" },
+    { path: "/connections", icon: Users, label: "Matches" },
+    { path: "/profile-tab", icon: User, label: "Profile" },
     { path: "/notifications", icon: Bell, label: "Alerts", badge: unreadCount },
     { path: "/settings", icon: Settings, label: "Settings" },
   ];
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname.startsWith(path);
 
   return (
     <div className="min-h-screen bg-slate-950">

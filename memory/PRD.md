@@ -12,18 +12,69 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 - User registration with display name (cannot be changed after creation)
 - Password reset flow
 
-### 2. Venues & Check-ins
-- Browse nearby venues (Google Places API or seeded venues in test mode)
-- Check-in to venues with 2-hour expiry
-- Heartbeat system to maintain check-in state
-- **IMPORTANT:** Check-in persists across app navigation, app switching, and phone locking
+### 2. Discovery Modes (NEW)
 
-### 3. Who's Here
-- **Premium Sorting**: Premium users shown first in the list
-- **Last Active Filter**: Four options - Active now (≤2min), Active recently (≤10min), Active this hour (≤60min), All users
-- **Motion Blur**: Profile photos have directional blur (strength 8) until mutual match
+#### HERE & NOW Mode
+- Shows people physically nearby at the same venue
+- Profiles blurred until mutual curiosity
+- Glances + Icebreakers available
+- **Proximity Echoes**: "Someone nearby noticed you" notifications
+- Presence Notes + Shy Indicator visible while blurred
+- Voice Intro locked until reveal
+- Safety Halo shown after reveal
 
-### 4. Social Interactions - Icebreaker System (replaced "Drinks")
+#### NOT HERE Mode (NEW)
+- Shows people nearby but not at the same place
+- **Radius selector**: 0–10 miles, 10–25 miles
+- Same interaction mechanics as Here & Now
+- Top text: "People who aren't here right now, but quite near."
+
+### 3. New Connection Features
+
+#### Presence Note
+- Optional 40 characters
+- Visible while blurred and after reveal
+
+#### Celebrity Crush
+- Optional text field
+- Format: "Celebrity crush: [Name]"
+- Visible while blurred and after reveal
+
+#### Shy Indicator
+- Toggle: "I may be shy or unlikely to make the first move"
+- Shows "May be shy to start" under blurred profile
+
+#### Voice Intro
+- Optional 5-10 seconds audio
+- Locked while blurred, unlocks after mutual curiosity
+- No autoplay, safety filter + reporting
+
+#### Safety Halo
+- Shown after reveal if: No reports, no blocked users, respectful behavior
+
+### 4. Profile Tab (NEW)
+- Separate bottom nav tab for identity + connection features
+- Photos (1 large + 2 optional smaller)
+- Display Name (locked after registration)
+- Bio (min 10 chars, validated for placeholder text)
+- Connection Comfort: Presence Note, Celebrity Crush, Shy Indicator, Voice Intro
+- Safety Halo display
+
+### 5. Settings (Simplified)
+- Account (Subscription, Password)
+- Notifications (Push)
+- Privacy (Visibility, Blocked Users)
+- App preferences (Test Tools, Help, Terms)
+- Logout
+- Delete Account
+
+### 6. Text Validation (GLOBAL)
+- Bio minimum 10 characters
+- Blocked placeholder patterns: "idk", "ask me", "tbc", "n/a", etc.
+- Offensive word filtering across all free-text fields
+- Warm, encouraging error messages
+
+### 7. Social Interactions - Icebreaker System
 - **Sending:** Users can send predefined icebreaker messages ("Hello", "Fancy a chat?", etc.)
 - **Cost:** 1 token after daily free allowance is used
 - **Allowances:** 1 free for standard users, 5 for premium, reset at 5am local time

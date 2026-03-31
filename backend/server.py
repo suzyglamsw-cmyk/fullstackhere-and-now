@@ -324,6 +324,13 @@ BLOCKED_NAME_PATTERNS = [
     r'\b(sex|xxx|porn|nude|naked|horny|fuck|shit|ass|dick|cock|pussy|bitch|cunt|nigger|faggot)\b',  # Offensive words
 ]
 
+# Placeholder text patterns to block in free-text fields
+BLOCKED_PLACEHOLDER_PATTERNS = [
+    r'^idk$', r'^i don\'?t know$', r'^don\'?t know$', r'^ask me$', r'^fill in later$',
+    r'^tbc$', r'^to be confirmed$', r'^to be continued$', r'^none$', r'^n/?a$',
+    r'^\.+$', r'^-+$', r'^\s*$', r'^just ask$', r'^message me$', r'^later$',
+]
+
 def validate_display_name(name: str) -> tuple[bool, str]:
     """Validate display name for PII and offensive content"""
     import re
@@ -336,6 +343,34 @@ def validate_display_name(name: str) -> tuple[bool, str]:
             return False, "Name contains blocked content. Please use your first name only."
     return True, ""
 
+def validate_free_text(text: str, field_name: str = "text", min_length: int = 0, max_length: int = 500) -> tuple[bool, str]:
+    """Validate free-text fields for placeholder text and offensive content"""
+    import re
+    if not text:
+        if min_length > 0:
+            return False, f"Add a short line so people get a sense of your vibe."
+        return True, ""
+    
+    text_stripped = text.strip()
+    
+    if len(text_stripped) < min_length:
+        return False, f"Add a short line so people get a sense of your vibe."
+    
+    if len(text_stripped) > max_length:
+        return False, f"Please keep it under {max_length} characters."
+    
+    # Check for placeholder patterns
+    for pattern in BLOCKED_PLACEHOLDER_PATTERNS:
+        if re.match(pattern, text_stripped, re.IGNORECASE):
+            return False, "Try adding a short line that feels like you."
+    
+    # Check for offensive content
+    for pattern in BLOCKED_NAME_PATTERNS:
+        if re.search(pattern, text_stripped, re.IGNORECASE):
+            return False, "Please keep it friendly and respectful."
+    
+    return True, ""
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
@@ -344,12 +379,18 @@ class UserProfile(BaseModel):
     display_name: str
     bio: Optional[str] = ""
     avatar_url: Optional[str] = ""
+    photos: Optional[List[str]] = []
     interests: List[str] = []
     age: Optional[int] = None
     gender: Optional[str] = ""
     orientation: Optional[str] = ""
     relationship_status: Optional[str] = ""
     seeking: Optional[str] = ""
+    # New connection comfort fields
+    presence_note: Optional[str] = ""  # 40 chars max
+    celebrity_crush: Optional[str] = ""
+    shy_indicator: Optional[bool] = False
+    voice_intro_url: Optional[str] = ""  # 5-10s audio
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -576,13 +617,42 @@ class WhoIsHereUser(BaseModel):
     avatar_url: str
     bio: str = ""
     interests: List[str] = []
-    checked_in_at: str
+    checked_in_at: Optional[str] = None
     has_glanced_at_me: bool = False
     i_glanced_at: bool = False
     is_connected: bool = False
     is_revealed: bool = False
-    is_premium: bool = False  # For premium sorting
-    last_active_at: Optional[str] = None  # For activity filtering
+    is_premium: bool = False
+    last_active_at: Optional[str] = None
+    # New connection comfort fields (visible while blurred)
+    presence_note: Optional[str] = ""
+    celebrity_crush: Optional[str] = ""
+    shy_indicator: bool = False
+    voice_intro_url: Optional[str] = ""  # Only shown after reveal
+    # Safety Halo (shown after reveal)
+    has_safety_halo: bool = False
+    distance_miles: Optional[float] = None  # For Not Here mode
+
+def calculate_safety_halo(user_data: dict) -> bool:
+    """Calculate if user qualifies for Safety Halo badge"""
+    reports = user_data.get("reports_count", 0)
+    blocks = user_data.get("blocks_received_count", 0)
+    return reports == 0 and blocks == 0
+
+def calculate_distance_miles(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Calculate distance between two coordinates in miles using Haversine formula"""
+    import math
+    R = 3959  # Earth's radius in miles
+    
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lng = math.radians(lng2 - lng1)
+    
+    a = math.sin(delta_lat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    
+    return R * c
 
 # Helper Functions
 def hash_password(password: str) -> str:
@@ -659,6 +729,15 @@ async def register(data: UserCreate):
         "blocked_users": [],
         "last_active_at": now.isoformat(),  # Track user activity
         "age_confirmed": True,  # User confirmed 18+
+        # New connection comfort fields
+        "presence_note": "",
+        "celebrity_crush": "",
+        "shy_indicator": False,
+        "voice_intro_url": "",
+        "reports_count": 0,
+        "blocks_received_count": 0,
+        "lat": None,  # User location for Not Here mode
+        "lng": None,
         "created_at": now.isoformat()
     }
     await db.users.insert_one(user)
@@ -776,12 +855,28 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
     update_data = data.model_dump(exclude_unset=True)
     
     # Prevent display_name from being changed after registration
-    # The original_display_name field is set once during registration and is immutable
     if "display_name" in update_data:
         original_name = current_user.get("original_display_name") or current_user.get("display_name")
         if original_name and update_data["display_name"] != original_name:
-            # Silently revert to original name - don't allow changes
             update_data["display_name"] = original_name
+    
+    # Validate bio (minimum 10 chars, no placeholders)
+    if "bio" in update_data and update_data["bio"]:
+        is_valid, error_msg = validate_free_text(update_data["bio"], "bio", min_length=10, max_length=500)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Validate presence_note (max 40 chars)
+    if "presence_note" in update_data and update_data["presence_note"]:
+        is_valid, error_msg = validate_free_text(update_data["presence_note"], "presence note", max_length=40)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Validate celebrity_crush
+    if "celebrity_crush" in update_data and update_data["celebrity_crush"]:
+        is_valid, error_msg = validate_free_text(update_data["celebrity_crush"], "celebrity crush", max_length=50)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error_msg)
     
     await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
     updated = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "password": 0})
@@ -2862,7 +2957,14 @@ async def get_people_at_venue(
             "is_connected": is_connected,
             "is_revealed": is_revealed,
             "is_premium": user.get("is_premium", False),
-            "last_active_at": user.get("last_active_at")
+            "last_active_at": user.get("last_active_at"),
+            # New fields - visible while blurred
+            "presence_note": user.get("presence_note", ""),
+            "celebrity_crush": user.get("celebrity_crush", ""),
+            "shy_indicator": user.get("shy_indicator", False),
+            # Only shown after reveal
+            "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
+            "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
         })
     
     # Sort: Premium users first, then by checked_in_at (most recent first)
@@ -2879,6 +2981,209 @@ async def get_people_at_venue(
     non_premium.sort(key=lambda x: x.get("checked_in_at", ""), reverse=True)
     
     return premium + non_premium
+
+@api_router.get("/discovery/not-here", response_model=List[WhoIsHereUser])
+async def get_people_not_here(
+    radius: str = "0-10",  # "0-10" or "10-25" miles
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get people nearby but not at the same venue (Not Here mode).
+    Radius options: 0-10 miles, 10-25 miles
+    """
+    # Check if current user has a profile photo
+    current_user_photos = current_user.get("photos", []) or []
+    current_user_avatar = current_user.get("avatar_url", "")
+    if not current_user_photos and not current_user_avatar:
+        raise HTTPException(status_code=403, detail="Please upload a profile photo to see who's nearby")
+    
+    # Get current user's location
+    user_lat = current_user.get("lat")
+    user_lng = current_user.get("lng")
+    
+    # If user has no location, use their current venue's location
+    if not user_lat or not user_lng:
+        current_checkin = await db.checkins.find_one({
+            "user_id": current_user["id"],
+            "is_active": True
+        }, {"_id": 0})
+        
+        if current_checkin:
+            venue = await db.venues.find_one({"id": current_checkin["venue_id"]}, {"_id": 0})
+            if venue:
+                user_lat = venue.get("lat", 37.7749)  # Default to SF
+                user_lng = venue.get("lng", -122.4194)
+        
+        if not user_lat or not user_lng:
+            user_lat = 37.7749
+            user_lng = -122.4194
+    
+    # Parse radius
+    if radius == "10-25":
+        min_miles = 10
+        max_miles = 25
+    else:  # Default to 0-10
+        min_miles = 0
+        max_miles = 10
+    
+    now = datetime.now(timezone.utc)
+    
+    # Update current user's last_active_at
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"last_active_at": now.isoformat()}}
+    )
+    
+    # Get current user's venue to exclude people there
+    current_venue_id = None
+    current_checkin = await db.checkins.find_one({
+        "user_id": current_user["id"],
+        "is_active": True
+    }, {"_id": 0})
+    if current_checkin:
+        current_venue_id = current_checkin.get("venue_id")
+    
+    # Find visible users with location data
+    users = await db.users.find({
+        "is_visible": True,
+        "id": {"$ne": current_user["id"]},
+        "lat": {"$ne": None},
+        "lng": {"$ne": None}
+    }, {"_id": 0, "password": 0}).to_list(500)
+    
+    people = []
+    for user in users:
+        # Skip users without photos
+        user_photos = user.get("photos", []) or []
+        user_avatar = user.get("avatar_url", "")
+        if not user_photos and not user_avatar:
+            continue
+        
+        # Check if user is at the same venue (exclude them)
+        user_checkin = await db.checkins.find_one({
+            "user_id": user["id"],
+            "is_active": True
+        }, {"_id": 0})
+        if user_checkin and user_checkin.get("venue_id") == current_venue_id:
+            continue  # They're at the same venue, skip
+        
+        # Calculate distance
+        distance = calculate_distance_miles(
+            user_lat, user_lng,
+            user.get("lat", 0), user.get("lng", 0)
+        )
+        
+        # Filter by radius
+        if distance < min_miles or distance > max_miles:
+            continue
+        
+        # Check glance status
+        has_glanced_at_me = await db.glances.find_one({
+            "from_user_id": user["id"],
+            "to_user_id": current_user["id"]
+        }) is not None
+        
+        i_glanced_at = await db.glances.find_one({
+            "from_user_id": current_user["id"],
+            "to_user_id": user["id"]
+        }) is not None
+        
+        # Check connection status
+        is_connected = await db.connections.find_one({
+            "$or": [
+                {"user1_id": current_user["id"], "user2_id": user["id"]},
+                {"user1_id": user["id"], "user2_id": current_user["id"]}
+            ]
+        }) is not None
+        
+        # Revealed if mutual glance or connected
+        is_revealed = (has_glanced_at_me and i_glanced_at) or is_connected
+        
+        first_name = get_first_name(user.get("display_name", "Someone"))
+        
+        people.append({
+            "id": user["id"],
+            "display_name": user["display_name"] if is_revealed else first_name,
+            "first_name": first_name,
+            "age": user.get("age"),
+            "avatar_url": user.get("avatar_url", ""),
+            "bio": user.get("bio", "") if is_revealed else "",
+            "interests": user.get("interests", []) if is_revealed else [],
+            "checked_in_at": None,  # Not at a venue
+            "has_glanced_at_me": has_glanced_at_me,
+            "i_glanced_at": i_glanced_at,
+            "is_connected": is_connected,
+            "is_revealed": is_revealed,
+            "is_premium": user.get("is_premium", False),
+            "last_active_at": user.get("last_active_at"),
+            "presence_note": user.get("presence_note", ""),
+            "celebrity_crush": user.get("celebrity_crush", ""),
+            "shy_indicator": user.get("shy_indicator", False),
+            "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
+            "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
+            "distance_miles": round(distance, 1),
+        })
+    
+    # Sort: Premium first, then by distance
+    premium = [p for p in people if p.get("is_premium")]
+    non_premium = [p for p in people if not p.get("is_premium")]
+    
+    premium.sort(key=lambda x: x.get("distance_miles", 999))
+    non_premium.sort(key=lambda x: x.get("distance_miles", 999))
+    
+    return premium + non_premium
+
+@api_router.get("/discovery/proximity-echoes")
+async def get_proximity_echoes(current_user: dict = Depends(get_current_user)):
+    """
+    Get proximity echo notifications - people who glanced at you but you haven't glanced back.
+    Only for Here & Now mode (same venue).
+    """
+    # Get current user's active checkin
+    current_checkin = await db.checkins.find_one({
+        "user_id": current_user["id"],
+        "is_active": True
+    }, {"_id": 0})
+    
+    if not current_checkin:
+        return {"echoes": [], "count": 0}
+    
+    # Find glances where:
+    # 1. Someone at the same venue glanced at current user
+    # 2. Current user hasn't glanced back
+    glances_at_me = await db.glances.find({
+        "to_user_id": current_user["id"],
+        "venue_id": current_checkin["venue_id"]
+    }, {"_id": 0}).to_list(100)
+    
+    echoes = []
+    for glance in glances_at_me:
+        # Check if we glanced back
+        glanced_back = await db.glances.find_one({
+            "from_user_id": current_user["id"],
+            "to_user_id": glance["from_user_id"]
+        })
+        
+        if not glanced_back:
+            echoes.append({
+                "message": "Someone nearby noticed you.",
+                "created_at": glance.get("created_at")
+            })
+    
+    return {"echoes": echoes, "count": len(echoes)}
+
+@api_router.put("/auth/profile/location")
+async def update_user_location(
+    lat: float,
+    lng: float,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update user's current location for Not Here discovery"""
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"lat": lat, "lng": lng, "last_active_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Location updated"}
 
 # Glance Routes
 @api_router.post("/glance")
