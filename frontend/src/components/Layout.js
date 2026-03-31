@@ -29,7 +29,7 @@ const Layout = ({ children, hideNav = false }) => {
   };
 
   const navItems = [
-    { path: "/discovery", icon: Compass, label: "Discover" },
+    { path: "/discover/select", icon: Compass, label: "Discover" },
     { path: "/connections", icon: Users, label: "Matches" },
     { path: "/profile-tab", icon: User, label: "Profile" },
     { path: "/notifications", icon: Bell, label: "Alerts", badge: unreadCount },
@@ -38,9 +38,9 @@ const Layout = ({ children, hideNav = false }) => {
 
   const isActive = (path) => {
     const currentPath = location.pathname;
-    // For discovery, check if we're on any discovery route
-    if (path === "/discovery") {
-      return currentPath === "/discovery" || currentPath.startsWith("/discovery");
+    // For discover, check if we're on any discover/discovery route
+    if (path === "/discover/select") {
+      return currentPath.startsWith("/discover") || currentPath.startsWith("/discovery");
     }
     // Exact match or match with sub-routes (path followed by /)
     return currentPath === path || currentPath.startsWith(path + '/');

@@ -12,29 +12,28 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 - User registration with display name (cannot be changed after creation)
 - Password reset flow
 
-### 2. Discovery Modes (WORKING)
+### 2. Discovery Modes (COMPLETE)
 
-#### Mode Selection Screen
-- Shows on first load when no mode is selected in URL
-- Two beautiful cards: "Here & Now" and "Not Here"
-- Shows current venue status if checked in ("You're at [venue]" with Active badge)
-- User must manually choose a mode - no auto-redirect
+#### Routes
+- `/discover/select` - Mode selector (main hub)
+- `/discover/here` - Here & Now mode
+- `/discover/not-here` - Not Here mode
+- `/venues` - Venue list (no tabs, has "Back to Discovery" button)
 
-#### HERE & NOW Mode
-- Shows people physically nearby at the same venue
-- Profiles blurred until mutual curiosity
-- Glances + Icebreakers available
-- **Proximity Echoes**: "Someone nearby noticed you" notifications
-- Presence Notes + Shy Indicator visible while blurred
-- Voice Intro locked until reveal
-- Safety Halo shown after reveal
-- **If no venue**: Clicking "Here & Now" navigates to /venues
-- **If has venue**: Goes directly to Here & Now mode
-- **Safety redirect**: Only when already IN Here & Now mode with no venue
-- "Change venue" button always available
-- "Live tracking" indicator shown when checked in + location granted
+#### Mode Selector (`/discover/select`)
+- Shows both "Here & Now" and "Not Here" cards
+- Displays current venue status if checked in
+- No auto-redirects - user must choose
+- Discover icon always returns here
 
-#### NOT HERE Mode
+#### HERE & NOW Mode (`/discover/here`)
+- Mode tabs at top for switching
+- Current venue card (when checked in)
+- "Other venues nearby" horizontal scroll list
+- People grid with Glance/Icebreaker actions
+- Live tracking badge
+
+#### NOT HERE Mode (`/discover/not-here`)
 - Shows people nearby but not at the same place
 - **Radius selector**: 0–10 miles, 10–25 miles
 - Same interaction mechanics as Here & Now

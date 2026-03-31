@@ -18,7 +18,7 @@ const Landing = () => {
   }, []);
 
   if (user) {
-    navigate("/discovery");
+    navigate("/discover/select");
   }
 
   // Splash/Intro Screen

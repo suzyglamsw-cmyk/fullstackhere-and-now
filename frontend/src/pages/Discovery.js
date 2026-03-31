@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
@@ -19,11 +19,11 @@ import {
   Shield,
   Mic,
   Heart,
-  X,
   Radio,
   Navigation,
   Building2,
   ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Dialog,
@@ -44,14 +44,20 @@ const RADIUS_OPTIONS = [
   { value: "10-25", label: "10–25 miles" },
 ];
 
-const Discovery = () => {
+const Discovery = ({ defaultMode = null }) => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const { user } = useAuth();
   
-  // Mode: null (selection screen), "here", or "not-here"
-  const urlMode = searchParams.get("mode");
-  const [mode, setMode] = useState(urlMode || null);
+  // Determine mode from route or prop
+  const getInitialMode = () => {
+    if (location.pathname === "/discover/here") return "here";
+    if (location.pathname === "/discover/not-here") return "not-here";
+    if (defaultMode) return defaultMode;
+    return null; // Show mode selector
+  };
+  
+  const [mode, setMode] = useState(getInitialMode());
   const [radius, setRadius] = useState("0-10");
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,6 +73,12 @@ const Discovery = () => {
   const [showIcebreakerModal, setShowIcebreakerModal] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [sendingIcebreaker, setSendingIcebreaker] = useState(false);
+
+  // Update mode when route changes
+  useEffect(() => {
+    const newMode = getInitialMode();
+    setMode(newMode);
+  }, [location.pathname]);
 
   // Check location permission
   useEffect(() => {
@@ -95,27 +107,27 @@ const Discovery = () => {
     }
   }, [mode, radius, venue]);
 
-  // Update URL when mode changes
-  useEffect(() => {
-    if (mode) {
-      setSearchParams({ mode });
-    } else {
-      setSearchParams({});
-    }
-  }, [mode, setSearchParams]);
-
-  // Handle mode selection
+  // Handle mode selection - navigate to proper route
   const handleSelectMode = (selectedMode) => {
     if (selectedMode === "here") {
-      setMode("here");
+      navigate("/discover/here");
     } else {
-      setMode("not-here");
+      navigate("/discover/not-here");
     }
   };
 
-  // Go back to mode selector
-  const goToModeSelector = () => {
-    setMode(null);
+  // Handle tab click
+  const handleTabClick = (tabMode) => {
+    if (tabMode === "here") {
+      // If no venue, go to venues page
+      if (!venue && !venueLoading) {
+        navigate("/venues");
+      } else {
+        navigate("/discover/here");
+      }
+    } else {
+      navigate("/discover/not-here");
+    }
   };
 
   const fetchCurrentVenue = async () => {
@@ -152,7 +164,7 @@ const Discovery = () => {
         const filtered = venue 
           ? response.data.filter(v => v.id !== venue.venue_id)
           : response.data;
-        setNearbyVenues(filtered.slice(0, 5)); // Show top 5 nearby venues
+        setNearbyVenues(filtered.slice(0, 6)); // Show top 6 nearby venues
       }
     } catch (error) {
       console.error("Failed to fetch venues:", error);
@@ -234,13 +246,14 @@ const Discovery = () => {
       toast.success("Checked in!");
       fetchCurrentVenue();
       fetchPeople();
+      fetchNearbyVenues();
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
   };
 
   // ============================================================================
-  // RENDER: Mode Selection Screen
+  // RENDER: Mode Selection Screen (/discover/select)
   // ============================================================================
   if (mode === null) {
     return (
@@ -327,7 +340,7 @@ const Discovery = () => {
             <div className="flex rounded-xl bg-white/5 p-1 mb-4">
               <button
                 data-testid="tab-here"
-                onClick={() => setMode("here")}
+                onClick={() => handleTabClick("here")}
                 className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                   mode === "here"
                     ? "bg-indigo-500 text-white"
@@ -338,7 +351,7 @@ const Discovery = () => {
               </button>
               <button
                 data-testid="tab-not-here"
-                onClick={() => setMode("not-here")}
+                onClick={() => handleTabClick("not-here")}
                 className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                   mode === "not-here"
                     ? "bg-indigo-500 text-white"
@@ -404,10 +417,16 @@ const Discovery = () => {
                   </div>
                 )}
 
-                {/* Nearby Venues Section */}
-                {nearbyVenues.length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium text-slate-400 mb-2">Other venues nearby</h3>
+                {/* Nearby Venues Section - Always Show */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-slate-400 mb-2">
+                    {venue ? "Other venues nearby" : "Venues nearby"}
+                  </h3>
+                  {venuesLoading ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+                    </div>
+                  ) : nearbyVenues.length > 0 ? (
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                       {nearbyVenues.map((v) => (
                         <button
@@ -431,8 +450,20 @@ const Discovery = () => {
                         <span className="text-indigo-400 text-sm whitespace-nowrap">See all →</span>
                       </button>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-slate-500 text-sm">No venues found nearby</p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => navigate("/venues")}
+                        className="mt-2 text-indigo-400"
+                      >
+                        Search venues
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div>
@@ -486,27 +517,13 @@ const Discovery = () => {
             <div className="text-center py-20">
               <Users className="w-16 h-16 text-slate-600 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-white mb-2">
-                {mode === "here" 
-                  ? (venue ? "No one's around" : "Find a venue") 
-                  : "No one nearby"}
+                {mode === "here" ? "No one's around" : "No one nearby"}
               </h2>
               <p className="text-slate-400 mb-4">
                 {mode === "here"
-                  ? (venue 
-                      ? "No one's around at the moment. Try again soon or switch to Not Here."
-                      : "Check into a venue to see who's around.")
+                  ? "No one's around at the moment. Try again soon or switch to Not Here."
                   : "No one is near enough right now. Try widening your radius."}
               </p>
-              {mode === "here" && !venue && (
-                <Button
-                  data-testid="find-venue-btn"
-                  onClick={() => navigate("/venues")}
-                  className="rounded-xl bg-indigo-500 hover:bg-indigo-600"
-                >
-                  <Navigation className="w-4 h-4 mr-2" />
-                  Find a venue to check in
-                </Button>
-              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

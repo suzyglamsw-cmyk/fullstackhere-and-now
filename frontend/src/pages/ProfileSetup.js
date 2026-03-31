@@ -79,7 +79,7 @@ const ProfileSetup = () => {
       const response = await axios.put(`${API}/auth/profile`, formData);
       updateUser(response.data);
       toast.success("Profile updated!");
-      navigate("/discovery");
+      navigate("/discover/select");
     } catch (error) {
       toast.error("Failed to update profile");
     } finally {

@@ -145,6 +145,14 @@ function App() {
               }
             />
             <Route
+              path="/venues/search"
+              element={
+                <ProtectedRoute>
+                  <Venues searchMode={true} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/venue/:venueId"
               element={
                 <ProtectedRoute>
@@ -157,6 +165,30 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Discovery />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/discover/select"
+              element={
+                <ProtectedRoute>
+                  <Discovery />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/discover/here"
+              element={
+                <ProtectedRoute>
+                  <Discovery defaultMode="here" />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/discover/not-here"
+              element={
+                <ProtectedRoute>
+                  <Discovery defaultMode="not-here" />
                 </ProtectedRoute>
               }
             />

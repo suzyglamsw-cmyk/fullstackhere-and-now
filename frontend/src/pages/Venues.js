@@ -5,7 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { MapPin, Users, LogOut, Loader2, Navigation, MapPinOff, Star, Clock, Radio } from "lucide-react";
+import { MapPin, Users, LogOut, Loader2, Navigation, MapPinOff, Star, Clock, Radio, ArrowLeft } from "lucide-react";
 import LiveClock from "../components/LiveClock";
 import useLocationTracker from "../hooks/useLocationTracker";
 
@@ -316,11 +316,21 @@ const Venues = () => {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 py-6 pb-32" data-testid="venues-page">
+        {/* Back to Discovery Button */}
+        <button
+          data-testid="back-to-discovery"
+          onClick={() => navigate("/discover/select")}
+          className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm">Back to Discovery</span>
+        </button>
+
         {/* Header with Clock */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Discover</h1>
-            <p className="text-slate-400">Find your vibe and see who's around</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Find a Venue</h1>
+            <p className="text-slate-400">Check into a place to see who's around</p>
             {/* Location Tracking Status */}
             {isTracking && (
               <div className="flex items-center gap-2 mt-2">
