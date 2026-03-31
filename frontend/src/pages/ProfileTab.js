@@ -141,6 +141,37 @@ const Profile = () => {
 
   const startVoiceRecording = async () => {
     try {
+      // === CLEANUP PREVIOUS RECORDING STATE ===
+      // Stop any playing audio
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        setIsPlayingVoice(false);
+      }
+      
+      // Stop any existing recording
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      
+      // Clear any existing timer
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      
+      // Stop any existing stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      // Reset all recording state
+      audioChunksRef.current = [];
+      recordingTimeRef.current = 0;
+      setRecordingTime(0);
+      setRecordingVoice(false);
+      
+      // === START NEW RECORDING ===
       // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -153,13 +184,17 @@ const Profile = () => {
           ? 'audio/webm;codecs=opus'
           : 'audio/webm';
       
+      // Create fresh MediaRecorder instance
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
+      
+      // Fresh audio chunks array for this recording
+      const currentAudioChunks = [];
+      audioChunksRef.current = currentAudioChunks;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+          currentAudioChunks.push(event.data);
         }
       };
 
@@ -189,8 +224,8 @@ const Profile = () => {
           return;
         }
         
-        // Create audio blob
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        // Create audio blob from THIS recording's chunks
+        const audioBlob = new Blob(currentAudioChunks, { type: mimeType });
         
         // Check if blob is valid
         if (audioBlob.size < 1000) {
@@ -202,7 +237,7 @@ const Profile = () => {
         await uploadVoiceIntro(audioBlob, mimeType, recordedTime);
       };
 
-      // Reset time tracking
+      // Ensure time is reset before starting
       recordingTimeRef.current = 0;
       setRecordingTime(0);
       
@@ -210,7 +245,7 @@ const Profile = () => {
       mediaRecorder.start(1000); // Collect data every second
       setRecordingVoice(true);
       
-      // Start timer - update both ref and state
+      // Start fresh timer
       recordingTimerRef.current = setInterval(() => {
         recordingTimeRef.current += 1;
         const currentTime = recordingTimeRef.current;
