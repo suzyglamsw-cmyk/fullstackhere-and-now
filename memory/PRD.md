@@ -44,10 +44,14 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 - Toggle: "I may be shy or unlikely to make the first move"
 - Shows "May be shy to start" under blurred profile
 
-#### Voice Intro
+#### Voice Intro (IMPLEMENTED)
 - Optional 5-10 seconds audio
 - Locked while blurred, unlocks after mutual curiosity
 - No autoplay, safety filter + reporting
+- **Endpoint**: `POST /api/profile/voice-intro` 
+- Accepts: MP3, WAV, M4A (max 10MB)
+- Mock safety filter rejects flagged content with: "Your voice intro might contain something we can't allow. Try recording a new one."
+- Also includes GET and DELETE endpoints
 
 #### Safety Halo
 - Shown after reveal if: No reports, no blocked users, respectful behavior
@@ -188,9 +192,14 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 ## Backlog / Future Tasks
 
 ### P1 - High Priority
+- Photo metadata age detection (> 2 years warning: "This photo looks a little older. Want to add a more recent one?")
+- Global placeholder/offensive-word filtering for ALL free-text fields (Bio, Presence Note, Celebrity Crush, Icebreakers)
 - Production API keys (Google Places, Google Play Billing)
 
 ### P2 - Medium Priority
+- Backend monolith refactoring (`server.py` → modular APIRouter routes)
+- Layout navigation highlighting bug fix (`.startsWith()` logic)
+- Default routing on login fix (`/venues` vs `/discovery`)
 - Cloud storage for photos (S3/GCS)
 
 ### P3 - Lower Priority
@@ -209,4 +218,4 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 - REACT_APP_BACKEND_URL
 
 ---
-*Last Updated: March 23, 2026*
+*Last Updated: December 2025*
