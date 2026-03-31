@@ -232,7 +232,6 @@ Comprehensive list including:
 
 ### P2 - Medium Priority
 - Backend monolith refactoring (`server.py` → modular APIRouter routes)
-- Layout navigation highlighting bug fix (`.startsWith()` logic)
 - Default routing on login fix (`/venues` vs `/discovery`)
 - Cloud storage for photos (S3/GCS)
 

@@ -36,7 +36,11 @@ const Layout = ({ children, hideNav = false }) => {
     { path: "/settings", icon: Settings, label: "Settings" },
   ];
 
-  const isActive = (path) => location.pathname.startsWith(path);
+  const isActive = (path) => {
+    const currentPath = location.pathname;
+    // Exact match or match with sub-routes (path followed by /)
+    return currentPath === path || currentPath.startsWith(path + '/');
+  };
 
   return (
     <div className="min-h-screen bg-slate-950">
