@@ -44,6 +44,7 @@ const Profile = () => {
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const streamRef = useRef(null);
+  const recordingTimeRef = useRef(0); // Track time in ref for accurate access in callbacks
 
   const [formData, setFormData] = useState({
     display_name: "",
@@ -170,8 +171,12 @@ const Profile = () => {
           recordingTimerRef.current = null;
         }
         
-        const recordedTime = recordingTime;
+        // Get the actual recorded time from ref (not stale state)
+        const recordedTime = recordingTimeRef.current;
+        
+        // Reset states
         setRecordingTime(0);
+        recordingTimeRef.current = 0;
         
         // Check minimum recording time (5 seconds)
         if (recordedTime < 5) {
@@ -188,25 +193,31 @@ const Profile = () => {
           return;
         }
         
-        // Upload voice intro
-        await uploadVoiceIntro(audioBlob, mimeType);
+        // Upload voice intro with duration metadata
+        await uploadVoiceIntro(audioBlob, mimeType, recordedTime);
       };
 
+      // Reset time tracking
+      recordingTimeRef.current = 0;
+      setRecordingTime(0);
+      
       // Start recording
       mediaRecorder.start(1000); // Collect data every second
       setRecordingVoice(true);
-      setRecordingTime(0);
       
-      // Start timer
+      // Start timer - update both ref and state
       recordingTimerRef.current = setInterval(() => {
-        setRecordingTime(prev => {
-          const newTime = prev + 1;
-          // Auto-stop at 10 seconds
-          if (newTime >= 10) {
-            stopVoiceRecording();
+        recordingTimeRef.current += 1;
+        const currentTime = recordingTimeRef.current;
+        setRecordingTime(currentTime);
+        
+        // Auto-stop at 10 seconds
+        if (currentTime >= 10) {
+          if (mediaRecorderRef.current?.state === "recording") {
+            mediaRecorderRef.current.stop();
+            setRecordingVoice(false);
           }
-          return newTime;
-        });
+        }
       }, 1000);
       
     } catch (error) {
@@ -235,24 +246,27 @@ const Profile = () => {
     }
   };
 
-  const uploadVoiceIntro = async (audioBlob, mimeType) => {
+  const uploadVoiceIntro = async (audioBlob, mimeType, durationSeconds) => {
     setUploadingVoice(true);
     
     try {
       // Determine file extension based on mime type
-      let fileExt = '.mp3';
+      let fileExt = '.webm'; // Use actual format
       if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
         fileExt = '.m4a';
       } else if (mimeType.includes('wav')) {
         fileExt = '.wav';
       } else if (mimeType.includes('webm')) {
-        // Convert webm to a format the backend accepts
-        // For now, we'll send as .mp3 and let the backend handle it
-        fileExt = '.mp3';
+        fileExt = '.webm';
+      } else if (mimeType.includes('ogg')) {
+        fileExt = '.ogg';
       }
       
       const formDataUpload = new FormData();
       formDataUpload.append("file", audioBlob, `voice_intro${fileExt}`);
+      
+      // Log for debugging
+      console.log(`Uploading voice intro: ${durationSeconds}s, ${audioBlob.size} bytes, ${mimeType}`);
       
       const response = await axios.post(`${API}/profile/voice-intro`, formDataUpload, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -264,7 +278,7 @@ const Profile = () => {
       // Update user context
       updateUser({ voice_intro_url: response.data.url });
       
-      toast.success("Voice intro saved!");
+      toast.success(`Voice intro saved! (${durationSeconds}s)`);
     } catch (error) {
       const errorMsg = error.response?.data?.detail || "Failed to save voice intro";
       toast.error(errorMsg);
