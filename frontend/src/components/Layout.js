@@ -38,6 +38,10 @@ const Layout = ({ children, hideNav = false }) => {
 
   const isActive = (path) => {
     const currentPath = location.pathname;
+    // For discovery, check if we're on any discovery route
+    if (path === "/discovery") {
+      return currentPath === "/discovery" || currentPath.startsWith("/discovery");
+    }
     // Exact match or match with sub-routes (path followed by /)
     return currentPath === path || currentPath.startsWith(path + '/');
   };

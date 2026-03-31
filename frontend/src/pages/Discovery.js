@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth, API } from "@/App";
@@ -20,9 +20,10 @@ import {
   Mic,
   Heart,
   X,
-  ChevronDown,
   Radio,
   Navigation,
+  Building2,
+  ArrowRight,
 } from "lucide-react";
 import {
   Dialog,
@@ -48,8 +49,7 @@ const Discovery = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   
-  // Mode: null (selection), "here", or "not-here"
-  // Start with null if no mode in URL, otherwise use URL mode
+  // Mode: null (selection screen), "here", or "not-here"
   const urlMode = searchParams.get("mode");
   const [mode, setMode] = useState(urlMode || null);
   const [radius, setRadius] = useState("0-10");
@@ -57,6 +57,8 @@ const Discovery = () => {
   const [loading, setLoading] = useState(false);
   const [venue, setVenue] = useState(null);
   const [venueLoading, setVenueLoading] = useState(true);
+  const [nearbyVenues, setNearbyVenues] = useState([]);
+  const [venuesLoading, setVenuesLoading] = useState(false);
   const [proximityEchoes, setProximityEchoes] = useState([]);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   
@@ -77,24 +79,17 @@ const Discovery = () => {
     }
   }, []);
 
-  // Fetch venue status on mount (for mode selection logic)
+  // Fetch current venue on mount
   useEffect(() => {
     fetchCurrentVenue();
   }, []);
 
-  // Safety redirect: ONLY when already in "here" mode with no venue
-  // This prevents dead-end states but doesn't affect mode selection
-  useEffect(() => {
-    if (mode === "here" && !venueLoading && !venue) {
-      navigate("/venues");
-    }
-  }, [mode, venue, venueLoading, navigate]);
-
   // Fetch data when mode changes
   useEffect(() => {
-    if (mode === "here" && venue) {
+    if (mode === "here") {
       fetchProximityEchoes();
       fetchPeople();
+      fetchNearbyVenues();
     } else if (mode === "not-here") {
       fetchPeople();
     }
@@ -104,278 +99,153 @@ const Discovery = () => {
   useEffect(() => {
     if (mode) {
       setSearchParams({ mode });
+    } else {
+      setSearchParams({});
     }
-  }, [mode]);
+  }, [mode, setSearchParams]);
 
   // Handle mode selection
   const handleSelectMode = (selectedMode) => {
     if (selectedMode === "here") {
-      // Check if user has a venue
-      if (!venue && !venueLoading) {
-        // No venue - open venue picker
-        navigate("/venues");
-      } else {
-        // Has venue - go to Here & Now
-        setMode("here");
-      }
+      setMode("here");
     } else {
-      // Not Here - go directly
       setMode("not-here");
     }
+  };
+
+  // Go back to mode selector
+  const goToModeSelector = () => {
+    setMode(null);
   };
 
   const fetchCurrentVenue = async () => {
     setVenueLoading(true);
     try {
       const response = await axios.get(`${API}/checkin/current`);
-      // API returns { checked_in: boolean, checkin: {...}, venue: {...} }
       if (response.data && response.data.checked_in && response.data.venue) {
-        // Transform to expected format
         setVenue({
           venue_id: response.data.checkin?.venue_id || response.data.venue?.id,
           venue_name: response.data.venue?.name,
           venue_type: response.data.venue?.type,
           checked_in_at: response.data.checkin?.checked_in_at,
+          checked_in_count: response.data.venue?.checked_in_count || 0,
           ...response.data.checkin
         });
       } else if (response.data && response.data.venue_id) {
-        // Legacy format support
         setVenue(response.data);
       } else {
         setVenue(null);
       }
     } catch (error) {
-      // Not checked in anywhere
       setVenue(null);
     } finally {
       setVenueLoading(false);
     }
   };
 
+  const fetchNearbyVenues = async () => {
+    setVenuesLoading(true);
+    try {
+      const response = await axios.get(`${API}/venues`);
+      if (response.data && Array.isArray(response.data)) {
+        // Filter out current venue if checked in
+        const filtered = venue 
+          ? response.data.filter(v => v.id !== venue.venue_id)
+          : response.data;
+        setNearbyVenues(filtered.slice(0, 5)); // Show top 5 nearby venues
+      }
+    } catch (error) {
+      console.error("Failed to fetch venues:", error);
+    } finally {
+      setVenuesLoading(false);
+    }
+  };
+
+  const fetchProximityEchoes = async () => {
+    try {
+      const response = await axios.get(`${API}/connections/proximity-echoes`);
+      setProximityEchoes(response.data || []);
+    } catch (error) {
+      setProximityEchoes([]);
+    }
+  };
+
   const fetchPeople = async () => {
     setLoading(true);
     try {
-      if (mode === "here" && venue?.venue_id) {
-        const response = await axios.get(`${API}/venues/${venue.venue_id}/people`);
-        setPeople(response.data);
-      } else if (mode === "not-here") {
-        const response = await axios.get(`${API}/discovery/not-here?radius=${radius}`);
-        setPeople(response.data);
-      } else if (mode === "here") {
-        // Try to get current venue first
-        try {
-          const checkinRes = await axios.get(`${API}/checkin/current`);
-          if (checkinRes.data?.venue_id) {
-            setVenue(checkinRes.data);
-            const response = await axios.get(`${API}/venues/${checkinRes.data.venue_id}/people`);
-            setPeople(response.data);
-          } else {
-            setPeople([]);
-          }
-        } catch {
-          setPeople([]);
-        }
-      }
+      let endpoint = mode === "here" 
+        ? `${API}/discovery/here-and-now`
+        : `${API}/discovery/not-here?radius=${radius}`;
+      
+      const response = await axios.get(endpoint);
+      setPeople(response.data || []);
     } catch (error) {
-      console.error("Failed to load people:", error);
+      if (error.response?.status !== 403) {
+        console.error("Failed to fetch people:", error);
+      }
       setPeople([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchProximityEchoes = async () => {
+  const handleGlance = async (userId) => {
+    setGlancing(userId);
     try {
-      const response = await axios.get(`${API}/discovery/proximity-echoes`);
-      setProximityEchoes(response.data.echoes || []);
-    } catch (error) {
-      console.error("Failed to fetch proximity echoes:", error);
-    }
-  };
-
-  const handleGlance = async (personId) => {
-    setGlancing(personId);
-    try {
-      await axios.post(`${API}/glance`, {
-        to_user_id: personId,
-        venue_id: venue?.venue_id || "not-here",
-      });
+      await axios.post(`${API}/glances`, { to_user_id: userId });
       toast.success("Glance sent!");
       fetchPeople();
     } catch (error) {
-      if (error.response?.data?.detail === "no_glances_remaining") {
-        toast.error("No glances remaining. Get more tokens!");
-      } else {
-        toast.error(getErrorMessage(error, "Failed to send glance"));
-      }
+      const msg = getErrorMessage(error);
+      toast.error(msg);
     } finally {
       setGlancing(null);
     }
   };
 
-  const handleSendIcebreaker = async (messageType) => {
+  const handleOpenIcebreaker = (person) => {
+    setSelectedPerson(person);
+    setShowIcebreakerModal(true);
+  };
+
+  const handleSendIcebreaker = async (messageIndex) => {
     if (!selectedPerson) return;
     setSendingIcebreaker(true);
     try {
-      await axios.post(`${API}/icebreaker`, {
+      await axios.post(`${API}/icebreakers/send`, {
         to_user_id: selectedPerson.id,
-        venue_id: venue?.venue_id || "not-here",
-        message_type: messageType,
+        message_index: messageIndex
       });
       toast.success("Icebreaker sent!");
       setShowIcebreakerModal(false);
       setSelectedPerson(null);
       fetchPeople();
     } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to send icebreaker"));
+      const msg = getErrorMessage(error);
+      toast.error(msg);
     } finally {
       setSendingIcebreaker(false);
     }
   };
 
-  const renderPersonCard = (person) => (
-    <div
-      key={person.id}
-      data-testid={`person-card-${person.id}`}
-      className={`rounded-2xl p-4 border transition-all ${
-        person.is_revealed
-          ? "bg-gradient-to-br from-indigo-500/10 to-pink-500/10 border-indigo-500/30"
-          : person.has_glanced_at_me
-          ? "bg-pink-500/10 border-pink-500/30"
-          : "bg-white/5 border-white/5"
-      } ${person.is_premium ? "ring-1 ring-amber-500/30" : ""}`}
-    >
-      {/* Avatar */}
-      <div className="relative mb-3">
-        <div
-          className={`aspect-square rounded-2xl overflow-hidden cursor-pointer ${
-            person.is_revealed ? "ring-2 ring-emerald-500/50" : ""
-          }`}
-          onClick={() => navigate(`/profile/${person.id}`)}
-        >
-          <BlurredImage
-            src={person.avatar_url}
-            alt={person.display_name}
-            isRevealed={person.is_revealed}
-            isThumbnail={false}
-            fallbackInitial={(person.first_name || "?").charAt(0)}
-          />
-        </div>
+  const handleCheckIn = async (venueId) => {
+    try {
+      await axios.post(`${API}/checkin/${venueId}`);
+      toast.success("Checked in!");
+      fetchCurrentVenue();
+      fetchPeople();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
 
-        {/* Badges */}
-        {person.is_premium && (
-          <div className="absolute -top-1 -left-1 w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center">
-            <Crown className="w-3 h-3 text-white" />
-          </div>
-        )}
-        {person.has_glanced_at_me && !person.i_glanced_at && (
-          <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center animate-pulse">
-            <Eye className="w-3 h-3 text-white" />
-          </div>
-        )}
-        {person.is_revealed && person.has_safety_halo && (
-          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center" title="Safety Halo">
-            <Shield className="w-3 h-3 text-white" />
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="text-center mb-3">
-        <h3 className="font-semibold text-white truncate">
-          {person.is_revealed
-            ? person.display_name
-            : `${person.first_name || "Someone"}${person.age ? `, ${person.age}` : ""}`}
-        </h3>
-        
-        {/* Shy Indicator - visible while blurred */}
-        {person.shy_indicator && (
-          <p className="text-xs text-pink-400 mt-1">May be shy to start</p>
-        )}
-        
-        {/* Presence Note - visible while blurred */}
-        {person.presence_note && (
-          <p className="text-xs text-slate-400 mt-1 italic">"{person.presence_note}"</p>
-        )}
-        
-        {/* Celebrity Crush - visible while blurred */}
-        {person.celebrity_crush && (
-          <p className="text-xs text-slate-500 mt-1">Celebrity crush: {person.celebrity_crush}</p>
-        )}
-        
-        {/* Distance - Not Here mode only */}
-        {person.distance_miles && (
-          <p className="text-xs text-slate-500 mt-1">
-            <MapPin className="w-3 h-3 inline mr-1" />
-            {person.distance_miles} mi away
-          </p>
-        )}
-        
-        {/* Voice Intro - only after reveal */}
-        {person.is_revealed && person.voice_intro_url && (
-          <button className="flex items-center justify-center gap-1 text-xs text-indigo-400 mt-2 hover:text-indigo-300">
-            <Mic className="w-3 h-3" />
-            Play voice intro
-          </button>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-2">
-        {!person.i_glanced_at && !person.is_connected && (
-          <Button
-            data-testid={`glance-btn-${person.id}`}
-            onClick={() => handleGlance(person.id)}
-            disabled={glancing === person.id}
-            size="sm"
-            className="flex-1 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 border-0"
-          >
-            {glancing === person.id ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Eye className="w-4 h-4 mr-1" />
-                Glance
-              </>
-            )}
-          </Button>
-        )}
-        
-        {!person.is_connected && (
-          <Button
-            data-testid={`icebreaker-btn-${person.id}`}
-            onClick={() => {
-              setSelectedPerson(person);
-              setShowIcebreakerModal(true);
-            }}
-            size="sm"
-            className="flex-1 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border-0"
-          >
-            <Snowflake className="w-4 h-4 mr-1" />
-            Icebreaker
-          </Button>
-        )}
-        
-        {person.is_revealed && (
-          <Button
-            data-testid={`chat-btn-${person.id}`}
-            onClick={() => navigate(`/chat/${person.id}`)}
-            size="sm"
-            className="flex-1 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
-          >
-            <Sparkles className="w-4 h-4 mr-1" />
-            Chat
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-
-  return (
-    <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-        {/* Mode Selection Screen - shown when no mode selected */}
-        {mode === null ? (
+  // ============================================================================
+  // RENDER: Mode Selection Screen
+  // ============================================================================
+  if (mode === null) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
           <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Discover</h1>
@@ -439,78 +309,130 @@ const Discovery = () => {
               </div>
             )}
           </div>
-        ) : (
-          <>
-            {/* Header with Tabs */}
-            <div className="sticky top-0 z-40 glass border-b border-white/5">
-              <div className="max-w-4xl mx-auto px-4 py-4">
-                {/* Mode Toggle Tabs */}
-                <div className="flex rounded-xl bg-white/5 p-1 mb-4">
-                  <button
-                    data-testid="tab-here"
-                    onClick={() => handleSelectMode("here")}
-                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                      mode === "here"
-                        ? "bg-indigo-500 text-white"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    HERE & NOW
-                  </button>
-                  <button
-                    data-testid="tab-not-here"
-                    onClick={() => handleSelectMode("not-here")}
-                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                      mode === "not-here"
-                        ? "bg-indigo-500 text-white"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    NOT HERE
-                  </button>
-                </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // ============================================================================
+  // RENDER: Here & Now / Not Here Mode
+  // ============================================================================
+  return (
+    <Layout>
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+        {/* Header with Tabs */}
+        <div className="sticky top-0 z-40 glass border-b border-white/5">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            {/* Mode Toggle Tabs */}
+            <div className="flex rounded-xl bg-white/5 p-1 mb-4">
+              <button
+                data-testid="tab-here"
+                onClick={() => setMode("here")}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                  mode === "here"
+                    ? "bg-indigo-500 text-white"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                HERE & NOW
+              </button>
+              <button
+                data-testid="tab-not-here"
+                onClick={() => setMode("not-here")}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                  mode === "not-here"
+                    ? "bg-indigo-500 text-white"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                NOT HERE
+              </button>
+            </div>
 
             {/* Mode-specific header content */}
             {mode === "here" ? (
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  {venue ? (
-                    <>
-                      <h1 className="text-xl font-bold text-white">
-                        {venue.venue_name}
-                      </h1>
-                      <div className="flex items-center gap-2 text-slate-400 text-sm">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span>{people.length} people here</span>
+              <div>
+                {/* Current Venue Card */}
+                {venue ? (
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                          <Building2 className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-bold text-white">{venue.venue_name}</h2>
+                          <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>You're here • {venue.checked_in_count || people.length} people</span>
+                          </div>
+                        </div>
                       </div>
-                      {/* Live Tracking Indicator */}
+                      {/* Live Tracking Badge */}
                       {hasLocationPermission && (
-                        <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 w-fit">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
                           <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
-                          <span className="text-xs text-emerald-400 font-medium">Live tracking</span>
+                          <span className="text-xs text-emerald-400 font-medium">Live</span>
                         </div>
                       )}
-                    </>
-                  ) : (
-                    <>
-                      <h1 className="text-xl font-bold text-white">
-                        Check in somewhere
-                      </h1>
-                      <p className="text-slate-400 text-sm">
-                        Find a venue to see who's around
-                      </p>
-                    </>
-                  )}
-                </div>
-                {/* Always show venue picker button */}
-                <Button
-                  data-testid="check-in-btn"
-                  onClick={() => navigate("/venues")}
-                  className="rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white flex items-center gap-2"
-                >
-                  <Navigation className="w-4 h-4" />
-                  {venue ? "Change venue" : "Check in"}
-                </Button>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => navigate("/venues")}
+                      className="mt-3 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 p-0 h-auto"
+                    >
+                      Change venue <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-bold text-white">Not checked in</h2>
+                        <p className="text-slate-400 text-sm">Check into a venue to see who's around</p>
+                      </div>
+                      <Button
+                        data-testid="check-in-btn"
+                        onClick={() => navigate("/venues")}
+                        className="rounded-xl bg-indigo-500 hover:bg-indigo-600"
+                      >
+                        <Navigation className="w-4 h-4 mr-2" />
+                        Find venue
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nearby Venues Section */}
+                {nearbyVenues.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium text-slate-400 mb-2">Other venues nearby</h3>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                      {nearbyVenues.map((v) => (
+                        <button
+                          key={v.id}
+                          onClick={() => handleCheckIn(v.id)}
+                          className="flex-shrink-0 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                        >
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-slate-400" />
+                            <span className="text-white text-sm whitespace-nowrap">{v.name}</span>
+                            {v.checked_in_count > 0 && (
+                              <span className="text-xs text-slate-500">({v.checked_in_count})</span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => navigate("/venues")}
+                        className="flex-shrink-0 px-4 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 transition-all"
+                      >
+                        <span className="text-indigo-400 text-sm whitespace-nowrap">See all →</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div>
@@ -554,7 +476,7 @@ const Discovery = () => {
           </div>
         )}
 
-        {/* Content */}
+        {/* Content - People Grid */}
         <div className="max-w-4xl mx-auto px-4 py-6">
           {loading || (mode === "here" && venueLoading) ? (
             <div className="flex justify-center py-20">
@@ -575,7 +497,7 @@ const Discovery = () => {
                       : "Check into a venue to see who's around.")
                   : "No one is near enough right now. Try widening your radius."}
               </p>
-              {mode === "here" && (
+              {mode === "here" && !venue && (
                 <Button
                   data-testid="find-venue-btn"
                   onClick={() => navigate("/venues")}
@@ -587,8 +509,107 @@ const Discovery = () => {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {people.map(renderPersonCard)}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {people.map((person) => (
+                <div
+                  key={person.id}
+                  className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 transition-all group"
+                >
+                  {/* Photo */}
+                  <div className="relative aspect-[3/4]">
+                    <BlurredImage
+                      src={person.avatar_url || person.photos?.[0]}
+                      alt={person.display_name}
+                      isRevealed={person.is_revealed}
+                      isThumbnail={true}
+                      className="w-full h-full object-cover"
+                    />
+                    
+                    {/* Badges overlay */}
+                    <div className="absolute top-2 left-2 flex flex-col gap-1">
+                      {person.is_premium && (
+                        <div className="bg-amber-500/90 rounded-full p-1">
+                          <Crown className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                      {person.is_shy && (
+                        <div className="bg-pink-500/90 rounded-full p-1">
+                          <Heart className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                      {person.has_voice_intro && (
+                        <div className="bg-indigo-500/90 rounded-full p-1">
+                          <Mic className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Safety Halo */}
+                    {person.safety_halo && (
+                      <div className="absolute top-2 right-2 bg-emerald-500/90 rounded-full p-1">
+                        <Shield className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="font-semibold text-white truncate">
+                        {person.display_name}, {person.age}
+                      </h3>
+                    </div>
+                    
+                    {/* Presence Note */}
+                    {person.presence_note && (
+                      <p className="text-xs text-slate-400 mb-2 line-clamp-2">
+                        "{person.presence_note}"
+                      </p>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      {/* Glance Button */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleGlance(person.id)}
+                        disabled={glancing === person.id || person.has_glanced}
+                        className={`flex-1 h-8 text-xs ${
+                          person.has_glanced 
+                            ? "bg-indigo-500/20 text-indigo-400" 
+                            : "hover:bg-white/10"
+                        }`}
+                      >
+                        {glancing === person.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Eye className="w-3 h-3 mr-1" />
+                            {person.has_glanced ? "Glanced" : "Glance"}
+                          </>
+                        )}
+                      </Button>
+                      
+                      {/* Icebreaker Button */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleOpenIcebreaker(person)}
+                        disabled={person.has_icebreaker}
+                        className={`flex-1 h-8 text-xs ${
+                          person.has_icebreaker 
+                            ? "bg-cyan-500/20 text-cyan-400" 
+                            : "hover:bg-white/10"
+                        }`}
+                      >
+                        <Snowflake className="w-3 h-3 mr-1" />
+                        {person.has_icebreaker ? "Sent" : "Break ice"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -616,8 +637,6 @@ const Discovery = () => {
             </div>
           </DialogContent>
         </Dialog>
-          </>
-        )}
       </div>
     </Layout>
   );
