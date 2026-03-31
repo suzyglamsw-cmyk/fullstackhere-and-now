@@ -92,7 +92,7 @@ const Landing = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
               <Button
                 data-testid="get-started-btn"
-                onClick={() => navigate("/register")}
+                onClick={() => navigate("/onboarding/discover")}
                 className="w-full sm:w-auto h-14 px-10 rounded-full bg-white text-slate-900 font-bold text-lg hover:bg-slate-100 transition-all active:scale-95 shadow-lg shadow-white/10"
               >
                 Get Started
@@ -150,7 +150,7 @@ const Landing = () => {
           </p>
           <Button
             data-testid="cta-get-started-btn"
-            onClick={() => navigate("/register")}
+            onClick={() => navigate("/onboarding/discover")}
             className="h-14 px-12 rounded-full bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-bold text-lg hover:opacity-90 transition-all active:scale-95 shadow-[0_0_30px_rgba(99,102,241,0.3)]"
           >
             Join Here & Now
