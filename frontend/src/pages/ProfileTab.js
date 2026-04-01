@@ -50,6 +50,7 @@ const Profile = () => {
   const streamRef = useRef(null);
   const recordingTimeRef = useRef(0); // Track time in ref for accurate access in callbacks
   const audioPlayerRef = useRef(null); // Audio element for playback
+  const isMountedRef = useRef(true); // Track if component is mounted
 
   const [formData, setFormData] = useState({
     display_name: "",
@@ -420,12 +421,25 @@ const Profile = () => {
     if (!audioPlayerRef.current) {
       audioPlayerRef.current = new Audio();
       audioPlayerRef.current.onended = () => {
-        setIsPlayingVoice(false);
+        if (isMountedRef.current) {
+          setIsPlayingVoice(false);
+        }
       };
       audioPlayerRef.current.onerror = (e) => {
-        console.error("Audio playback error:", e);
-        toast.error("Failed to play voice intro");
-        setIsPlayingVoice(false);
+        // Only show error if component is still mounted AND audio has a valid src
+        // This prevents errors when navigating away or during cleanup
+        if (isMountedRef.current && audioPlayerRef.current?.src && audioPlayerRef.current.src !== '') {
+          const errorCode = e?.target?.error?.code;
+          // Only show toast for actual playback errors, not for aborted loads
+          // MediaError codes: 1=ABORTED, 2=NETWORK, 3=DECODE, 4=SRC_NOT_SUPPORTED
+          if (errorCode && errorCode !== 1) {
+            console.error("Audio playback error:", e);
+            toast.error("Failed to play voice intro");
+          }
+        }
+        if (isMountedRef.current) {
+          setIsPlayingVoice(false);
+        }
       };
     }
 
@@ -438,19 +452,36 @@ const Profile = () => {
       audioPlayerRef.current.src = audioUrl;
       audioPlayerRef.current.play()
         .then(() => {
-          setIsPlayingVoice(true);
+          if (isMountedRef.current) {
+            setIsPlayingVoice(true);
+          }
         })
         .catch((error) => {
-          console.error("Playback failed:", error);
-          toast.error("Failed to play voice intro");
+          // Don't show error for AbortError (happens when navigating away)
+          if (error.name !== 'AbortError' && isMountedRef.current) {
+            console.error("Playback failed:", error);
+            toast.error("Failed to play voice intro");
+          }
         });
     }
   };
 
-  // Cleanup audio on unmount
+  // Cleanup on unmount
   useEffect(() => {
+    isMountedRef.current = true;
+    
     return () => {
-      // Full cleanup on unmount
+      // Mark as unmounted first to prevent error toasts
+      isMountedRef.current = false;
+      
+      // Stop audio playback gracefully
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current.src = ''; // Clear src to prevent error events
+        audioPlayerRef.current = null;
+      }
+      
+      // Full cleanup of recording state
       resetVoiceRecordingState();
     };
   }, []);
