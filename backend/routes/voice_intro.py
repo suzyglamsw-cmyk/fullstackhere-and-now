@@ -10,6 +10,10 @@ import os
 import re
 import tempfile
 import asyncio
+from dotenv import load_dotenv
+
+# Load environment variables at module level
+load_dotenv()
 
 from .dependencies import db, get_current_user, logger, OFFENSIVE_WORDS
 
@@ -73,16 +77,13 @@ async def transcribe_audio(audio_data: bytes, filename: str) -> dict:
     Transcribe audio using OpenAI Whisper via emergentintegrations.
     Returns transcription result with text and any errors.
     """
+    api_key = os.getenv("EMERGENT_LLM_KEY")
+    if not api_key:
+        logger.warning("EMERGENT_LLM_KEY not found, skipping transcription safety check")
+        return {"success": False, "text": "", "error": "API key not configured"}
+    
     try:
         from emergentintegrations.llm.openai import OpenAISpeechToText
-        from dotenv import load_dotenv
-        
-        load_dotenv()
-        
-        api_key = os.getenv("EMERGENT_LLM_KEY")
-        if not api_key:
-            logger.warning("EMERGENT_LLM_KEY not found, skipping transcription safety check")
-            return {"success": False, "text": "", "error": "API key not configured"}
         
         # Determine file extension for temp file
         file_ext = os.path.splitext(filename)[1].lower() if filename else ".webm"
@@ -98,6 +99,8 @@ async def transcribe_audio(audio_data: bytes, filename: str) -> dict:
             # Initialize STT
             stt = OpenAISpeechToText(api_key=api_key)
             
+            logger.info(f"Transcribing audio file: {len(audio_data)} bytes, ext: {file_ext}")
+            
             # Transcribe
             with open(temp_path, "rb") as audio_file:
                 response = await stt.transcribe(
@@ -108,7 +111,7 @@ async def transcribe_audio(audio_data: bytes, filename: str) -> dict:
                 )
             
             transcription = response.text if hasattr(response, 'text') else str(response)
-            logger.info(f"Voice intro transcription: '{transcription[:100]}...' ({len(transcription)} chars)")
+            logger.info(f"Voice intro transcription result: '{transcription}' ({len(transcription)} chars)")
             
             return {"success": True, "text": transcription, "error": None}
             
@@ -138,9 +141,31 @@ async def check_voice_intro_safety(audio_data: bytes, filename: str) -> dict:
     transcription_result = await transcribe_audio(audio_data, filename)
     
     if not transcription_result["success"]:
-        # If transcription fails, allow the upload but log it
-        # This prevents blocking users due to service issues
-        logger.warning(f"Voice transcription failed, allowing upload: {transcription_result['error']}")
+        error_msg = transcription_result.get("error", "")
+        
+        # If API key not configured, allow upload (service not set up)
+        if "API key not configured" in error_msg:
+            logger.warning("Voice intro safety check skipped - API key not configured")
+            return {
+                "is_safe": True, 
+                "reason": None, 
+                "transcription": "",
+                "transcription_failed": True
+            }
+        
+        # If it's an invalid file format error, the file itself might be corrupted
+        # Allow it since we can't verify, but log for monitoring
+        if "Invalid file format" in error_msg or "not available" in error_msg:
+            logger.warning(f"Voice transcription failed (invalid format), allowing upload: {error_msg}")
+            return {
+                "is_safe": True, 
+                "reason": None, 
+                "transcription": "",
+                "transcription_failed": True
+            }
+        
+        # For other errors (API issues, rate limits, etc.), still allow but log
+        logger.warning(f"Voice transcription failed, allowing upload: {error_msg}")
         return {
             "is_safe": True, 
             "reason": None, 
