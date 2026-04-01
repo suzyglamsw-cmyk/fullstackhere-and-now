@@ -379,11 +379,8 @@ const Profile = () => {
   };
 
   const removeVoiceIntro = async () => {
-    // Stop playback if playing
-    if (audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
-      setIsPlayingVoice(false);
-    }
+    // Full reset of recorder state
+    resetVoiceRecordingState();
     
     try {
       await axios.delete(`${API}/profile/voice-intro`);
@@ -680,16 +677,6 @@ const Profile = () => {
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
-                  
-                  {/* Re-record option */}
-                  <button
-                    onClick={startVoiceRecording}
-                    disabled={isPlayingVoice}
-                    className="w-full text-sm text-slate-400 hover:text-white transition-colors py-2"
-                  >
-                    <Mic className="w-4 h-4 inline mr-1" />
-                    Record a new one
-                  </button>
                 </div>
               ) : recordingVoice ? (
                 /* Recording in Progress */
