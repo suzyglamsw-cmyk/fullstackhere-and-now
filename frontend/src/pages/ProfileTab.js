@@ -139,66 +139,98 @@ const Profile = () => {
     }
   };
 
+  // Reset all voice recording state completely
+  const resetVoiceRecordingState = () => {
+    // Stop any playing audio
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current.src = '';
+      setIsPlayingVoice(false);
+    }
+    
+    // Stop any existing recording
+    if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current.state === "recording") {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch (e) {
+          console.log("MediaRecorder already stopped");
+        }
+      }
+      mediaRecorderRef.current = null;
+    }
+    
+    // Clear timer
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    
+    // Stop and release microphone stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+      });
+      streamRef.current = null;
+    }
+    
+    // Clear audio data
+    audioChunksRef.current = [];
+    
+    // Reset time
+    recordingTimeRef.current = 0;
+    setRecordingTime(0);
+    
+    // Reset recording state
+    setRecordingVoice(false);
+    setUploadingVoice(false);
+  };
+
   const startVoiceRecording = async () => {
+    // First, completely reset all state
+    resetVoiceRecordingState();
+    
+    // Small delay to ensure state is cleared
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     try {
-      // === CLEANUP PREVIOUS RECORDING STATE ===
-      // Stop any playing audio
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-        setIsPlayingVoice(false);
-      }
-      
-      // Stop any existing recording
-      if (mediaRecorderRef.current?.state === "recording") {
-        mediaRecorderRef.current.stop();
-      }
-      
-      // Clear any existing timer
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-        recordingTimerRef.current = null;
-      }
-      
-      // Stop any existing stream
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-      
-      // Reset all recording state
-      audioChunksRef.current = [];
-      recordingTimeRef.current = 0;
-      setRecordingTime(0);
-      setRecordingVoice(false);
-      
-      // === START NEW RECORDING ===
       // Request microphone permission
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
       streamRef.current = stream;
       setMicPermissionDenied(false);
       
-      // Use mp4 container with AAC codec for better compatibility
+      // Use best available audio format
       const mimeType = MediaRecorder.isTypeSupported('audio/mp4') 
         ? 'audio/mp4' 
         : MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? 'audio/webm;codecs=opus'
           : 'audio/webm';
       
+      console.log("Starting new recording with mimeType:", mimeType);
+      
       // Create fresh MediaRecorder instance
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       
-      // Fresh audio chunks array for this recording
-      const currentAudioChunks = [];
-      audioChunksRef.current = currentAudioChunks;
-
+      // Fresh audio chunks array for this recording - using closure to capture
+      const thisRecordingChunks = [];
+      
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          currentAudioChunks.push(event.data);
+        if (event.data && event.data.size > 0) {
+          thisRecordingChunks.push(event.data);
+          console.log(`Audio chunk received: ${event.data.size} bytes, total chunks: ${thisRecordingChunks.length}`);
         }
       };
 
       mediaRecorder.onstop = async () => {
+        console.log("Recording stopped, processing...");
+        
         // Stop all tracks
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
@@ -211,39 +243,55 @@ const Profile = () => {
           recordingTimerRef.current = null;
         }
         
-        // Get the actual recorded time from ref (not stale state)
+        // Get the actual recorded time from ref
         const recordedTime = recordingTimeRef.current;
+        console.log(`Recorded time: ${recordedTime}s, chunks: ${thisRecordingChunks.length}`);
         
-        // Reset states
+        // Reset time tracking
+        const finalTime = recordedTime;
         setRecordingTime(0);
         recordingTimeRef.current = 0;
         
         // Check minimum recording time (5 seconds)
-        if (recordedTime < 5) {
-          toast.error("Please record at least 5 seconds");
+        if (finalTime < 5) {
+          toast.error(`Please record at least 5 seconds (recorded ${finalTime}s)`);
           return;
         }
         
         // Create audio blob from THIS recording's chunks
-        const audioBlob = new Blob(currentAudioChunks, { type: mimeType });
+        if (thisRecordingChunks.length === 0) {
+          toast.error("No audio data recorded. Please try again.");
+          return;
+        }
+        
+        const audioBlob = new Blob(thisRecordingChunks, { type: mimeType });
+        console.log(`Audio blob created: ${audioBlob.size} bytes`);
         
         // Check if blob is valid
         if (audioBlob.size < 1000) {
-          toast.error("Recording failed. Please try again.");
+          toast.error("Recording too small. Please try again.");
           return;
         }
         
         // Upload voice intro with duration metadata
-        await uploadVoiceIntro(audioBlob, mimeType, recordedTime);
+        await uploadVoiceIntro(audioBlob, mimeType, finalTime);
+      };
+      
+      mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event.error);
+        toast.error("Recording error. Please try again.");
+        resetVoiceRecordingState();
       };
 
-      // Ensure time is reset before starting
+      // Initialize time tracking
       recordingTimeRef.current = 0;
       setRecordingTime(0);
       
-      // Start recording
-      mediaRecorder.start(1000); // Collect data every second
+      // Start recording - collect data every 500ms for more granular chunks
+      mediaRecorder.start(500);
       setRecordingVoice(true);
+      
+      console.log("Recording started");
       
       // Start fresh timer
       recordingTimerRef.current = setInterval(() => {
@@ -253,6 +301,7 @@ const Profile = () => {
         
         // Auto-stop at 10 seconds
         if (currentTime >= 10) {
+          console.log("Auto-stopping at 10 seconds");
           if (mediaRecorderRef.current?.state === "recording") {
             mediaRecorderRef.current.stop();
             setRecordingVoice(false);
@@ -262,6 +311,8 @@ const Profile = () => {
       
     } catch (error) {
       console.error("Microphone access error:", error);
+      resetVoiceRecordingState();
+      
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
         setMicPermissionDenied(true);
         toast.error("Microphone access denied. Please enable microphone permissions in your browser settings.");
@@ -402,10 +453,8 @@ const Profile = () => {
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-        audioPlayerRef.current = null;
-      }
+      // Full cleanup on unmount
+      resetVoiceRecordingState();
     };
   }, []);
 
