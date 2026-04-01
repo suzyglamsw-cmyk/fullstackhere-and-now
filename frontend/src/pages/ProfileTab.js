@@ -25,6 +25,8 @@ import {
   Play,
   Pause,
   Volume2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 const MAX_BIO_LENGTH = 500;
@@ -43,6 +45,9 @@ const Profile = () => {
   const [uploadingVoice, setUploadingVoice] = useState(false);
   const [micPermissionDenied, setMicPermissionDenied] = useState(false);
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewMode, setPreviewMode] = useState("before"); // "before" or "after"
+  const [previewAudioPlaying, setPreviewAudioPlaying] = useState(false);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -51,6 +56,7 @@ const Profile = () => {
   const recordingTimeRef = useRef(0); // Track time in ref for accurate access in callbacks
   const audioPlayerRef = useRef(null); // Audio element for playback
   const isMountedRef = useRef(true); // Track if component is mounted
+  const previewAudioRef = useRef(null); // Audio element for preview playback
 
   const [formData, setFormData] = useState({
     display_name: "",
@@ -572,6 +578,17 @@ const Profile = () => {
             </div>
           </div>
 
+          {/* Preview My Profile Button */}
+          <Button
+            onClick={() => setShowPreview(true)}
+            variant="outline"
+            className="w-full h-12 rounded-xl bg-white/5 hover:bg-white/10 border-white/10 text-white"
+            data-testid="preview-profile-btn"
+          >
+            <Eye className="w-5 h-5 mr-2" />
+            Preview My Profile
+          </Button>
+
           {/* Display Name */}
           <div className="space-y-2">
             <Label className="text-slate-300">Display Name</Label>
@@ -774,6 +791,227 @@ const Profile = () => {
           )}
         </div>
       </div>
+
+      {/* Profile Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 bg-slate-950" data-testid="profile-preview-modal">
+          {/* Header */}
+          <div className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur border-b border-white/10">
+            <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+              <h1 className="text-lg font-bold text-white">Profile Preview</h1>
+              <button
+                onClick={() => {
+                  setShowPreview(false);
+                  setPreviewAudioPlaying(false);
+                  if (previewAudioRef.current) {
+                    previewAudioRef.current.pause();
+                  }
+                }}
+                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                data-testid="close-preview-btn"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            
+            {/* Mode Toggle */}
+            <div className="max-w-lg mx-auto px-4 pb-4">
+              <div className="flex bg-white/5 rounded-xl p-1">
+                <button
+                  onClick={() => setPreviewMode("before")}
+                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    previewMode === "before"
+                      ? "bg-indigo-500 text-white"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  data-testid="preview-before-tab"
+                >
+                  <EyeOff className="w-4 h-4" />
+                  Before Reveal
+                </button>
+                <button
+                  onClick={() => setPreviewMode("after")}
+                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    previewMode === "after"
+                      ? "bg-indigo-500 text-white"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  data-testid="preview-after-tab"
+                >
+                  <Eye className="w-4 h-4" />
+                  After Reveal
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Preview Content */}
+          <div className="max-w-lg mx-auto px-4 py-6 pb-24 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+            {previewMode === "before" ? (
+              /* Before Reveal - Blurred view */
+              <div className="space-y-6">
+                <p className="text-sm text-slate-400 text-center mb-6">
+                  This is how others see you before mutual curiosity
+                </p>
+                
+                {/* Blurred Photo */}
+                <div className="relative aspect-[3/4] max-w-xs mx-auto rounded-2xl overflow-hidden bg-white/5">
+                  {mainPhoto ? (
+                    <img 
+                      src={mainPhoto} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                      style={{ filter: 'blur(8px)' }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-500">
+                      <User className="w-16 h-16" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  
+                  {/* Limited Info Overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="text-xl font-bold text-white">{formData.display_name || "Your Name"}</h3>
+                    {formData.presence_note && (
+                      <p className="text-sm text-white/80 mt-1">{formData.presence_note}</p>
+                    )}
+                    {formData.shy_indicator && (
+                      <span className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs">
+                        <Sparkles className="w-3 h-3" />
+                        May be shy to start
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Hidden fields indicator */}
+                <div className="text-center space-y-3">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-slate-400 text-sm">
+                    <EyeOff className="w-4 h-4" />
+                    Bio hidden until reveal
+                  </div>
+                  {formData.voice_intro_url && (
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-slate-400 text-sm">
+                      <Volume2 className="w-4 h-4" />
+                      Voice intro unlocks after reveal
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* After Reveal - Full profile view */
+              <div className="space-y-6">
+                <p className="text-sm text-slate-400 text-center mb-6">
+                  This is how others see you after mutual curiosity
+                </p>
+                
+                {/* Full Photo */}
+                <div className="relative aspect-[3/4] max-w-xs mx-auto rounded-2xl overflow-hidden bg-white/5">
+                  {mainPhoto ? (
+                    <img 
+                      src={mainPhoto} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-500">
+                      <User className="w-16 h-16" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  
+                  {/* Full Info Overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="text-xl font-bold text-white">{formData.display_name || "Your Name"}</h3>
+                    {formData.presence_note && (
+                      <p className="text-sm text-white/80 mt-1">{formData.presence_note}</p>
+                    )}
+                    
+                    {/* Safety Halo */}
+                    {hasSafetyHalo && (
+                      <span className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs">
+                        <Shield className="w-3 h-3" />
+                        Safety Halo
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Bio */}
+                {formData.bio && (
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <h4 className="text-sm font-medium text-slate-400 mb-2">About</h4>
+                    <p className="text-white">{formData.bio}</p>
+                  </div>
+                )}
+                
+                {/* Celebrity Crush */}
+                {formData.celebrity_crush && (
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <h4 className="text-sm font-medium text-slate-400 mb-2">Celebrity Crush</h4>
+                    <p className="text-white">{formData.celebrity_crush}</p>
+                  </div>
+                )}
+                
+                {/* Voice Intro */}
+                {formData.voice_intro_url && (
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <h4 className="text-sm font-medium text-slate-400 mb-3">Voice Intro</h4>
+                    <button
+                      onClick={() => {
+                        if (!previewAudioRef.current) {
+                          previewAudioRef.current = new Audio();
+                          previewAudioRef.current.onended = () => setPreviewAudioPlaying(false);
+                        }
+                        
+                        if (previewAudioPlaying) {
+                          previewAudioRef.current.pause();
+                          setPreviewAudioPlaying(false);
+                        } else {
+                          const audioUrl = formData.voice_intro_url.startsWith('http') 
+                            ? formData.voice_intro_url 
+                            : `${API}${formData.voice_intro_url.replace('/api/', '/')}`;
+                          previewAudioRef.current.src = audioUrl;
+                          previewAudioRef.current.play()
+                            .then(() => setPreviewAudioPlaying(true))
+                            .catch(() => toast.error("Failed to play voice intro"));
+                        }
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
+                        previewAudioPlaying 
+                          ? "bg-indigo-500 text-white" 
+                          : "bg-white/5 text-white hover:bg-white/10"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        previewAudioPlaying ? "bg-white/20" : "bg-indigo-500/20"
+                      }`}>
+                        {previewAudioPlaying ? (
+                          <Pause className="w-5 h-5" />
+                        ) : (
+                          <Play className="w-5 h-5 ml-0.5" />
+                        )}
+                      </div>
+                      <span className="font-medium">
+                        {previewAudioPlaying ? "Playing..." : "Play Voice Intro"}
+                      </span>
+                    </button>
+                  </div>
+                )}
+                
+                {/* Shy Indicator */}
+                {formData.shy_indicator && (
+                  <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                    <Sparkles className="w-5 h-5 text-amber-400" />
+                    <span className="text-amber-300">May be shy to start</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
