@@ -613,11 +613,11 @@ const Profile = () => {
           <section className="space-y-3">
             <Label className="text-white/70 text-sm font-medium">Display Name</Label>
             <div 
-              className="h-14 px-5 rounded-2xl flex items-center cursor-not-allowed"
+              className="h-16 px-6 rounded-3xl flex items-center cursor-not-allowed"
               style={{ 
-                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(236, 72, 153, 0.03) 100%)',
-                border: '1px solid rgba(231, 217, 255, 0.08)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
+                background: 'rgba(231, 217, 255, 0.06)',
+                border: '1px solid rgba(231, 217, 255, 0.1)',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06), inset 0 0 20px rgba(231, 217, 255, 0.03)',
                 color: 'rgba(231, 217, 255, 0.5)'
               }}
             >
@@ -634,11 +634,11 @@ const Profile = () => {
               onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
               placeholder="Share a little about yourself..."
               maxLength={MAX_BIO_LENGTH}
-              className="profile-input min-h-28 px-5 py-4 rounded-2xl text-white resize-none transition-all duration-200"
+              className="profile-input min-h-32 px-6 py-5 rounded-3xl text-white resize-none transition-all duration-300"
               style={{ 
-                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(236, 72, 153, 0.05) 100%)',
+                background: 'rgba(231, 217, 255, 0.08)',
                 border: '1px solid rgba(231, 217, 255, 0.12)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.08), inset 0 0 30px rgba(231, 217, 255, 0.04)',
               }}
             />
             <div className="flex justify-between text-xs px-1" style={{ color: '#E7D9FF', opacity: 0.7 }}>
@@ -671,11 +671,11 @@ const Profile = () => {
                 onChange={(e) => setFormData({ ...formData, presence_note: e.target.value })}
                 placeholder="e.g., Here for good vibes..."
                 maxLength={MAX_PRESENCE_NOTE_LENGTH}
-                className="profile-input h-14 px-5 rounded-2xl text-white transition-all duration-200"
+                className="profile-input h-16 px-6 rounded-3xl text-white transition-all duration-300"
                 style={{ 
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(236, 72, 153, 0.05) 100%)',
+                  background: 'rgba(231, 217, 255, 0.1)',
                   border: '1px solid rgba(231, 217, 255, 0.12)',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.08), inset 0 0 30px rgba(231, 217, 255, 0.04)',
                 }}
               />
               <div className="text-right text-xs pr-1" style={{ color: '#E7D9FF', opacity: 0.7 }}>
@@ -685,14 +685,15 @@ const Profile = () => {
 
             {/* Shy Indicator - Pill Style Toggle */}
             <div 
-              className="p-5 rounded-2xl transition-all"
+              className="p-6 rounded-3xl transition-all duration-300"
               style={{ 
                 background: formData.shy_indicator 
-                  ? 'linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)'
-                  : 'rgba(255, 255, 255, 0.03)',
+                  ? 'rgba(236, 72, 153, 0.12)'
+                  : 'rgba(231, 217, 255, 0.06)',
                 border: formData.shy_indicator 
-                  ? '1px solid rgba(236, 72, 153, 0.3)'
-                  : '1px solid rgba(168, 85, 247, 0.1)'
+                  ? '1px solid rgba(236, 72, 153, 0.25)'
+                  : '1px solid rgba(231, 217, 255, 0.1)',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06), inset 0 0 20px rgba(231, 217, 255, 0.03)',
               }}
             >
               <div className="flex items-center justify-between">
@@ -755,11 +756,11 @@ const Profile = () => {
                 onChange={(e) => setFormData({ ...formData, celebrity_crush: e.target.value })}
                 placeholder="e.g., Timothée Chalamet"
                 maxLength={MAX_CELEBRITY_CRUSH_LENGTH}
-                className="profile-input h-14 px-5 rounded-2xl text-white transition-all duration-200"
+                className="profile-input h-16 px-6 rounded-3xl text-white transition-all duration-300"
                 style={{ 
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(236, 72, 153, 0.05) 100%)',
+                  background: 'rgba(231, 217, 255, 0.1)',
                   border: '1px solid rgba(231, 217, 255, 0.12)',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.08), inset 0 0 30px rgba(231, 217, 255, 0.04)',
                 }}
               />
             </div>

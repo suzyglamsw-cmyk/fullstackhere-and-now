@@ -193,7 +193,7 @@ code {
 
 /* Profile Edit Screen - Soft Input Styles */
 .profile-input::placeholder {
-    color: rgba(231, 217, 255, 0.35);
+    color: rgba(231, 217, 255, 0.4);
 }
 
 .profile-input:focus::placeholder {
@@ -203,8 +203,8 @@ code {
 /* Soft focus glow for profile inputs */
 .profile-input:focus {
     outline: none;
-    border-color: rgba(168, 85, 247, 0.4) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 3px rgba(168, 85, 247, 0.15) !important;
+    border-color: rgba(231, 217, 255, 0.25) !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08), inset 0 0 30px rgba(231, 217, 255, 0.06), 0 0 0 4px rgba(168, 85, 247, 0.1) !important;
 }
 
 
