@@ -237,6 +237,7 @@ Comprehensive list including:
 - ✅ **Separated Profile from Settings** - Top-right avatar navigates to Profile tab, Settings only contains account/privacy/notifications (March 2026)
 - ✅ **Voice Intro Component Fixed** - Full microphone recording with progress UI, 5-10s validation, webm support (March 2026)
 - ✅ **Voice Intro Safety Moderation** - Transcribes audio with Whisper, runs through offensive language filter, blocks harmful content (April 2026)
+- ✅ **Enhanced Content Moderation** - Full name detection in text, image AI analysis for QR/screenshots, expanded profanity filtering (April 2026)
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)

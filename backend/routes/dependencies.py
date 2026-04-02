@@ -246,7 +246,7 @@ def validate_display_name(name: str) -> tuple[bool, str]:
 
 
 def validate_free_text(text: str, field_name: str = "text", min_length: int = 0, max_length: int = 500) -> tuple[bool, str]:
-    """Validate free-text fields for placeholder text and offensive content."""
+    """Validate free-text fields for placeholder text, offensive content, and PII."""
     if not text:
         if min_length > 0:
             return False, "Try adding a short line that feels like you."
@@ -268,6 +268,40 @@ def validate_free_text(text: str, field_name: str = "text", min_length: int = 0,
     for word in OFFENSIVE_WORDS:
         if re.search(rf'\b{re.escape(word)}\b', text_lower):
             return False, "Let's keep it friendly and welcoming for everyone."
+    
+    # Check for full names (two or more consecutive capitalized words)
+    # Patterns like "John Smith", "Mary Jane Watson", etc.
+    full_name_patterns = [
+        # Two consecutive capitalized words (e.g., "John Smith")
+        r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\b',
+        # Three consecutive capitalized words (e.g., "Mary Jane Watson")
+        r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+\b',
+        # Name with middle initial (e.g., "John D. Smith" or "John D Smith")
+        r'\b[A-Z][a-z]+\s+[A-Z]\.?\s+[A-Z][a-z]+\b',
+        # Common name patterns with suffixes (Jr, Sr, III)
+        r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\s+(Jr|Sr|III|II|IV)\.?\b',
+    ]
+    
+    for pattern in full_name_patterns:
+        if re.search(pattern, text_stripped):
+            # Check if it's a common phrase that's not a name
+            match = re.search(pattern, text_stripped)
+            if match:
+                potential_name = match.group()
+                # Exclude common phrases that might match the pattern
+                excluded_phrases = [
+                    'New York', 'Los Angeles', 'San Francisco', 'San Diego', 'Las Vegas',
+                    'San Jose', 'San Antonio', 'New Orleans', 'New Jersey', 'New Mexico',
+                    'North Carolina', 'South Carolina', 'North Dakota', 'South Dakota',
+                    'West Virginia', 'Rhode Island', 'Puerto Rico', 'Costa Rica',
+                    'Good Morning', 'Good Night', 'Good Evening', 'Good Vibes',
+                    'Happy Hour', 'Happy Birthday', 'Merry Christmas', 'Happy Holidays',
+                    'Ice Cream', 'Hot Dog', 'French Fries', 'Pizza Party',
+                    'Best Friend', 'Good Times', 'Fun Times', 'Great Time',
+                    'Love Life', 'Real Talk', 'Good Energy', 'Positive Vibes',
+                ]
+                if potential_name not in excluded_phrases:
+                    return False, "For your privacy, please don't include your full name. First name only is fine!"
     
     pii_patterns = [
         r'\d{5,}',

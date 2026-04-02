@@ -34,6 +34,18 @@ HARMFUL_PATTERNS = [
     r'\bdie\b.*\b(you|them|people)\b',
     r'\b(threat|threaten|threatening)\b',
     r'\b(bomb|weapon|gun|knife)\b.*\b(bring|use|have)\b',
+    # Additional audio-specific patterns
+    r'\b(hate|hating)\s+(you|them|everyone|people)\b',
+    r'\b(stupid|idiot|moron|dumb)\s+(people|person|you)\b',
+    r'\bgo\s+(die|away|to hell)\b',
+    r'\b(shut\s+up|f\s*off|piss\s+off)\b',
+]
+
+# Additional profanity patterns that might be transcribed differently
+PROFANITY_PATTERNS = [
+    r'\bf+u+c+k+', r'\bs+h+i+t+', r'\ba+s+s+h+o+l+e+',
+    r'\bb+i+t+c+h+', r'\bc+u+n+t+', r'\bd+a+m+n+',
+    r'\bwt+f\b', r'\bstfu\b', r'\bomg\b.*\b(god|gosh)\b',
 ]
 
 
@@ -51,6 +63,11 @@ def validate_voice_transcription(text: str) -> tuple[bool, str]:
     # Check for offensive words (same as text fields)
     for word in OFFENSIVE_WORDS:
         if re.search(rf'\b{re.escape(word)}\b', text_lower):
+            return False, "Your voice intro contains language that might make others uncomfortable. Let's keep it friendly!"
+    
+    # Check for profanity patterns (variations)
+    for pattern in PROFANITY_PATTERNS:
+        if re.search(pattern, text_lower):
             return False, "Your voice intro contains language that might make others uncomfortable. Let's keep it friendly!"
     
     # Check for harmful patterns (threats, violence, etc.)
