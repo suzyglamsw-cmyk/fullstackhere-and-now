@@ -207,6 +207,37 @@ code {
     box-shadow: 0 0 30px rgba(231, 217, 255, 0.15), 0 0 0 4px rgba(168, 85, 247, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.08) !important;
 }
 
+/* GLOBAL INPUT OVERRIDE - Warm Lavender Custom Design */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+textarea {
+    background: rgba(231, 217, 255, 0.12) !important;
+    border: 2px solid #F3E8FF !important;
+    border-radius: 20px !important;
+    padding: 16px 24px !important;
+    box-shadow: 0 0 24px rgba(231, 217, 255, 0.08), inset 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+    color: white !important;
+    font-size: 16px !important;
+    outline: none !important;
+    transition: all 0.3s ease !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):focus,
+textarea:focus {
+    box-shadow: 0 0 32px rgba(231, 217, 255, 0.2), 0 0 0 3px rgba(243, 232, 255, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+    border-color: #F3E8FF !important;
+    outline: none !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"])::placeholder,
+textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+textarea {
+    min-height: 120px !important;
+    resize: none !important;
+}
+
 
 @layer base {
     [data-debug-wrapper="true"] {
