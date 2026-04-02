@@ -615,10 +615,9 @@ const Profile = () => {
             <div 
               className="h-16 px-6 rounded-[20px] flex items-center cursor-not-allowed"
               style={{ 
-                background: 'rgba(231, 217, 255, 0.08)',
-                border: '2px solid rgba(231, 217, 255, 0.2)',
-                boxShadow: '0 0 20px rgba(231, 217, 255, 0.06), inset 0 1px 2px rgba(0, 0, 0, 0.1)',
-                color: 'rgba(231, 217, 255, 0.5)'
+                background: 'transparent',
+                border: '2px solid #FFFFFF',
+                color: 'rgba(255, 255, 255, 0.5)'
               }}
             >
               {formData.display_name}
@@ -677,15 +676,8 @@ const Profile = () => {
             <div 
               className="p-6 rounded-[20px] transition-all duration-300"
               style={{ 
-                background: formData.shy_indicator 
-                  ? 'rgba(236, 72, 153, 0.15)'
-                  : 'rgba(231, 217, 255, 0.1)',
-                border: formData.shy_indicator 
-                  ? '2px solid rgba(236, 72, 153, 0.35)'
-                  : '2px solid rgba(243, 232, 255, 0.2)',
-                boxShadow: formData.shy_indicator
-                  ? '0 0 24px rgba(236, 72, 153, 0.12)'
-                  : '0 0 20px rgba(231, 217, 255, 0.06)',
+                background: 'transparent',
+                border: '2px solid #FFFFFF',
               }}
             >
               <div className="flex items-center justify-between">
@@ -782,8 +774,8 @@ const Profile = () => {
               <div 
                 className="flex items-center gap-4 p-5 rounded-2xl"
                 style={{ 
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
-                  border: '1px solid rgba(168, 85, 247, 0.2)'
+                  background: 'transparent',
+                  border: '2px solid #FFFFFF'
                 }}
               >
                 <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
@@ -794,8 +786,8 @@ const Profile = () => {
               <div 
                 className="p-5 rounded-2xl"
                 style={{ 
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(168, 85, 247, 0.15) 100%)',
-                  border: '1px solid rgba(168, 85, 247, 0.25)'
+                  background: 'transparent',
+                  border: '2px solid #FFFFFF'
                 }}
               >
                 <div className="flex items-center gap-4">
@@ -844,8 +836,8 @@ const Profile = () => {
                 <div 
                   className="p-5 rounded-2xl"
                   style={{ 
-                    background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)',
-                    border: '1px solid rgba(236, 72, 153, 0.3)'
+                    background: 'transparent',
+                    border: '2px solid #FFFFFF'
                   }}
                 >
                   <div className="flex items-center gap-4">
@@ -909,8 +901,8 @@ const Profile = () => {
                 disabled={micPermissionDenied}
                 className="w-full h-16 rounded-2xl font-medium transition-all duration-300 flex items-center justify-center gap-3 group disabled:opacity-50"
                 style={{ 
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '2px dashed rgba(168, 85, 247, 0.3)',
+                  background: 'transparent',
+                  border: '2px solid #FFFFFF',
                 }}
               >
                 <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center group-hover:bg-purple-500/30 transition-all">
@@ -931,8 +923,8 @@ const Profile = () => {
             <section 
               className="p-5 rounded-2xl"
               style={{ 
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(45, 212, 191, 0.1) 100%)',
-                border: '1px solid rgba(16, 185, 129, 0.2)'
+                background: 'transparent',
+                border: '2px solid #FFFFFF'
               }}
             >
               <div className="flex items-center gap-4">
