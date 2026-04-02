@@ -613,11 +613,11 @@ const Profile = () => {
           <section className="space-y-3">
             <Label className="text-white/70 text-sm font-medium">Display Name</Label>
             <div 
-              className="h-16 px-6 rounded-3xl flex items-center cursor-not-allowed"
+              className="h-16 px-6 rounded-[20px] flex items-center cursor-not-allowed"
               style={{ 
-                background: 'rgba(231, 217, 255, 0.06)',
-                border: '1px solid rgba(231, 217, 255, 0.1)',
-                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06), inset 0 0 20px rgba(231, 217, 255, 0.03)',
+                background: 'rgba(231, 217, 255, 0.08)',
+                border: '2px solid rgba(231, 217, 255, 0.2)',
+                boxShadow: '0 0 20px rgba(231, 217, 255, 0.06), inset 0 1px 2px rgba(0, 0, 0, 0.1)',
                 color: 'rgba(231, 217, 255, 0.5)'
               }}
             >
@@ -634,11 +634,11 @@ const Profile = () => {
               onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
               placeholder="Share a little about yourself..."
               maxLength={MAX_BIO_LENGTH}
-              className="profile-input min-h-32 px-6 py-5 rounded-3xl text-white resize-none transition-all duration-300"
+              className="profile-input min-h-32 px-6 py-5 rounded-[20px] text-white resize-none transition-all duration-300"
               style={{ 
-                background: 'rgba(231, 217, 255, 0.08)',
-                border: '1px solid rgba(231, 217, 255, 0.12)',
-                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.08), inset 0 0 30px rgba(231, 217, 255, 0.04)',
+                background: 'rgba(231, 217, 255, 0.12)',
+                border: '2px solid rgba(243, 232, 255, 0.25)',
+                boxShadow: '0 0 24px rgba(231, 217, 255, 0.08), inset 0 1px 2px rgba(0, 0, 0, 0.08)',
               }}
             />
             <div className="flex justify-between text-xs px-1" style={{ color: '#E7D9FF', opacity: 0.7 }}>
@@ -671,11 +671,11 @@ const Profile = () => {
                 onChange={(e) => setFormData({ ...formData, presence_note: e.target.value })}
                 placeholder="e.g., Here for good vibes..."
                 maxLength={MAX_PRESENCE_NOTE_LENGTH}
-                className="profile-input h-16 px-6 rounded-3xl text-white transition-all duration-300"
+                className="profile-input h-16 px-6 rounded-[20px] text-white transition-all duration-300"
                 style={{ 
-                  background: 'rgba(231, 217, 255, 0.1)',
-                  border: '1px solid rgba(231, 217, 255, 0.12)',
-                  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.08), inset 0 0 30px rgba(231, 217, 255, 0.04)',
+                  background: 'rgba(231, 217, 255, 0.12)',
+                  border: '2px solid rgba(243, 232, 255, 0.25)',
+                  boxShadow: '0 0 24px rgba(231, 217, 255, 0.08), inset 0 1px 2px rgba(0, 0, 0, 0.08)',
                 }}
               />
               <div className="text-right text-xs pr-1" style={{ color: '#E7D9FF', opacity: 0.7 }}>
@@ -685,15 +685,17 @@ const Profile = () => {
 
             {/* Shy Indicator - Pill Style Toggle */}
             <div 
-              className="p-6 rounded-3xl transition-all duration-300"
+              className="p-6 rounded-[20px] transition-all duration-300"
               style={{ 
                 background: formData.shy_indicator 
-                  ? 'rgba(236, 72, 153, 0.12)'
-                  : 'rgba(231, 217, 255, 0.06)',
+                  ? 'rgba(236, 72, 153, 0.15)'
+                  : 'rgba(231, 217, 255, 0.1)',
                 border: formData.shy_indicator 
-                  ? '1px solid rgba(236, 72, 153, 0.25)'
-                  : '1px solid rgba(231, 217, 255, 0.1)',
-                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06), inset 0 0 20px rgba(231, 217, 255, 0.03)',
+                  ? '2px solid rgba(236, 72, 153, 0.35)'
+                  : '2px solid rgba(243, 232, 255, 0.2)',
+                boxShadow: formData.shy_indicator
+                  ? '0 0 24px rgba(236, 72, 153, 0.12)'
+                  : '0 0 20px rgba(231, 217, 255, 0.06)',
               }}
             >
               <div className="flex items-center justify-between">
@@ -756,11 +758,11 @@ const Profile = () => {
                 onChange={(e) => setFormData({ ...formData, celebrity_crush: e.target.value })}
                 placeholder="e.g., Timothée Chalamet"
                 maxLength={MAX_CELEBRITY_CRUSH_LENGTH}
-                className="profile-input h-16 px-6 rounded-3xl text-white transition-all duration-300"
+                className="profile-input h-16 px-6 rounded-[20px] text-white transition-all duration-300"
                 style={{ 
-                  background: 'rgba(231, 217, 255, 0.1)',
-                  border: '1px solid rgba(231, 217, 255, 0.12)',
-                  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.08), inset 0 0 30px rgba(231, 217, 255, 0.04)',
+                  background: 'rgba(231, 217, 255, 0.12)',
+                  border: '2px solid rgba(243, 232, 255, 0.25)',
+                  boxShadow: '0 0 24px rgba(231, 217, 255, 0.08), inset 0 1px 2px rgba(0, 0, 0, 0.08)',
                 }}
               />
             </div>
