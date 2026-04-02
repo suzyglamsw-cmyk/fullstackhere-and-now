@@ -190,6 +190,24 @@ code {
     box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
 }
 
+
+/* Profile Edit Screen - Soft Input Styles */
+.profile-input::placeholder {
+    color: rgba(231, 217, 255, 0.35);
+}
+
+.profile-input:focus::placeholder {
+    color: rgba(231, 217, 255, 0.25);
+}
+
+/* Soft focus glow for profile inputs */
+.profile-input:focus {
+    outline: none;
+    border-color: rgba(168, 85, 247, 0.4) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 3px rgba(168, 85, 247, 0.15) !important;
+}
+
+
 @layer base {
     [data-debug-wrapper="true"] {
         display: contents !important;
