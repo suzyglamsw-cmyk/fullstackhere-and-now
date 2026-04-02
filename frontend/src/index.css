@@ -210,11 +210,11 @@ code {
 /* GLOBAL INPUT OVERRIDE - Warm Lavender Custom Design */
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
 textarea {
-    background: rgba(231, 217, 255, 0.24) !important;
-    border: 2px solid #E7D9FF !important;
+    background: rgba(231, 217, 255, 0.28) !important;
+    border: 2px solid #FFFFFF !important;
     border-radius: 20px !important;
     padding: 16px 24px !important;
-    box-shadow: 0 0 24px rgba(231, 217, 255, 0.22), inset 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+    box-shadow: 0 0 24px rgba(231, 217, 255, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.12) !important;
     color: white !important;
     font-size: 16px !important;
     outline: none !important;
@@ -223,7 +223,7 @@ textarea {
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):focus,
 textarea:focus {
-    box-shadow: 0 0 32px rgba(231, 217, 255, 0.35), 0 0 0 3px rgba(231, 217, 255, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+    box-shadow: 0 0 36px rgba(231, 217, 255, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.12) !important;
     border-color: #FFFFFF !important;
     outline: none !important;
 }

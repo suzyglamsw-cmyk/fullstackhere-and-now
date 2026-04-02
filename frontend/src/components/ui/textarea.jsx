@@ -7,9 +7,9 @@ const Textarea = React.forwardRef(({ className, style, ...props }, ref) => {
     minHeight: '120px',
     padding: '20px 24px',
     borderRadius: '20px',
-    background: 'rgba(231, 217, 255, 0.24)',
-    border: '2px solid #E7D9FF',
-    boxShadow: '0 0 24px rgba(231, 217, 255, 0.22), inset 0 2px 4px rgba(0, 0, 0, 0.15)',
+    background: 'rgba(231, 217, 255, 0.28)',
+    border: '2px solid #FFFFFF',
+    boxShadow: '0 0 24px rgba(231, 217, 255, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.12)',
     color: 'white',
     fontSize: '16px',
     outline: 'none',
@@ -18,14 +18,14 @@ const Textarea = React.forwardRef(({ className, style, ...props }, ref) => {
   };
 
   const handleFocus = (e) => {
-    e.target.style.boxShadow = '0 0 32px rgba(231, 217, 255, 0.35), 0 0 0 3px rgba(231, 217, 255, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.15)';
+    e.target.style.boxShadow = '0 0 36px rgba(231, 217, 255, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.12)';
     e.target.style.borderColor = '#FFFFFF';
     props.onFocus?.(e);
   };
 
   const handleBlur = (e) => {
-    e.target.style.boxShadow = '0 0 24px rgba(231, 217, 255, 0.22), inset 0 2px 4px rgba(0, 0, 0, 0.15)';
-    e.target.style.borderColor = '#E7D9FF';
+    e.target.style.boxShadow = '0 0 24px rgba(231, 217, 255, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.12)';
+    e.target.style.borderColor = '#FFFFFF';
     props.onBlur?.(e);
   };
 
