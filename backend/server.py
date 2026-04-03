@@ -21,6 +21,7 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 from pywebpush import webpush, WebPushException
 from math import cos, radians
+import stripe
 
 # Google Play Billing imports
 from google.oauth2 import service_account
@@ -121,14 +122,37 @@ FAKE_USER_MESSAGES = {
 
 # Premium packages (defined on backend only for security)
 PREMIUM_PACKAGES = {
-    "premium_monthly": {"price": 7.99, "duration_days": 30, "name": "Premium Monthly", "currency": "gbp"},
-    "premium_yearly": {"price": 59.99, "duration_days": 365, "name": "Premium Yearly", "currency": "gbp"},
+    "premium_monthly": {
+        "price": 7.99, 
+        "duration_days": 30, 
+        "name": "Premium Monthly", 
+        "currency": "gbp",
+        "stripe_price_id": os.environ.get("STRIPE_PRICE_MONTHLY", "")
+    },
+    "premium_yearly": {
+        "price": 59.99, 
+        "duration_days": 365, 
+        "name": "Premium Yearly", 
+        "currency": "gbp",
+        "stripe_price_id": os.environ.get("STRIPE_PRICE_YEARLY", "")
+    },
 }
 
 TOKEN_PACKAGES = {
-    "tokens_5": {"price": 3.99, "tokens": 5, "name": "5 Tokens", "currency": "gbp"},
-    "tokens_15": {"price": 7.99, "tokens": 15, "name": "15 Tokens", "currency": "gbp"},
-    "tokens_50": {"price": 19.99, "tokens": 50, "name": "50 Tokens", "currency": "gbp"},
+    "tokens_small": {
+        "price": 4.99, 
+        "tokens": 10, 
+        "name": "10 Tokens", 
+        "currency": "gbp",
+        "stripe_price_id": os.environ.get("STRIPE_PRICE_TOKEN_SMALL", "")
+    },
+    "tokens_large": {
+        "price": 9.99, 
+        "tokens": 25, 
+        "name": "25 Tokens", 
+        "currency": "gbp",
+        "stripe_price_id": os.environ.get("STRIPE_PRICE_TOKEN_LARGE", "")
+    },
 }
 
 # Contact info patterns to mask
@@ -5657,17 +5681,21 @@ async def create_premium_checkout(request: Request, package_id: str, current_use
     package = PREMIUM_PACKAGES[package_id]
     host_url = str(request.base_url).rstrip('/')
     
-    if STRIPE_AVAILABLE:
+    if package.get("stripe_price_id"):
         try:
-            webhook_url = f"{host_url}/api/webhook/stripe"
-            stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+            stripe.api_key = STRIPE_API_KEY
             
             success_url = f"{host_url}/premium/success?session_id={{CHECKOUT_SESSION_ID}}"
             cancel_url = f"{host_url}/premium"
             
-            checkout_request = CheckoutSessionRequest(
-                amount=package["price"],
-                currency="gbp",
+            # Create Stripe checkout session with subscription mode
+            session = stripe.checkout.Session.create(
+                mode="subscription",
+                payment_method_types=["card"],
+                line_items=[{
+                    "price": package["stripe_price_id"],
+                    "quantity": 1,
+                }],
                 success_url=success_url,
                 cancel_url=cancel_url,
                 metadata={
@@ -5677,13 +5705,11 @@ async def create_premium_checkout(request: Request, package_id: str, current_use
                 }
             )
             
-            session = await stripe_checkout.create_checkout_session(checkout_request)
-            
             # Create payment transaction record
             await db.payment_transactions.insert_one({
                 "id": str(uuid.uuid4()),
                 "user_id": current_user["id"],
-                "session_id": session.session_id,
+                "session_id": session.id,
                 "type": "premium",
                 "package_id": package_id,
                 "amount": package["price"],
@@ -5692,7 +5718,10 @@ async def create_premium_checkout(request: Request, package_id: str, current_use
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
             
-            return {"url": session.url, "session_id": session.session_id}
+            return {"url": session.url, "session_id": session.id}
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe error: {e}")
+            raise HTTPException(status_code=500, detail="Payment service unavailable")
         except Exception as e:
             logger.error(f"Stripe error: {e}")
             raise HTTPException(status_code=500, detail="Payment service unavailable")
@@ -5713,17 +5742,21 @@ async def create_tokens_checkout(request: Request, package_id: str, current_user
     package = TOKEN_PACKAGES[package_id]
     host_url = str(request.base_url).rstrip('/')
     
-    if STRIPE_AVAILABLE:
+    if package.get("stripe_price_id"):
         try:
-            webhook_url = f"{host_url}/api/webhook/stripe"
-            stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+            stripe.api_key = STRIPE_API_KEY
             
             success_url = f"{host_url}/tokens/success?session_id={{CHECKOUT_SESSION_ID}}"
             cancel_url = f"{host_url}/tokens"
             
-            checkout_request = CheckoutSessionRequest(
-                amount=package["price"],
-                currency="gbp",
+            # Create Stripe checkout session with payment mode (one-time)
+            session = stripe.checkout.Session.create(
+                mode="payment",
+                payment_method_types=["card"],
+                line_items=[{
+                    "price": package["stripe_price_id"],
+                    "quantity": 1,
+                }],
                 success_url=success_url,
                 cancel_url=cancel_url,
                 metadata={
@@ -5734,12 +5767,10 @@ async def create_tokens_checkout(request: Request, package_id: str, current_user
                 }
             )
             
-            session = await stripe_checkout.create_checkout_session(checkout_request)
-            
             await db.payment_transactions.insert_one({
                 "id": str(uuid.uuid4()),
                 "user_id": current_user["id"],
-                "session_id": session.session_id,
+                "session_id": session.id,
                 "type": "tokens",
                 "package_id": package_id,
                 "amount": package["price"],
@@ -5749,7 +5780,10 @@ async def create_tokens_checkout(request: Request, package_id: str, current_user
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
             
-            return {"url": session.url, "session_id": session.session_id}
+            return {"url": session.url, "session_id": session.id}
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe error: {e}")
+            raise HTTPException(status_code=500, detail="Payment service unavailable")
         except Exception as e:
             logger.error(f"Stripe error: {e}")
             raise HTTPException(status_code=500, detail="Payment service unavailable")
@@ -5849,19 +5883,30 @@ async def restore_purchases(current_user: dict = Depends(get_current_user)):
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     """Handle Stripe webhook events"""
-    if not STRIPE_AVAILABLE:
-        return {"received": True}
-    
     try:
         body = await request.body()
         signature = request.headers.get("Stripe-Signature")
+        webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
         
-        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url="")
-        webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        stripe.api_key = STRIPE_API_KEY
         
-        if webhook_response.payment_status == "paid":
+        # Verify webhook signature
+        if webhook_secret:
+            try:
+                event = stripe.Webhook.construct_event(body, signature, webhook_secret)
+            except stripe.error.SignatureVerificationError as e:
+                logger.error(f"Webhook signature verification failed: {e}")
+                raise HTTPException(status_code=400, detail="Invalid signature")
+        else:
+            event = json.loads(body)
+        
+        # Handle checkout.session.completed event
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            session_id = session["id"]
+            
             transaction = await db.payment_transactions.find_one(
-                {"session_id": webhook_response.session_id}, {"_id": 0}
+                {"session_id": session_id}, {"_id": 0}
             )
             if transaction and transaction.get("status") != "completed":
                 await process_successful_payment(transaction)
