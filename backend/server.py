@@ -801,6 +801,40 @@ def calculate_distance_miles(lat1: float, lng1: float, lat2: float, lng2: float)
     
     return R * c
 
+def calculate_distance_meters(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Calculate distance between two coordinates in meters using Haversine formula"""
+    import math
+    R = 6371000  # Earth's radius in meters
+    
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lng = math.radians(lng2 - lng1)
+    
+    a = math.sin(delta_lat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    
+    return R * c
+
+def get_venue_checkin_radius(venue_type: str) -> int:
+    """
+    Get the check-in radius in meters based on venue type.
+    Small venues (bars, cafés, gyms): 50-100 meters
+    Large venues (arenas, stadiums, festivals): 150-300 meters
+    """
+    large_venue_types = [
+        "stadium", "arena", "concert_hall", "convention_center", 
+        "festival", "amusement_park", "theme_park", "zoo",
+        "museum", "shopping_mall", "airport", "university"
+    ]
+    
+    venue_type_lower = venue_type.lower() if venue_type else ""
+    
+    if any(large in venue_type_lower for large in large_venue_types):
+        return 250  # Large venues: 250 meters
+    else:
+        return 75  # Small venues (bars, cafés, gyms): 75 meters
+
 # Helper Functions
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -865,6 +899,8 @@ async def register(data: UserCreate):
         "relationship_status": "",
         "seeking": "",
         "is_visible": False,  # Hidden until photo uploaded
+        "visibility": "visible",  # "visible" or "hidden" - user-controlled hide profile
+        "presence_status": "not_here",  # "here" or "not_here"
         "profile_complete": False,  # Must upload photo to complete
         "is_premium": False,
         "premium_expires_at": None,
@@ -885,6 +921,7 @@ async def register(data: UserCreate):
         "blocks_received_count": 0,
         "lat": None,  # User location for Not Here mode
         "lng": None,
+        "location_updated_at": None,  # When location was last updated
         "created_at": now.isoformat()
     }
     await db.users.insert_one(user)
@@ -2946,16 +2983,19 @@ async def checkin_heartbeat(current_user: dict = Depends(get_current_user)):
         return {"active": False}
     return {"active": True, "last_activity_at": now.isoformat(), "expires_at": expires_at.isoformat()}
 
+class CheckInRequest(BaseModel):
+    user_lat: Optional[float] = None
+    user_lng: Optional[float] = None
+
 @api_router.post("/checkin/{venue_id}")
-async def check_in(venue_id: str, current_user: dict = Depends(get_current_user)):
-    # Check out from any existing venue
-    await db.checkins.update_many(
-        {"user_id": current_user["id"], "is_active": True},
-        {"$set": {"is_active": False, "checked_out_at": datetime.now(timezone.utc).isoformat()}}
-    )
-    
-    # Check if venue exists, if not create a placeholder
+async def check_in(venue_id: str, request: CheckInRequest = None, current_user: dict = Depends(get_current_user)):
+    """
+    Check into a venue with GPS verification.
+    User must be within the allowed radius of the venue to check in.
+    """
+    # Get venue details
     venue = await db.venues.find_one({"id": venue_id})
+    
     if not venue:
         # Create a placeholder venue - the frontend can update it with Google Places data
         venue = {
@@ -2969,6 +3009,47 @@ async def check_in(venue_id: str, current_user: dict = Depends(get_current_user)
         }
         await db.venues.insert_one(venue)
     
+    # Get venue coordinates
+    venue_lat = venue.get("latitude") or venue.get("lat", 0)
+    venue_lng = venue.get("longitude") or venue.get("lng", 0)
+    
+    # Get user's current GPS coordinates
+    user_lat = None
+    user_lng = None
+    
+    if request:
+        user_lat = request.user_lat
+        user_lng = request.user_lng
+    
+    # Fall back to stored location if not provided
+    if not user_lat or not user_lng:
+        user_lat = current_user.get("lat")
+        user_lng = current_user.get("lng")
+    
+    # Verify user is within allowed radius (only if venue has valid coordinates)
+    if venue_lat and venue_lng and venue_lat != 0 and venue_lng != 0:
+        if user_lat and user_lng:
+            distance_meters = calculate_distance_meters(user_lat, user_lng, venue_lat, venue_lng)
+            allowed_radius = get_venue_checkin_radius(venue.get("type", "venue"))
+            
+            if distance_meters > allowed_radius:
+                raise HTTPException(
+                    status_code=403, 
+                    detail="You're too far away to check in here. Check-ins only work when you're actually at the location."
+                )
+        else:
+            # No GPS provided - block check-in
+            raise HTTPException(
+                status_code=403,
+                detail="Location access is required to check in. Please enable GPS and try again."
+            )
+    
+    # Check out from any existing venue
+    await db.checkins.update_many(
+        {"user_id": current_user["id"], "is_active": True},
+        {"$set": {"is_active": False, "checked_out_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(minutes=AUTO_CHECKOUT_MINUTES)
     checkin_id = str(uuid.uuid4())
@@ -2980,9 +3061,17 @@ async def check_in(venue_id: str, current_user: dict = Depends(get_current_user)
         "checked_in_at": now.isoformat(),
         "last_activity_at": now.isoformat(),
         "expires_at": expires_at.isoformat(),
-        "is_active": True
+        "is_active": True,
+        "user_lat": user_lat,
+        "user_lng": user_lng
     }
     await db.checkins.insert_one(checkin)
+    
+    # Update user's presence to "here" automatically when checking in
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"presence_status": "here", "lat": user_lat, "lng": user_lng, "location_updated_at": now.isoformat()}}
+    )
     
     # Broadcast to venue
     await manager.broadcast_to_venue(venue_id, {
@@ -3010,7 +3099,106 @@ async def check_out(current_user: dict = Depends(get_current_user)):
             "type": "user_checked_out",
             "user_id": current_user["id"]
         })
+        # Reset presence to "not_here" on checkout
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$set": {"presence_status": "not_here"}}
+        )
     return {"message": "Checked out successfully"}
+
+class PresenceStatusRequest(BaseModel):
+    status: str  # "here" or "not_here"
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+@api_router.post("/presence/status")
+async def update_presence_status(request: PresenceStatusRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Update user's presence status (Here / Not Here).
+    Setting to "here" requires GPS verification if user has an active check-in.
+    """
+    if request.status not in ["here", "not_here"]:
+        raise HTTPException(status_code=400, detail="Invalid status. Must be 'here' or 'not_here'")
+    
+    now = datetime.now(timezone.utc)
+    update_data = {
+        "presence_status": request.status,
+        "last_active_at": now.isoformat()
+    }
+    
+    # Update location if provided
+    if request.lat is not None and request.lng is not None:
+        update_data["lat"] = request.lat
+        update_data["lng"] = request.lng
+        update_data["location_updated_at"] = now.isoformat()
+    
+    # If switching to "here", verify they have an active check-in or valid location
+    if request.status == "here":
+        current_checkin = await db.checkins.find_one({
+            "user_id": current_user["id"],
+            "is_active": True
+        }, {"_id": 0})
+        
+        if current_checkin:
+            # Verify GPS if provided
+            venue = await db.venues.find_one({"id": current_checkin["venue_id"]}, {"_id": 0})
+            if venue and request.lat and request.lng:
+                venue_lat = venue.get("latitude") or venue.get("lat", 0)
+                venue_lng = venue.get("longitude") or venue.get("lng", 0)
+                
+                if venue_lat and venue_lng and venue_lat != 0 and venue_lng != 0:
+                    distance_meters = calculate_distance_meters(request.lat, request.lng, venue_lat, venue_lng)
+                    allowed_radius = get_venue_checkin_radius(venue.get("type", "venue"))
+                    
+                    if distance_meters > allowed_radius * 2:  # Allow slightly larger radius for presence
+                        raise HTTPException(
+                            status_code=403,
+                            detail="You're too far from your check-in location to set status as 'Here'."
+                        )
+    
+    await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
+    
+    return {"status": request.status, "message": f"Presence updated to {request.status}"}
+
+class LocationUpdateRequest(BaseModel):
+    lat: float
+    lng: float
+
+@api_router.post("/location/update")
+async def update_location(request: LocationUpdateRequest, current_user: dict = Depends(get_current_user)):
+    """Update user's current GPS location."""
+    now = datetime.now(timezone.utc)
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {
+            "lat": request.lat,
+            "lng": request.lng,
+            "location_updated_at": now.isoformat(),
+            "last_active_at": now.isoformat()
+        }}
+    )
+    
+    return {"message": "Location updated", "lat": request.lat, "lng": request.lng}
+
+class VisibilityRequest(BaseModel):
+    visibility: str  # "visible" or "hidden"
+
+@api_router.post("/profile/visibility")
+async def update_visibility(request: VisibilityRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Update user's profile visibility.
+    When hidden, user won't appear in any discovery or nearby queries.
+    """
+    if request.visibility not in ["visible", "hidden"]:
+        raise HTTPException(status_code=400, detail="Invalid visibility. Must be 'visible' or 'hidden'")
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"visibility": request.visibility}}
+    )
+    
+    return {"visibility": request.visibility, "message": f"Profile visibility set to {request.visibility}"}
 
 @api_router.get("/checkin/current")
 async def get_current_checkin(current_user: dict = Depends(get_current_user)):
@@ -3078,6 +3266,42 @@ async def update_venue(venue_id: str, data: dict, current_user: dict = Depends(g
     venue = await db.venues.find_one({"id": venue_id}, {"_id": 0})
     return venue or {"id": venue_id, **update_fields}
 
+@api_router.get("/venues/{venue_id}/count")
+async def get_venue_checkin_count(venue_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Get the number of people checked into a venue.
+    All users can see the count, but only checked-in users can see WHO is there.
+    """
+    # Get all active checkins for this venue
+    all_checkins = await db.checkins.find({"venue_id": venue_id, "is_active": True}, {"_id": 0}).to_list(100)
+    
+    valid_count = 0
+    for c in all_checkins:
+        if not is_checkin_valid(c):
+            continue
+        user = await db.users.find_one({"id": c["user_id"]}, {"_id": 0})
+        if user:
+            valid_count += 1
+        elif IS_TEST_BUILD:
+            fake_user = next((u for u in FAKE_TEST_USERS if u["id"] == c["user_id"]), None)
+            if fake_user:
+                valid_count += 1
+    
+    # Check if current user is checked in at this venue
+    current_checkin = await db.checkins.find_one({
+        "user_id": current_user["id"],
+        "venue_id": venue_id,
+        "is_active": True
+    }, {"_id": 0})
+    
+    is_user_checked_in = current_checkin is not None and is_checkin_valid(current_checkin)
+    
+    return {
+        "venue_id": venue_id,
+        "checked_in_count": valid_count,
+        "can_see_people": is_user_checked_in  # User must be checked in to see who's there
+    }
+
 # Who's Here Routes
 @api_router.get("/venues/{venue_id}/people", response_model=List[WhoIsHereUser])
 async def get_people_at_venue(
@@ -3085,11 +3309,28 @@ async def get_people_at_venue(
     last_active_filter: Optional[str] = None,  # "now" (<=2min), "recent" (<=10min), "hour" (<=60min), or None for all
     current_user: dict = Depends(get_current_user)
 ):
+    """
+    Get people checked in at a venue.
+    User must be checked in at the venue to see WHO is there (privacy rule).
+    """
     # Check if current user has a profile photo - required to see others
     current_user_photos = current_user.get("photos", []) or []
     current_user_avatar = current_user.get("avatar_url", "")
     if not current_user_photos and not current_user_avatar:
         raise HTTPException(status_code=403, detail="Please upload a profile photo to see who's here")
+    
+    # PRIVACY: User must be checked in at this venue to see who's there
+    current_checkin = await db.checkins.find_one({
+        "user_id": current_user["id"],
+        "venue_id": venue_id,
+        "is_active": True
+    }, {"_id": 0})
+    
+    if not current_checkin or not is_checkin_valid(current_checkin):
+        raise HTTPException(
+            status_code=403, 
+            detail="You must check in to this venue to see who's here. Check-ins require being physically present."
+        )
     
     # Update current user's last_active_at
     now = datetime.now(timezone.utc)
@@ -3110,8 +3351,18 @@ async def get_people_at_venue(
         if not is_checkin_valid(checkin):
             continue
         
-        # Try to find real user first
-        user = await db.users.find_one({"id": checkin["user_id"], "is_visible": True}, {"_id": 0, "password": 0})
+        # Try to find real user first - check both visibility fields
+        user = await db.users.find_one({
+            "id": checkin["user_id"], 
+            "$or": [
+                {"visibility": "visible"},
+                {"visibility": {"$exists": False}, "is_visible": True}
+            ]
+        }, {"_id": 0, "password": 0})
+        
+        # Skip users with hidden visibility
+        if user and user.get("visibility") == "hidden":
+            continue
         
         # Check fake users for test mode
         if not user and IS_TEST_BUILD:
@@ -3222,12 +3473,14 @@ async def get_people_at_venue(
 
 @api_router.get("/discovery/not-here", response_model=List[WhoIsHereUser])
 async def get_people_not_here(
-    radius: str = "0-10",  # "0-10" or "10-25" miles
+    radius: str = "0-5",  # "0-5", "5-10", "10-25" miles
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Get people nearby but not at the same venue (Not Here mode).
-    Radius options: 0-10 miles, 10-25 miles
+    Get people nearby within 0-25 mile radius (Not Here mode).
+    Shows all visible users within range regardless of venue check-in.
+    Only shows users with presence_status = "not_here".
+    Radius options: 0-5, 5-10, 10-25 miles
     """
     # Check if current user has a profile photo
     current_user_photos = current_user.get("photos", []) or []
@@ -3239,7 +3492,7 @@ async def get_people_not_here(
     user_lat = current_user.get("lat")
     user_lng = current_user.get("lng")
     
-    # If user has no location, use their current venue's location
+    # If user has no location, try to get from active checkin venue
     if not user_lat or not user_lng:
         current_checkin = await db.checkins.find_one({
             "user_id": current_user["id"],
@@ -3249,20 +3502,22 @@ async def get_people_not_here(
         if current_checkin:
             venue = await db.venues.find_one({"id": current_checkin["venue_id"]}, {"_id": 0})
             if venue:
-                user_lat = venue.get("lat", 37.7749)  # Default to SF
-                user_lng = venue.get("lng", -122.4194)
+                user_lat = venue.get("latitude") or venue.get("lat")
+                user_lng = venue.get("longitude") or venue.get("lng")
         
         if not user_lat or not user_lng:
-            user_lat = 37.7749
-            user_lng = -122.4194
+            raise HTTPException(status_code=400, detail="Location required. Please enable GPS to see nearby users.")
     
-    # Parse radius
-    if radius == "10-25":
+    # Parse radius - always fetch 0-25, filter on frontend
+    if radius == "5-10":
+        min_miles = 5
+        max_miles = 10
+    elif radius == "10-25":
         min_miles = 10
         max_miles = 25
-    else:  # Default to 0-10
+    else:  # Default to 0-5
         min_miles = 0
-        max_miles = 10
+        max_miles = 5
     
     now = datetime.now(timezone.utc)
     
@@ -3272,44 +3527,46 @@ async def get_people_not_here(
         {"$set": {"last_active_at": now.isoformat()}}
     )
     
-    # Get current user's venue to exclude people there
-    current_venue_id = None
-    current_checkin = await db.checkins.find_one({
-        "user_id": current_user["id"],
-        "is_active": True
-    }, {"_id": 0})
-    if current_checkin:
-        current_venue_id = current_checkin.get("venue_id")
-    
-    # Find visible users with location data
+    # Find visible users - must have visibility="visible" OR is_visible=True (backward compat)
+    # AND presence_status = "not_here" (or not set, defaulting to not_here)
     users = await db.users.find({
-        "is_visible": True,
-        "id": {"$ne": current_user["id"]},
-        "lat": {"$ne": None},
-        "lng": {"$ne": None}
+        "$and": [
+            {
+                "$or": [
+                    {"visibility": "visible"},
+                    {"visibility": {"$exists": False}, "is_visible": True}
+                ]
+            },
+            {
+                "$or": [
+                    {"presence_status": "not_here"},
+                    {"presence_status": {"$exists": False}}  # Default to not_here
+                ]
+            }
+        ],
+        "id": {"$ne": current_user["id"]}
     }, {"_id": 0, "password": 0}).to_list(500)
     
     people = []
     for user in users:
+        # Skip users with hidden visibility
+        if user.get("visibility") == "hidden":
+            continue
+            
         # Skip users without photos
         user_photos = user.get("photos", []) or []
         user_avatar = user.get("avatar_url", "")
         if not user_photos and not user_avatar:
             continue
         
-        # Check if user is at the same venue (exclude them)
-        user_checkin = await db.checkins.find_one({
-            "user_id": user["id"],
-            "is_active": True
-        }, {"_id": 0})
-        if user_checkin and user_checkin.get("venue_id") == current_venue_id:
-            continue  # They're at the same venue, skip
+        # Calculate distance (need user location)
+        target_lat = user.get("lat")
+        target_lng = user.get("lng")
         
-        # Calculate distance
-        distance = calculate_distance_miles(
-            user_lat, user_lng,
-            user.get("lat", 0), user.get("lng", 0)
-        )
+        if not target_lat or not target_lng:
+            continue  # Skip users without location
+        
+        distance = calculate_distance_miles(user_lat, user_lng, target_lat, target_lng)
         
         # Filter by radius
         if distance < min_miles or distance > max_miles:
@@ -3360,6 +3617,141 @@ async def get_people_not_here(
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
             "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
             "distance_miles": round(distance, 1),
+        })
+    
+    # Sort: Premium first, then by distance
+    premium = [p for p in people if p.get("is_premium")]
+    non_premium = [p for p in people if not p.get("is_premium")]
+    
+    premium.sort(key=lambda x: x.get("distance_miles", 999))
+    non_premium.sort(key=lambda x: x.get("distance_miles", 999))
+    
+    return premium + non_premium
+
+@api_router.get("/discovery/here", response_model=List[WhoIsHereUser])
+async def get_people_here(
+    radius: str = "0-25",  # Full 0-25 mile radius
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get people who have set their presence to "Here" within 0-25 mile radius.
+    Users in "Here" mode can also see "Not Here" users nearby.
+    """
+    # Check if current user has a profile photo
+    current_user_photos = current_user.get("photos", []) or []
+    current_user_avatar = current_user.get("avatar_url", "")
+    if not current_user_photos and not current_user_avatar:
+        raise HTTPException(status_code=403, detail="Please upload a profile photo to see who's here")
+    
+    # Get current user's location
+    user_lat = current_user.get("lat")
+    user_lng = current_user.get("lng")
+    
+    if not user_lat or not user_lng:
+        # Try to get from active checkin venue
+        current_checkin = await db.checkins.find_one({
+            "user_id": current_user["id"],
+            "is_active": True
+        }, {"_id": 0})
+        
+        if current_checkin:
+            venue = await db.venues.find_one({"id": current_checkin["venue_id"]}, {"_id": 0})
+            if venue:
+                user_lat = venue.get("latitude") or venue.get("lat")
+                user_lng = venue.get("longitude") or venue.get("lng")
+        
+        if not user_lat or not user_lng:
+            raise HTTPException(status_code=400, detail="Location required. Please enable GPS.")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Update current user's last_active_at
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"last_active_at": now.isoformat()}}
+    )
+    
+    # Find users with presence_status = "here"
+    users = await db.users.find({
+        "$or": [
+            {"visibility": "visible"},
+            {"visibility": {"$exists": False}, "is_visible": True}
+        ],
+        "id": {"$ne": current_user["id"]},
+        "presence_status": "here"
+    }, {"_id": 0, "password": 0}).to_list(500)
+    
+    people = []
+    for user in users:
+        # Skip users with hidden visibility
+        if user.get("visibility") == "hidden":
+            continue
+            
+        # Skip users without photos
+        user_photos = user.get("photos", []) or []
+        user_avatar = user.get("avatar_url", "")
+        if not user_photos and not user_avatar:
+            continue
+        
+        # Calculate distance
+        target_lat = user.get("lat")
+        target_lng = user.get("lng")
+        
+        if not target_lat or not target_lng:
+            continue
+        
+        distance = calculate_distance_miles(user_lat, user_lng, target_lat, target_lng)
+        
+        # Filter by 25 mile radius
+        if distance > 25:
+            continue
+        
+        # Check glance status
+        has_glanced_at_me = await db.glances.find_one({
+            "from_user_id": user["id"],
+            "to_user_id": current_user["id"]
+        }) is not None
+        
+        i_glanced_at = await db.glances.find_one({
+            "from_user_id": current_user["id"],
+            "to_user_id": user["id"]
+        }) is not None
+        
+        # Check connection status
+        is_connected = await db.connections.find_one({
+            "$or": [
+                {"user1_id": current_user["id"], "user2_id": user["id"]},
+                {"user1_id": user["id"], "user2_id": current_user["id"]}
+            ]
+        }) is not None
+        
+        # Revealed if mutual glance or connected
+        is_revealed = (has_glanced_at_me and i_glanced_at) or is_connected
+        
+        first_name = get_first_name(user.get("display_name", "Someone"))
+        
+        people.append({
+            "id": user["id"],
+            "display_name": user["display_name"] if is_revealed else first_name,
+            "first_name": first_name,
+            "age": user.get("age"),
+            "avatar_url": user.get("avatar_url", ""),
+            "bio": user.get("bio", "") if is_revealed else "",
+            "interests": user.get("interests", []) if is_revealed else [],
+            "checked_in_at": None,
+            "has_glanced_at_me": has_glanced_at_me,
+            "i_glanced_at": i_glanced_at,
+            "is_connected": is_connected,
+            "is_revealed": is_revealed,
+            "is_premium": user.get("is_premium", False),
+            "last_active_at": user.get("last_active_at"),
+            "presence_note": user.get("presence_note", ""),
+            "celebrity_crush": user.get("celebrity_crush", ""),
+            "shy_indicator": user.get("shy_indicator", False),
+            "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
+            "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
+            "distance_miles": round(distance, 1),
+            "presence_status": "here"
         })
     
     # Sort: Premium first, then by distance

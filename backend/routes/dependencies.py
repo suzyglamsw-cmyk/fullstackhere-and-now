@@ -107,6 +107,8 @@ class UserResponse(BaseModel):
     seeking: str = ""
     created_at: str
     is_visible: bool = True
+    visibility: Optional[str] = "visible"  # "visible" or "hidden"
+    presence_status: Optional[str] = "not_here"  # "here" or "not_here"
     is_premium: bool = False
     premium_expires_at: Optional[str] = None
     token_balance: int = 0
@@ -120,6 +122,9 @@ class UserResponse(BaseModel):
     presence_note: Optional[str] = ""
     celebrity_crush: Optional[str] = ""
     shy_indicator: Optional[bool] = False
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    location_updated_at: Optional[str] = None
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr

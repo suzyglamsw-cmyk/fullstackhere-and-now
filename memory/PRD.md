@@ -239,6 +239,7 @@ Comprehensive list including:
 - ✅ **Voice Intro Safety Moderation** - Transcribes audio with Whisper, runs through offensive language filter, blocks harmful content (April 2026)
 - ✅ **Enhanced Content Moderation** - Full name detection in text, image AI analysis for QR/screenshots, expanded profanity filtering (April 2026)
 - ✅ **Profile Input Style Override** - Global Shadcn Input/Textarea components overridden with custom warm lavender aesthetic: #E7D9FF 12% opacity background, #F3E8FF 2px solid border, subtle outer glow, large 16-20px corner radius (April 2026)
+- ✅ **Location & Presence System** - Distance-based discovery (0-25 miles), GPS-verified check-ins, Here/Not Here presence modes, venue check-in privacy (April 2026)
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)
