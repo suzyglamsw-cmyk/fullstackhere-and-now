@@ -5,7 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { MapPin, Users, LogOut, Loader2, Navigation, MapPinOff, Star, Clock, Radio, ArrowLeft } from "lucide-react";
+import { MapPin, Users, LogOut, Loader2, MapPinOff, Star, Clock, Radio, ArrowLeft } from "lucide-react";
 import LiveClock from "../components/LiveClock";
 import useLocationTracker from "../hooks/useLocationTracker";
 
@@ -21,7 +21,6 @@ const Venues = () => {
   const [currentCheckin, setCurrentCheckin] = useState(null);
   const [geoLocation, setGeoLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
-  const [showOpenArea, setShowOpenArea] = useState(false);
   const heartbeatRef = useRef(null);
 
   // Continuous location tracking
@@ -263,26 +262,6 @@ const Venues = () => {
     }
   };
 
-  const handleOpenAreaCheckIn = async () => {
-    if (!geoLocation) {
-      toast.error("Location required for open area check-in");
-      return;
-    }
-    setCheckingIn("open-area");
-    try {
-      await axios.post(`${API}/checkin/open-area`, {
-        latitude: geoLocation.lat,
-        longitude: geoLocation.lng
-      });
-      toast.success("Checked in to your area!");
-      fetchCurrentCheckin();
-    } catch (error) {
-      toast.error("Failed to check in");
-    } finally {
-      setCheckingIn(null);
-    }
-  };
-
   const handleCheckOut = async () => {
     try {
       await axios.post(`${API}/checkout`);
@@ -376,34 +355,25 @@ const Venues = () => {
               <div className="w-3 h-3 rounded-full bg-emerald-500 animate-live" />
               <div>
                 <p className="text-white font-medium">
-                  {currentCheckin.checkin?.is_open_area 
-                    ? `Within ${currentCheckin.checkin?.approximate_radius || 150}m` 
-                    : `You're at ${currentCheckin.venue?.name}`
-                  }
+                  You're at {currentCheckin.venue?.name}
                 </p>
-                {currentCheckin.checkin?.is_open_area ? (
-                  <p className="text-slate-400 text-sm">Open area check-in</p>
-                ) : (
-                  <button
-                    onClick={() => navigate(`/venue/${currentCheckin.checkin.venue_id}`)}
-                    className="text-slate-400 text-sm hover:text-indigo-400 transition-colors cursor-pointer"
-                    data-testid="people-count-link"
-                  >
-                    {currentCheckin.venue?.checked_in_count || 0} people here
-                  </button>
-                )}
+                <button
+                  onClick={() => navigate(`/venue/${currentCheckin.checkin.venue_id}`)}
+                  className="text-slate-400 text-sm hover:text-indigo-400 transition-colors cursor-pointer"
+                  data-testid="people-count-link"
+                >
+                  {currentCheckin.venue?.checked_in_count || 0} people here
+                </button>
               </div>
             </div>
             <div className="flex gap-2">
-              {!currentCheckin.checkin?.is_open_area && (
-                <Button
-                  data-testid="view-whos-here-btn"
-                  onClick={() => navigate(`/venue/${currentCheckin.checkin.venue_id}`)}
-                  className="rounded-full bg-indigo-500 hover:bg-indigo-600 text-white"
-                >
-                  Who's Here
-                </Button>
-              )}
+              <Button
+                data-testid="view-whos-here-btn"
+                onClick={() => navigate(`/venue/${currentCheckin.checkin.venue_id}`)}
+                className="rounded-full bg-indigo-500 hover:bg-indigo-600 text-white"
+              >
+                Who's Here
+              </Button>
               <Button
                 data-testid="checkout-btn"
                 onClick={handleCheckOut}
@@ -411,35 +381,6 @@ const Venues = () => {
                 className="rounded-full text-slate-400 hover:text-white hover:bg-white/10"
               >
                 <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Open Area Option */}
-        {geoLocation && !currentCheckin && (
-          <div className="glass rounded-2xl p-4 mb-6" data-testid="open-area-card">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                  <Navigation className="w-5 h-5 text-indigo-400" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">Not at a venue?</p>
-                  <p className="text-slate-400 text-sm">Check in to your current area (~150m radius)</p>
-                </div>
-              </div>
-              <Button
-                data-testid="open-area-checkin-btn"
-                onClick={handleOpenAreaCheckIn}
-                disabled={checkingIn === "open-area"}
-                className="rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400"
-              >
-                {checkingIn === "open-area" ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Check In Here"
-                )}
               </Button>
             </div>
           </div>
