@@ -76,7 +76,7 @@ class UserLogin(BaseModel):
     password: str
 
 class UserProfile(BaseModel):
-    display_name: str
+    display_name: Optional[str] = None
     bio: Optional[str] = ""
     avatar_url: Optional[str] = ""
     photos: Optional[List[str]] = []
@@ -117,6 +117,9 @@ class UserResponse(BaseModel):
     active_venue_id: Optional[str] = None
     active_venue_timestamp: Optional[str] = None
     voice_intro_url: Optional[str] = ""
+    presence_note: Optional[str] = ""
+    celebrity_crush: Optional[str] = ""
+    shy_indicator: Optional[bool] = False
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
