@@ -17,7 +17,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { Loader2, LogOut, Trash2, Eye, EyeOff, Shield, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X } from "lucide-react";
+import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, isSubscribedToPush } from "../utils/pushNotifications";
 
@@ -137,20 +137,6 @@ const Settings = () => {
     }
   };
 
-  const handleToggleVisibility = async () => {
-    try {
-      const response = await axios.put(`${API}/auth/visibility`);
-      updateUser({ is_visible: response.data.is_visible });
-      toast.success(
-        response.data.is_visible
-          ? "You're now visible to others"
-          : "You're now hidden from others"
-      );
-    } catch (error) {
-      toast.error("Failed to update visibility");
-    }
-  };
-
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
@@ -205,39 +191,6 @@ const Settings = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
           <p className="text-slate-400">Manage your account and preferences</p>
-        </div>
-
-        {/* Privacy Section */}
-        <div className="glass rounded-2xl p-6 mb-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-emerald-400" />
-            </div>
-            <h2 className="text-xl font-semibold text-white">Privacy</h2>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {user?.is_visible ? (
-                <Eye className="w-5 h-5 text-emerald-400" />
-              ) : (
-                <EyeOff className="w-5 h-5 text-slate-400" />
-              )}
-              <div>
-                <p className="text-white font-medium">Visibility</p>
-                <p className="text-slate-400 text-sm">
-                  {user?.is_visible
-                    ? "You're visible to others at venues"
-                    : "You're hidden from others"}
-                </p>
-              </div>
-            </div>
-            <Switch
-              data-testid="visibility-toggle"
-              checked={user?.is_visible}
-              onCheckedChange={handleToggleVisibility}
-            />
-          </div>
         </div>
 
         {/* Spread the Word Section */}

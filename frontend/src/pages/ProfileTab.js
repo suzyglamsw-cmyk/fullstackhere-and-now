@@ -146,6 +146,20 @@ const Profile = () => {
     }
   };
 
+  const handleToggleVisibility = async () => {
+    try {
+      const response = await axios.put(`${API}/auth/visibility`);
+      updateUser({ is_visible: response.data.is_visible });
+      toast.success(
+        response.data.is_visible
+          ? "You're now visible to others"
+          : "You're now hidden from discovery"
+      );
+    } catch (error) {
+      toast.error("Failed to update visibility");
+    }
+  };
+
   // Reset all voice recording state completely
   const resetVoiceRecordingState = () => {
     // Stop any playing audio
@@ -709,6 +723,65 @@ const Profile = () => {
                   <div 
                     className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
                       formData.shy_indicator ? 'left-7' : 'left-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
+
+          {/* Profile Visibility Section */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
+                {user?.is_visible ? (
+                  <Eye className="w-5 h-5 text-emerald-400" />
+                ) : (
+                  <EyeOff className="w-5 h-5 text-slate-400" />
+                )}
+              </div>
+              <div>
+                <h2 className="text-lg font-medium text-white/90">Profile Visibility</h2>
+                <p className="text-sm" style={{ color: '#E7D9FF', opacity: 0.8 }}>Control who can discover you</p>
+              </div>
+            </div>
+
+            {/* Visibility Toggle */}
+            <div 
+              className="p-6 rounded-[20px] transition-all duration-300"
+              style={{ 
+                background: 'transparent',
+                border: '2px solid #FFFFFF',
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 pr-4">
+                  <p className="text-white font-medium mb-1">
+                    {user?.is_visible ? "Visible" : "Hidden"}
+                  </p>
+                  <p className="text-sm" style={{ color: '#E7D9FF', opacity: 0.7 }}>
+                    {user?.is_visible
+                      ? "You appear in discovery and nearby searches"
+                      : "You're hidden from all discovery features"}
+                  </p>
+                </div>
+                
+                {/* Pill Toggle */}
+                <button
+                  data-testid="visibility-toggle"
+                  onClick={handleToggleVisibility}
+                  className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
+                    user?.is_visible 
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/30' 
+                      : 'bg-white/10'
+                  }`}
+                >
+                  <div 
+                    className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
+                      user?.is_visible ? 'left-7' : 'left-1'
                     }`}
                   />
                 </button>
