@@ -66,6 +66,7 @@ const Profile = () => {
     celebrity_crush: "",
     shy_indicator: false,
     voice_intro_url: "",
+    date_of_birth: "",
   });
 
   useEffect(() => {
@@ -78,6 +79,7 @@ const Profile = () => {
         celebrity_crush: user.celebrity_crush || "",
         shy_indicator: user.shy_indicator || false,
         voice_intro_url: user.voice_intro_url || "",
+        date_of_birth: user.date_of_birth || "",
       });
     }
   }, [user]);
@@ -134,6 +136,7 @@ const Profile = () => {
         celebrity_crush: formData.celebrity_crush,
         shy_indicator: formData.shy_indicator,
         voice_intro_url: formData.voice_intro_url,
+        date_of_birth: formData.date_of_birth,
       });
       
       // Update user context with saved data
@@ -637,6 +640,35 @@ const Profile = () => {
               {formData.display_name}
             </div>
             <p className="text-xs pl-1" style={{ color: '#E7D9FF', opacity: 0.7 }}>Set during registration • cannot be changed</p>
+          </section>
+
+          {/* Date of Birth & Age */}
+          <section className="space-y-3">
+            <Label className="text-white/70 text-sm font-medium">Date of Birth</Label>
+            <div className="flex items-center gap-4">
+              <Input
+                type="date"
+                value={formData.date_of_birth}
+                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                className="flex-1 h-16 px-6 rounded-[20px] text-white"
+                data-testid="dob-input"
+              />
+              {user?.age && (
+                <div 
+                  className="h-16 px-6 rounded-[20px] flex items-center justify-center min-w-[100px]"
+                  style={{ 
+                    background: 'transparent',
+                    border: '2px solid #FFFFFF',
+                  }}
+                >
+                  <span className="text-white font-medium">{user.age} years</span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs pl-1" style={{ color: '#E7D9FF', opacity: 0.7 }}>
+              {user?.age ? `Your age (${user.age}) is shown to others • DOB is private` : 'Must be 18 or older'}
+            </p>
           </section>
 
           {/* Bio Section */}

@@ -8,7 +8,8 @@ import uuid
 from .dependencies import (
     db, get_current_user, hash_password, verify_password, create_token,
     validate_display_name, validate_free_text, handle_premium_expiration,
-    is_checkin_valid, UserCreate, UserLogin, UserProfile, UserResponse,
+    is_checkin_valid, calculate_age_from_dob, validate_dob_minimum_age,
+    UserCreate, UserLogin, UserProfile, UserResponse,
     PasswordResetRequest, PasswordResetConfirm, LocationUpdate,
     FREE_DAILY_GLANCES, FREE_DAILY_TOKENS, PREMIUM_DAILY_GLANCES, PREMIUM_DAILY_TOKENS,
     logger
@@ -25,8 +26,8 @@ async def register(data: UserCreate):
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
     
-    # Validate age (must be 18+)
-    if data.age < 18:
+    # Validate date of birth (must be 18+)
+    if not validate_dob_minimum_age(data.date_of_birth, 18):
         raise HTTPException(status_code=400, detail="You must be 18 or older to register")
     
     existing = await db.users.find_one({"email": data.email})
@@ -35,6 +36,7 @@ async def register(data: UserCreate):
     
     user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
+    age = calculate_age_from_dob(data.date_of_birth)
     user = {
         "id": user_id,
         "email": data.email,
@@ -45,7 +47,8 @@ async def register(data: UserCreate):
         "avatar_url": "",
         "photos": ["", "", ""],
         "interests": [],
-        "age": data.age,
+        "date_of_birth": data.date_of_birth,
+        "age": age,
         "gender": "",
         "orientation": "",
         "relationship_status": "",
@@ -85,7 +88,8 @@ async def register(data: UserCreate):
             "avatar_url": "",
             "photos": ["", "", ""],
             "interests": [],
-            "age": data.age,
+            "date_of_birth": data.date_of_birth,
+            "age": age,
             "gender": "",
             "orientation": "",
             "relationship_status": "",
@@ -198,6 +202,13 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
         is_valid, error_msg = validate_free_text(update_data["bio"], "bio", min_length=10, max_length=500)
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Validate and process date_of_birth
+    if "date_of_birth" in update_data and update_data["date_of_birth"]:
+        if not validate_dob_minimum_age(update_data["date_of_birth"], 18):
+            raise HTTPException(status_code=400, detail="You must be 18 or older")
+        # Calculate and store age
+        update_data["age"] = calculate_age_from_dob(update_data["date_of_birth"])
     
     # Validate presence_note (max 40 chars)
     if "presence_note" in update_data and update_data["presence_note"]:

@@ -69,7 +69,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     display_name: str
-    age: int = Field(..., ge=18, description="User must be 18 or older")
+    date_of_birth: str = Field(..., description="Date of birth in YYYY-MM-DD format")
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -81,7 +81,7 @@ class UserProfile(BaseModel):
     avatar_url: Optional[str] = ""
     photos: Optional[List[str]] = []
     interests: List[str] = []
-    age: Optional[int] = None
+    date_of_birth: Optional[str] = None  # YYYY-MM-DD format
     gender: Optional[str] = ""
     orientation: Optional[str] = ""
     relationship_status: Optional[str] = ""
@@ -100,7 +100,8 @@ class UserResponse(BaseModel):
     avatar_url: str = ""
     photos: List[str] = []
     interests: List[str] = []
-    age: Optional[int] = None
+    date_of_birth: Optional[str] = None  # YYYY-MM-DD format
+    age: Optional[int] = None  # Calculated from date_of_birth
     gender: str = ""
     orientation: str = ""
     relationship_status: str = ""
@@ -136,6 +137,30 @@ class PasswordResetConfirm(BaseModel):
 class LocationUpdate(BaseModel):
     latitude: float
     longitude: float
+
+
+# ============================================================================
+# DATE OF BIRTH & AGE HELPERS
+# ============================================================================
+
+def calculate_age_from_dob(date_of_birth: str) -> Optional[int]:
+    """Calculate age from date of birth string (YYYY-MM-DD format)"""
+    if not date_of_birth:
+        return None
+    try:
+        dob = datetime.strptime(date_of_birth, "%Y-%m-%d")
+        today = datetime.now()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        return age
+    except (ValueError, TypeError):
+        return None
+
+def validate_dob_minimum_age(date_of_birth: str, min_age: int = 18) -> bool:
+    """Validate that date of birth meets minimum age requirement"""
+    age = calculate_age_from_dob(date_of_birth)
+    if age is None:
+        return False
+    return age >= min_age
 
 
 # ============================================================================

@@ -47,6 +47,7 @@ const Register = () => {
     email: "",
     password: "",
     display_name: "",
+    date_of_birth: "",
   });
 
   useEffect(() => {
@@ -85,12 +86,32 @@ const Register = () => {
       return;
     }
     
+    // Validate date of birth
+    if (!formData.date_of_birth) {
+      toast.error("Please enter your date of birth");
+      return;
+    }
+    
+    // Check if 18+
+    const dob = new Date(formData.date_of_birth);
+    const today = new Date();
+    const age = today.getFullYear() - dob.getFullYear() - 
+      ((today.getMonth() < dob.getMonth() || 
+        (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) ? 1 : 0);
+    
+    if (age < 18) {
+      toast.error("You must be 18 or older to register");
+      return;
+    }
+    
     setLoading(true);
 
     try {
       const response = await axios.post(`${API}/auth/register`, {
-        ...formData,
-        age_confirmed: true // Mark that user confirmed 18+
+        email: formData.email,
+        password: formData.password,
+        display_name: formData.display_name,
+        date_of_birth: formData.date_of_birth,
       });
       login(response.data.token, response.data.user);
       toast.success("Account created! Let's set up your profile.");
@@ -265,6 +286,23 @@ const Register = () => {
                   className="h-12 bg-white/5 border-transparent focus:border-indigo-500 rounded-xl text-white placeholder:text-slate-500"
                 />
                 <p className="text-xs text-slate-500">At least 6 characters</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="date_of_birth" className="text-slate-300">
+                  Date of Birth
+                </Label>
+                <Input
+                  data-testid="dob-input"
+                  id="date_of_birth"
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                  required
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                  className="h-12 bg-white/5 border-transparent focus:border-indigo-500 rounded-xl text-white placeholder:text-slate-500"
+                />
+                <p className="text-xs text-slate-500">You must be 18 or older. Your age will be shown, but not your DOB.</p>
               </div>
 
               <Button

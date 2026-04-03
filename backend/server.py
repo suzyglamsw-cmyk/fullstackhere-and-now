@@ -220,6 +220,25 @@ def get_first_name(display_name: str) -> str:
         return "Someone"
     return display_name.split()[0]
 
+def calculate_age_from_dob(date_of_birth: str) -> Optional[int]:
+    """Calculate age from date of birth string (YYYY-MM-DD format)"""
+    if not date_of_birth:
+        return None
+    try:
+        dob = datetime.strptime(date_of_birth, "%Y-%m-%d")
+        today = datetime.now()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        return age
+    except:
+        return None
+
+def validate_dob_minimum_age(date_of_birth: str, min_age: int = 18) -> bool:
+    """Validate that date of birth meets minimum age requirement"""
+    age = calculate_age_from_dob(date_of_birth)
+    if age is None:
+        return False
+    return age >= min_age
+
 def is_checkin_valid(checkin: dict) -> bool:
     """Check if a checkin is still valid (not expired)"""
     if not checkin.get("is_active", False):
