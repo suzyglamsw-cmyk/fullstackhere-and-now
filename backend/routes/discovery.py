@@ -187,6 +187,7 @@ async def get_people_here(
 ):
     """
     Get people who have set their presence to "Here" within 0-25 mile radius.
+    Includes the current user as the first item with is_self=true.
     """
     # Check if current user has a profile photo
     current_user_photos = current_user.get("photos", []) or []
@@ -219,6 +220,41 @@ async def get_people_here(
         {"id": current_user["id"]},
         {"$set": {"last_active_at": now.isoformat()}}
     )
+    
+    # Build the self card first (current user's own entry)
+    self_card = None
+    current_user_checkin = await db.checkins.find_one({
+        "user_id": current_user["id"],
+        "is_active": True
+    }, {"_id": 0})
+    
+    # Only include self card if user is in Here & Now mode (has discovery_mode = "here_now")
+    if current_user.get("discovery_mode") == "here_now":
+        first_name = get_first_name(current_user.get("display_name", "You"))
+        self_card = {
+            "id": current_user["id"],
+            "display_name": current_user.get("display_name", "You"),
+            "first_name": first_name,
+            "age": current_user.get("age"),
+            "avatar_url": current_user.get("avatar_url", ""),
+            "bio": "",  # Don't show bio on self card
+            "interests": [],
+            "checked_in_at": current_user_checkin.get("checked_in_at") if current_user_checkin else None,
+            "has_glanced_at_me": False,
+            "i_glanced_at": False,
+            "is_connected": False,
+            "is_revealed": False,  # Always show as pre-reveal (blurred or silhouette)
+            "is_premium": current_user.get("is_premium", False),
+            "last_active_at": current_user.get("last_active_at"),
+            "presence_note": current_user.get("presence_note", ""),
+            "celebrity_crush": "",
+            "shy_indicator": current_user.get("shy_indicator", False),
+            "voice_intro_url": "",
+            "has_safety_halo": False,
+            "distance_miles": 0,
+            "hide_photo_in_venues": current_user.get("hide_photo_in_venues", False),
+            "is_self": True,  # Mark as self card
+        }
     
     # Find visible users with presence_status = "here"
     users = await db.users.find({
@@ -325,7 +361,13 @@ async def get_people_here(
     premium.sort(key=lambda x: x.get("distance_miles", 999))
     non_premium.sort(key=lambda x: x.get("distance_miles", 999))
     
-    return premium + non_premium
+    # Build final result: self card first (if present), then premium, then non-premium
+    result = []
+    if self_card:
+        result.append(self_card)
+    result.extend(premium + non_premium)
+    
+    return result
 
 
 @router.get("/discovery/proximity-echoes")

@@ -529,6 +529,7 @@ class WhoIsHereUser(BaseModel):
     has_safety_halo: bool = False
     distance_miles: Optional[float] = None
     hide_photo_in_venues: bool = False  # Show silhouette instead of blurred photo in venue lists
+    is_self: bool = False  # True if this is the current user's own card
 
 class GlanceCreate(BaseModel):
     to_user_id: str

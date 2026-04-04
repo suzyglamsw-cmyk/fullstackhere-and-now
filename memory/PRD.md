@@ -38,6 +38,11 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 - "Other venues nearby" horizontal scroll list
 - People grid with Glance/Icebreaker actions
 - Live tracking badge
+- **Self Card** (NEW): User's own profile appears first with "You're here" badge
+  - Only visible to the user themselves
+  - Shows silhouette if "Hide photo in venues" is ON, blurred photo if OFF
+  - Clicking opens user's Profile page
+  - Never visible to other users
 
 #### NOT HERE Mode (`/discover/not-here`)
 - "Back to Discovery" button at top

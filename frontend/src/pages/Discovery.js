@@ -630,10 +630,84 @@ const Discovery = ({ defaultMode = null }) => {
 const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }) => {
   const navigate = useNavigate();
   
-  // Determine if we should show silhouette
-  // Only show silhouette if: user has hide_photo_in_venues=true AND we're in venue context AND not revealed
-  const showSilhouette = isVenueContext && person.hide_photo_in_venues && !person.is_revealed;
+  // Check if this is the user's own card
+  const isSelf = person.is_self === true;
   
+  // Determine if we should show silhouette
+  // For self: show silhouette if hide_photo_in_venues is ON
+  // For others: show silhouette if they have hide_photo_in_venues=true AND we're in venue context AND not revealed
+  const showSilhouette = isSelf 
+    ? (isVenueContext && person.hide_photo_in_venues)
+    : (isVenueContext && person.hide_photo_in_venues && !person.is_revealed);
+  
+  // Handle click on self card - navigate to profile
+  const handleSelfClick = () => {
+    navigate("/profile-tab");
+  };
+  
+  // Self card - special rendering
+  if (isSelf) {
+    return (
+      <div
+        data-testid="self-card"
+        onClick={handleSelfClick}
+        className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-2xl overflow-hidden border-2 border-indigo-500/50 hover:border-indigo-400 transition-all cursor-pointer group"
+      >
+        {/* Photo */}
+        <div className="relative aspect-[3/4]">
+          {showSilhouette ? (
+            <SilhouetteAvatar />
+          ) : (
+            <BlurredImage
+              src={person.avatar_url || person.photos?.[0]}
+              alt="You"
+              isRevealed={false}  // Always show as blurred (pre-reveal view)
+              className="w-full h-full object-cover"
+            />
+          )}
+          
+          {/* "You're here" badge */}
+          <div className="absolute top-2 left-2 px-3 py-1.5 rounded-full bg-indigo-500 flex items-center gap-1.5 shadow-lg">
+            <MapPin className="w-3 h-3 text-white" />
+            <span className="text-xs text-white font-medium">You're here</span>
+          </div>
+          
+          {/* Premium badge */}
+          {person.is_premium && (
+            <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-amber-500/90 flex items-center gap-1">
+              <Crown className="w-3 h-3 text-white" />
+            </div>
+          )}
+          
+          {/* Overlay info */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+            <p className="text-white font-medium truncate">You</p>
+            {person.age && <p className="text-slate-300 text-sm">{person.age}</p>}
+            {person.presence_note && (
+              <p className="text-slate-400 text-xs mt-1 truncate">{person.presence_note}</p>
+            )}
+          </div>
+        </div>
+        
+        {/* Action - View Profile */}
+        <div className="p-3">
+          <Button
+            size="sm"
+            className="w-full bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 group-hover:bg-indigo-500/40"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelfClick();
+            }}
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            View your profile
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Regular person card (non-self)
   return (
     <div
       className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 transition-all group"
