@@ -85,6 +85,8 @@ const Profile = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewMode, setPreviewMode] = useState("before");
   const [previewAudioPlaying, setPreviewAudioPlaying] = useState(false);
+  const [hidePhotoInVenues, setHidePhotoInVenues] = useState(false);
+  const [privacyLoading, setPrivacyLoading] = useState(false);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -124,8 +126,35 @@ const Profile = () => {
         shy_indicator: user.shy_indicator || false,
         voice_intro_url: user.voice_intro_url || "",
       });
+      // Fetch privacy settings
+      fetchPrivacySettings();
     }
   }, [user]);
+
+  const fetchPrivacySettings = async () => {
+    try {
+      const response = await axios.get(`${API}/settings/privacy`);
+      setHidePhotoInVenues(response.data.hide_photo_in_venues || false);
+    } catch (error) {
+      // Silently fail - use default
+    }
+  };
+
+  const handleToggleHidePhotoInVenues = async () => {
+    const newValue = !hidePhotoInVenues;
+    setHidePhotoInVenues(newValue);
+    setPrivacyLoading(true);
+    
+    try {
+      await axios.put(`${API}/settings/privacy`, { hide_photo_in_venues: newValue });
+      toast.success(newValue ? "Photo will be hidden in venues" : "Photo will be visible in venues");
+    } catch (error) {
+      setHidePhotoInVenues(!newValue); // Revert
+      toast.error("Failed to update setting");
+    } finally {
+      setPrivacyLoading(false);
+    }
+  };
 
   const handlePhotoUpload = async (index, file) => {
     if (!file) return;
@@ -844,6 +873,58 @@ const Profile = () => {
                   />
                 </button>
               </div>
+            </div>
+
+            {/* Hide Photo in Venues Toggle */}
+            <div 
+              className="p-5 rounded-[20px] transition-all duration-300"
+              style={{ 
+                background: 'rgba(139, 92, 246, 0.08)',
+                border: '2px solid rgba(168, 85, 247, 0.3)',
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1 mr-4">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                    hidePhotoInVenues ? 'bg-emerald-500/30' : 'bg-white/5'
+                  }`}>
+                    <User className={`w-4 h-4 transition-colors ${hidePhotoInVenues ? 'text-emerald-400' : 'text-purple-400/50'}`} />
+                  </div>
+                  <div>
+                    <p className={`font-medium transition-colors ${hidePhotoInVenues ? 'text-emerald-200' : 'text-purple-200/70'}`}>
+                      Hide my photo in venues
+                    </p>
+                    <p className="text-xs mt-0.5 text-purple-300/60">
+                      Shows a silhouette instead of your photo in venue lists
+                    </p>
+                  </div>
+                </div>
+                
+                <button
+                  data-testid="hide-photo-venues-toggle"
+                  onClick={handleToggleHidePhotoInVenues}
+                  disabled={privacyLoading}
+                  className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
+                    hidePhotoInVenues 
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/30' 
+                      : 'bg-white/10'
+                  } ${privacyLoading ? 'opacity-50' : ''}`}
+                >
+                  <div 
+                    className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
+                      hidePhotoInVenues ? 'left-7' : 'left-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              {hidePhotoInVenues && (
+                <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="text-emerald-300 text-xs flex items-center gap-2">
+                    <MapPin className="w-3 h-3" />
+                    Active in Here & Now mode only. No effect in Not Here, Matches, or Chats.
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 

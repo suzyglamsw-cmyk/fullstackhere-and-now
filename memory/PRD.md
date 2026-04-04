@@ -12,32 +12,45 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 - User registration with display name (cannot be changed after creation)
 - Password reset flow
 
-### 2. Discovery Modes (COMPLETE)
+### 2. Discovery Modes (COMPLETE - UPDATED APRIL 2026)
+
+#### New Gateway Flow
+- **Discovery Gateway** (`/discover/select`) - User MUST choose mode here
+- No tabs in individual modes - only "Back to Discovery" button
+- Mode selection sets `discovery_mode` in backend
+- "Back to Discovery" clears `discovery_mode` (sets to null)
 
 #### Routes
-- `/discover/select` - Mode selector (main hub)
-- `/discover/here` - Here & Now mode
-- `/discover/not-here` - Not Here mode
-- `/venues` - Venue list (no tabs, has "Back to Discovery" button)
+- `/discover/select` - Discovery gateway (choose Here & Now or Not Here)
+- `/discover/here` - Here & Now mode (NO tabs, only "Back to Discovery")
+- `/discover/not-here` - Not Here mode (NO tabs, only "Back to Discovery")
+- `/venues` - Venue list (has "Back to Discovery" button that clears mode)
 
-#### Mode Selector (`/discover/select`)
-- Shows both "Here & Now" and "Not Here" cards
-- Displays current venue status if checked in
-- No auto-redirects - user must choose
-- Discover icon always returns here
+#### State Rules
+- User can ONLY be in one mode at a time
+- Venue presence determined by explicit "Here & Now" selection, NOT GPS
+- When `discovery_mode = null`, user is not in any mode
+- `discovery_mode` values: "here_now", "not_here", or null
 
 #### HERE & NOW Mode (`/discover/here`)
-- Mode tabs at top for switching
+- "Back to Discovery" button at top
 - Current venue card (when checked in)
 - "Other venues nearby" horizontal scroll list
 - People grid with Glance/Icebreaker actions
 - Live tracking badge
 
 #### NOT HERE Mode (`/discover/not-here`)
-- Shows people nearby but not at the same place
+- "Back to Discovery" button at top
 - **Radius selector**: 0–10 miles, 10–25 miles
+- Shows people nearby but not at the same place
 - Same interaction mechanics as Here & Now
-- Top text: "People who aren't here right now, but quite near."
+
+#### Hide Photo in Venues Toggle (NEW)
+- Located in Profile → Quick Controls
+- When ON: Shows silhouette instead of blurred photo in venue's "Who's Here" list
+- Only affects Here & Now mode
+- NO effect in: Not Here mode, Matches, Chats, or any other view
+- Backend field: `hide_photo_in_venues` (boolean)
 
 ### 3. New Connection Features
 
