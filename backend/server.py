@@ -835,6 +835,73 @@ def calculate_distance_meters(lat1: float, lng1: float, lat2: float, lng2: float
     
     return R * c
 
+
+def check_dating_compatibility(current_user: dict, target_user: dict) -> bool:
+    """
+    Check if two users are compatible for dating-based matching.
+    
+    Rules:
+    1. If current user's intent is "friends" → always compatible (no filtering)
+    2. If current user's intent is "dating" or "open_to_both":
+       - If target user's intent is "friends" only → NOT compatible (don't show dating users to friends-only users)
+       - Apply bidirectional compatibility based on who_open_to_meeting and gender
+    
+    who_open_to_meeting options: "men", "women", "everyone", "prefer_not_to_say", ""
+    gender options: "male", "man", "female", "woman", "" (or not set)
+    """
+    current_intent = current_user.get("intent", "")
+    target_intent = target_user.get("intent", "")
+    
+    # Rule 1: If current user only wants friends, show everyone (no dating filter)
+    if current_intent == "friends":
+        return True
+    
+    # Rule 2: If current user wants dating or is open to both
+    if current_intent in ["dating", "open_to_both"]:
+        # If target user ONLY wants friends, don't show them to dating-intent users
+        if target_intent == "friends":
+            return False
+        
+        # Now check bidirectional compatibility
+        current_seeking = current_user.get("who_open_to_meeting", "")
+        target_seeking = target_user.get("who_open_to_meeting", "")
+        current_gender = (current_user.get("gender", "") or "").lower()
+        target_gender = (target_user.get("gender", "") or "").lower()
+        
+        # Normalize gender values
+        if current_gender in ["male", "man", "m"]:
+            current_gender = "man"
+        elif current_gender in ["female", "woman", "f"]:
+            current_gender = "woman"
+        
+        if target_gender in ["male", "man", "m"]:
+            target_gender = "man"
+        elif target_gender in ["female", "woman", "f"]:
+            target_gender = "woman"
+        
+        # Check if current user's preference matches target's gender
+        current_ok = True  # Default to compatible
+        if current_seeking == "men" and target_gender and target_gender != "man":
+            current_ok = False
+        elif current_seeking == "women" and target_gender and target_gender != "woman":
+            current_ok = False
+        # "everyone", "prefer_not_to_say", "" → always compatible
+        
+        # Check if target user's preference matches current user's gender
+        target_ok = True  # Default to compatible
+        if target_seeking == "men" and current_gender and current_gender != "man":
+            target_ok = False
+        elif target_seeking == "women" and current_gender and current_gender != "woman":
+            target_ok = False
+        # "everyone", "prefer_not_to_say", "" → always compatible
+        
+        # Both directions must be compatible
+        return current_ok and target_ok
+    
+    # Default: If no intent set, show everyone (backward compatibility)
+    return True
+
+
 def get_venue_checkin_radius(venue_type: str) -> int:
     """
     Get the check-in radius in meters based on venue type.
@@ -3408,6 +3475,12 @@ async def get_people_at_venue(
         if not user_photos and not user_avatar:
             continue
         
+        # Dating compatibility filter
+        # If current user's intent is "dating" or "open_to_both", apply matching logic
+        # If current user's intent is "friends", show everyone (no filtering)
+        if not check_dating_compatibility(current_user, user):
+            continue
+        
         # Apply last_active filter
         user_last_active = user.get("last_active_at")
         if last_active_filter and user_last_active:
@@ -3588,6 +3661,12 @@ async def get_people_not_here(
         if distance < min_miles or distance > max_miles:
             continue
         
+        # Dating compatibility filter
+        # If current user's intent is "dating" or "open_to_both", apply matching logic
+        # If current user's intent is "friends", show everyone (no filtering)
+        if not check_dating_compatibility(current_user, user):
+            continue
+        
         # Check glance status
         has_glanced_at_me = await db.glances.find_one({
             "from_user_id": user["id"],
@@ -3720,6 +3799,12 @@ async def get_people_here(
         
         # Filter by 25 mile radius
         if distance > 25:
+            continue
+        
+        # Dating compatibility filter
+        # If current user's intent is "dating" or "open_to_both", apply matching logic
+        # If current user's intent is "friends", show everyone (no filtering)
+        if not check_dating_compatibility(current_user, user):
             continue
         
         # Check glance status
