@@ -2046,11 +2046,12 @@ async def enable_bypass_limits(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/test/toggle-premium")
 async def toggle_premium_status(current_user: dict = Depends(get_current_user)):
-    """Toggle premium status for testing"""
+    """Toggle premium status for testing. Permanent premium users can toggle for testing but will be restored on next login."""
     if not IS_TEST_BUILD:
         raise HTTPException(status_code=403, detail="Test mode only")
     
     current_premium = current_user.get("is_premium", False)
+    is_permanent_premium = current_user.get("permanent_premium", False)
     new_premium = not current_premium
     
     # Set premium status and expiration (30 days from now if enabling)
@@ -2073,7 +2074,7 @@ async def toggle_premium_status(current_user: dict = Depends(get_current_user)):
     daily_glances_used = current_user.get("daily_glances_used", 0)
     daily_icebreakers_used = current_user.get("daily_icebreakers_used", 0)
     
-    return {
+    response = {
         "message": f"Premium {'enabled' if new_premium else 'disabled'}",
         "is_premium": new_premium,
         "premium_expires_at": update_data.get("premium_expires_at"),
@@ -2082,6 +2083,12 @@ async def toggle_premium_status(current_user: dict = Depends(get_current_user)):
         "daily_glances_remaining": max(0, daily_glance_limit - daily_glances_used),
         "daily_icebreakers_remaining": max(0, daily_icebreaker_limit - daily_icebreakers_used)
     }
+    
+    # Note for permanent premium users
+    if is_permanent_premium:
+        response["note"] = "You have permanent premium. This toggle is for testing only - premium will be restored on next login."
+    
+    return response
 
 @api_router.post("/test/reset-state")
 async def reset_test_state(current_user: dict = Depends(get_current_user)):

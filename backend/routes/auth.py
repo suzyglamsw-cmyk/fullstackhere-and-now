@@ -18,6 +18,11 @@ from .dependencies import (
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+# Permanent premium email addresses - these accounts always have premium status
+PERMANENT_PREMIUM_EMAILS = [
+    "suzyglam.sw@googlemail.com"
+]
+
 @router.post("/register")
 async def register(data: UserCreate):
     """Register a new user"""
@@ -33,6 +38,9 @@ async def register(data: UserCreate):
     existing = await db.users.find_one({"email": data.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if this email has permanent premium status
+    is_permanent_premium = data.email.lower() in [e.lower() for e in PERMANENT_PREMIUM_EMAILS]
     
     user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
@@ -55,7 +63,8 @@ async def register(data: UserCreate):
         "seeking": "",
         "is_visible": False,
         "profile_complete": False,
-        "is_premium": False,
+        "is_premium": is_permanent_premium,
+        "permanent_premium": is_permanent_premium,
         "premium_expires_at": None,
         "token_balance": 0,
         "daily_glances_remaining": FREE_DAILY_GLANCES,
@@ -132,8 +141,19 @@ async def login(data: UserLogin):
             user["daily_glances_remaining"] = daily_glances
             user["daily_tokens_remaining"] = daily_tokens
     
-    # Check premium expiration
-    user = await handle_premium_expiration(user["id"], user)
+    # Auto-grant permanent premium for designated emails on login
+    is_permanent_premium_email = user["email"].lower() in [e.lower() for e in PERMANENT_PREMIUM_EMAILS]
+    if is_permanent_premium_email and not user.get("permanent_premium"):
+        await db.users.update_one({"id": user["id"]}, {"$set": {
+            "is_premium": True,
+            "permanent_premium": True
+        }})
+        user["is_premium"] = True
+        user["permanent_premium"] = True
+    
+    # Check premium expiration (but permanent premium users skip expiration)
+    if not user.get("permanent_premium"):
+        user = await handle_premium_expiration(user["id"], user)
     
     token = create_token(user["id"], user["email"])
     return {
