@@ -139,22 +139,27 @@ const Profile = () => {
     setUploadingPhoto(index);
     const formDataUpload = new FormData();
     formDataUpload.append("photo", file);
-    formDataUpload.append("index", index.toString());
+    formDataUpload.append("slot", index.toString());
 
     try {
+      // Photo upload auto-saves to backend independently - no form validation needed
       const response = await axios.post(`${API}/photos/upload`, formDataUpload, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
+      // Update local state for UI
       const newPhotos = [...formData.photos];
       newPhotos[index] = response.data.url;
-      setFormData({ ...formData, photos: newPhotos });
+      setFormData(prev => ({ ...prev, photos: newPhotos }));
       
-      // Update user context with new photo
-      updateUser({ photos: newPhotos, avatar_url: index === 0 ? response.data.url : user?.avatar_url });
+      // Update user context directly (photo is already saved to DB by backend)
+      updateUser({ 
+        photos: newPhotos, 
+        avatar_url: index === 0 ? response.data.url : user?.avatar_url 
+      });
       
-      // Show photo age reminder
-      toast.success("Photo uploaded! Try to choose photos that feel like you today.");
+      // Show success - photo auto-saved
+      toast.success("Photo saved!");
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to upload photo"));
     } finally {
@@ -162,25 +167,50 @@ const Profile = () => {
     }
   };
 
+  const handlePhotoDelete = async (index) => {
+    try {
+      // Delete photo from backend independently
+      await axios.delete(`${API}/photos/${index}`);
+      
+      // Update local state
+      const newPhotos = [...formData.photos];
+      newPhotos[index] = "";
+      setFormData(prev => ({ ...prev, photos: newPhotos }));
+      
+      // Update user context (already saved to DB)
+      updateUser({ 
+        photos: newPhotos,
+        avatar_url: index === 0 ? "" : user?.avatar_url
+      });
+      
+      toast.success("Photo removed");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to remove photo"));
+    }
+  };
+
   const handleSave = async () => {
-    // Validate bio
-    if (formData.bio && formData.bio.trim().length < MIN_BIO_LENGTH) {
+    // Validation only runs on explicit Save button press
+    // Photos are auto-saved independently, so we only validate text fields here
+    
+    // Validate bio (only if user started entering something)
+    if (formData.bio && formData.bio.trim().length > 0 && formData.bio.trim().length < MIN_BIO_LENGTH) {
       toast.error("Add a short line so people get a sense of your vibe.");
       return;
     }
     
-    // Validate my_type_of_person
-    if (formData.my_type_of_person && formData.my_type_of_person.trim().length < MIN_MY_TYPE_LENGTH) {
+    // Validate my_type_of_person (only if user started entering something)
+    if (formData.my_type_of_person && formData.my_type_of_person.trim().length > 0 && formData.my_type_of_person.trim().length < MIN_MY_TYPE_LENGTH) {
       toast.error("Tell us a bit more about who you click with (at least 10 characters).");
       return;
     }
 
     setSaving(true);
     try {
+      // Save non-photo profile fields only
+      // Photos are already auto-saved independently
       const response = await axios.put(`${API}/auth/profile`, {
-        display_name: formData.display_name,
         bio: formData.bio,
-        photos: formData.photos,
         presence_note: formData.presence_note,
         my_type_of_person: formData.my_type_of_person,
         intent: formData.intent,
@@ -188,7 +218,6 @@ const Profile = () => {
         home_country: formData.home_country,
         home_region: formData.home_region,
         shy_indicator: formData.shy_indicator,
-        voice_intro_url: formData.voice_intro_url,
       });
       
       updateUser(response.data);
@@ -588,11 +617,17 @@ const Profile = () => {
 
         <div className="max-w-lg mx-auto px-5 py-8 space-y-10">
           
-          {/* Photos Section */}
+          {/* Photos Section - Auto-saves independently */}
           <section className="space-y-5">
-            <div>
-              <h2 className="text-lg font-medium text-white/90">Your Photos</h2>
-              <p className="text-sm mt-1" style={{ color: '#E7D9FF' }}>Choose photos that feel like you today</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-medium text-purple-100">Your Photos</h2>
+                <p className="text-sm mt-1 text-purple-300/70">Choose photos that feel like you today</p>
+              </div>
+              <span className="text-xs text-purple-400/60 flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                Auto-saved
+              </span>
             </div>
             
             <div className="grid grid-cols-3 gap-4">
@@ -605,16 +640,35 @@ const Profile = () => {
                     border: '2px dashed rgba(168, 85, 247, 0.3)',
                     boxShadow: '0 4px 20px rgba(139, 92, 246, 0.1)'
                   }}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => !mainPhoto && fileInputRef.current?.click()}
                 >
                   {mainPhoto ? (
-                    <img src={mainPhoto} alt="Main" className="w-full h-full object-cover" />
+                    <>
+                      <img src={mainPhoto} alt="Main" className="w-full h-full object-cover" />
+                      {/* Photo actions overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-4 left-4 right-4 flex gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                            className="flex-1 py-2 rounded-xl bg-white/20 backdrop-blur-sm text-white text-sm font-medium hover:bg-white/30 transition-colors"
+                          >
+                            Change
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handlePhotoDelete(0); }}
+                            className="py-2 px-4 rounded-xl bg-red-500/20 backdrop-blur-sm text-red-300 text-sm font-medium hover:bg-red-500/30 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center">
                       <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mb-3">
                         <Camera className="w-7 h-7 text-purple-400" />
                       </div>
-                      <span className="text-sm" style={{ color: '#E7D9FF' }}>Add main photo</span>
+                      <span className="text-sm text-purple-300/70">Add main photo</span>
                     </div>
                   )}
                   {uploadingPhoto === 0 && (
@@ -642,15 +696,28 @@ const Profile = () => {
                     border: '2px dashed rgba(168, 85, 247, 0.25)',
                   }}
                   onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/*";
-                    input.onchange = (e) => handlePhotoUpload(index, e.target.files?.[0]);
-                    input.click();
+                    if (!formData.photos[index]) {
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/*";
+                      input.onchange = (e) => handlePhotoUpload(index, e.target.files?.[0]);
+                      input.click();
+                    }
                   }}
                 >
                   {formData.photos[index] ? (
-                    <img src={formData.photos[index]} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                    <>
+                      <img src={formData.photos[index]} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                      {/* Photo actions overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity flex items-end justify-center pb-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handlePhotoDelete(index); }}
+                          className="p-1.5 rounded-full bg-red-500/30 backdrop-blur-sm text-red-300 hover:bg-red-500/50 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Plus className="w-6 h-6 text-purple-400/60" />
