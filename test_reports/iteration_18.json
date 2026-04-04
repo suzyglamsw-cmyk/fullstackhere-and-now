@@ -1,0 +1,125 @@
+{
+  "summary": "Regression testing complete after Google Play Billing removal. All 17 tests passed. Google Places API working (20 venues returned). Stripe payments working in LIVE mode (cs_live_ sessions). All Google Play endpoints correctly return 404. Core endpoints (venues, discovery, connections) all working.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "features_verified": {
+    "google_places_api": {
+      "status": "WORKING",
+      "endpoints": [
+        "GET /api/places/nearby - Returns 20 real venues from Google Places API",
+        "GET /api/places/{place_id}/details - Returns venue details (tested with ChIJ78fbAc8EdkgRWG1dhffz9AY)"
+      ],
+      "details": {
+        "test_location": "London (51.5074, -0.1278)",
+        "venues_returned": 20,
+        "sample_venue": "The Grand"
+      }
+    },
+    "stripe_payments": {
+      "status": "LIVE",
+      "endpoints": [
+        "GET /api/premium/packages - Returns 2 packages with Stripe price IDs",
+        "GET /api/tokens/packages - Returns token packages",
+        "POST /api/payments/checkout/premium - Creates LIVE checkout session (cs_live_*)",
+        "POST /api/payments/checkout/tokens - Creates LIVE checkout session (cs_live_*)",
+        "GET /api/premium/status - Returns user premium status"
+      ],
+      "details": {
+        "mode": "LIVE (not test/mock)",
+        "session_prefix": "cs_live_",
+        "premium_packages": [
+          {"name": "Premium Monthly", "price_id": "price_1TIDs8DP4hlqEecOdM5ftu4n"},
+          {"name": "Premium Yearly", "price_id": "price_1TIDqtDP4hlqEecOsMmYmgwb"}
+        ]
+      }
+    },
+    "google_play_billing": {
+      "status": "REMOVED",
+      "endpoints": [
+        "GET /api/google-play/status - Returns 404 (removed)",
+        "POST /api/google-play/verify - Returns 404 (removed)",
+        "POST /api/google-play/acknowledge - Returns 404 (removed)",
+        "GET /api/google-play/products - Returns 404 (removed)"
+      ],
+      "details": {
+        "all_endpoints_return_404": true,
+        "removal_verified": true
+      }
+    },
+    "core_endpoints": {
+      "status": "WORKING",
+      "endpoints": [
+        "GET /api/venues - Returns 14 venues",
+        "GET /api/discovery/not-here - Returns 2 users",
+        "GET /api/connections - Returns connections list",
+        "GET /api/auth/me - Returns current user"
+      ]
+    }
+  },
+
+  "passed_tests": [
+    "TestSetup::test_login_works",
+    "TestGooglePlacesAPI::test_places_nearby_endpoint",
+    "TestGooglePlacesAPI::test_place_details_endpoint",
+    "TestStripePayments::test_premium_packages_endpoint",
+    "TestStripePayments::test_premium_status_endpoint",
+    "TestStripePayments::test_checkout_premium_endpoint",
+    "TestStripePayments::test_checkout_tokens_endpoint",
+    "TestGooglePlayRemoved::test_google_play_status_returns_404",
+    "TestGooglePlayRemoved::test_google_play_verify_returns_404",
+    "TestGooglePlayRemoved::test_google_play_acknowledge_returns_404",
+    "TestGooglePlayRemoved::test_google_play_products_returns_404",
+    "TestCoreEndpoints::test_venues_endpoint",
+    "TestCoreEndpoints::test_discovery_not_here_endpoint",
+    "TestCoreEndpoints::test_connections_endpoint",
+    "TestCoreEndpoints::test_auth_me_endpoint",
+    "TestCoreEndpoints::test_tokens_packages_endpoint",
+    "TestSummary::test_regression_summary"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_google_play_removal_regression.py",
+    "/app/test_reports/pytest/pytest_google_play_removal.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Google Play Billing code successfully removed from server.py (no google-play or google_play references found)",
+    "All Google Play endpoints correctly return 404 Not Found",
+    "Google Places API still working with real venue data",
+    "Stripe payments working in LIVE mode (cs_live_ session prefix confirmed)",
+    "Core endpoints (venues, discovery, connections) unaffected by removal"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_google_play_removal_regression.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (17/17 tests passed)",
+    "frontend": "N/A - Backend only testing"
+  },
+
+  "test_credentials": {
+    "demo": "demo@user.com / password"
+  },
+
+  "seed_data_creation": "None - used existing test data",
+
+  "retest_needed": false,
+
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Google Play Billing removal verified. All 17 regression tests passed. Google Places API working (20 venues). Stripe LIVE mode confirmed. All /api/google-play/* endpoints return 404. Test file: /app/backend/tests/test_google_play_removal_regression.py"
+}
