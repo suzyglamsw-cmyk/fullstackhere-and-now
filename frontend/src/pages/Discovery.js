@@ -323,26 +323,10 @@ const Discovery = ({ defaultMode = null }) => {
               </button>
             </div>
             
-            {/* User-facing presence information */}
-            <div className="w-full max-w-md mt-8 px-4">
-              <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-                <h3 className="text-sm font-semibold text-slate-300 mb-3">How visibility works</h3>
-                <div className="space-y-3 text-sm text-slate-400">
-                  <p>
-                    <span className="text-indigo-400 font-medium">"Here"</span> checks you into a venue. If you're inactive for 1 hour, we'll check you out automatically.
-                  </p>
-                  <p>
-                    <span className="text-cyan-400 font-medium">"Not here"</span> shows you as nearby and open to being discovered, even if you're not currently in a venue.
-                  </p>
-                  <p>
-                    After 24 hours of no activity, you'll disappear from "Not here" until you return and choose your visibility again.
-                  </p>
-                </div>
-                <p className="text-xs text-slate-500 mt-4 pt-3 border-t border-white/5">
-                  This keeps the experience fresh and helps people see who's genuinely around.
-                </p>
-              </div>
-            </div>
+            {/* User-facing presence micro-copy */}
+            <p className="w-full max-w-md mt-6 text-center text-sm text-slate-500">
+              "Here" auto-checks you out after 1hr. "Not here" expires after 24hrs of inactivity.
+            </p>
             
             {venueLoading && (
               <div className="mt-6 flex items-center gap-2 text-slate-500">
