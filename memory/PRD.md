@@ -272,12 +272,19 @@ Comprehensive list including:
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)
 - ✅ Test Tools crash (Wine icon import missing)
 - ✅ Friend request visibility for test users
+- ✅ Independent photo uploads bypass form validation (April 2026)
+  - Fixed FormData field name mismatch ('photo' → 'file')
+  - Photo upload/delete now call isolated API endpoints
+  - Save button only validates text fields (bio, my_type_of_person)
+  - Auto-saved indicator visible in photo section
 
 ## Known Technical Debt
 
 ### CRITICAL
-- `server.py` is 5100+ lines - needs modularization with APIRouter
 - Route ordering is critical (heartbeat must come before venue_id route)
+
+### RESOLVED
+- ✅ `server.py` has been modularized - routes extracted to `/backend/routes/` (venues.py, discovery.py, connections.py)
 
 ### HIGH
 - `Connections.js` is 1300+ lines - should be split into smaller components
