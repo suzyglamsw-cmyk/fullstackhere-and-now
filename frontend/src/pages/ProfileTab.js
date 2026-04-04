@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
@@ -27,12 +26,29 @@ import {
   Volume2,
   Eye,
   EyeOff,
+  MapPin,
 } from "lucide-react";
 
 const MAX_BIO_LENGTH = 500;
 const MAX_PRESENCE_NOTE_LENGTH = 40;
-const MAX_CELEBRITY_CRUSH_LENGTH = 50;
+const MAX_MY_TYPE_LENGTH = 40;
+const MIN_MY_TYPE_LENGTH = 10;
 const MIN_BIO_LENGTH = 10;
+
+// Country and region data
+const COUNTRIES_REGIONS = {
+  "United Kingdom": ["England", "Scotland", "Wales", "Northern Ireland"],
+  "United States": ["Northeast", "Southeast", "Midwest", "Southwest", "West Coast"],
+  "Canada": ["Ontario", "Quebec", "British Columbia", "Alberta", "Other"],
+  "Australia": ["New South Wales", "Victoria", "Queensland", "Western Australia", "Other"],
+  "Ireland": ["Leinster", "Munster", "Connacht", "Ulster"],
+  "Germany": ["North", "South", "East", "West"],
+  "France": ["North", "South", "East", "West", "Paris Region"],
+  "Spain": ["North", "South", "East", "West", "Madrid Region"],
+  "Italy": ["North", "Central", "South"],
+  "Netherlands": ["North", "South", "Central"],
+  "Other": ["Not specified"],
+};
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -46,27 +62,30 @@ const Profile = () => {
   const [micPermissionDenied, setMicPermissionDenied] = useState(false);
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [previewMode, setPreviewMode] = useState("before"); // "before" or "after"
+  const [previewMode, setPreviewMode] = useState("before");
   const [previewAudioPlaying, setPreviewAudioPlaying] = useState(false);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const streamRef = useRef(null);
-  const recordingTimeRef = useRef(0); // Track time in ref for accurate access in callbacks
-  const audioPlayerRef = useRef(null); // Audio element for playback
-  const isMountedRef = useRef(true); // Track if component is mounted
-  const previewAudioRef = useRef(null); // Audio element for preview playback
+  const recordingTimeRef = useRef(0);
+  const audioPlayerRef = useRef(null);
+  const isMountedRef = useRef(true);
+  const previewAudioRef = useRef(null);
 
   const [formData, setFormData] = useState({
     display_name: "",
     bio: "",
     photos: ["", "", ""],
     presence_note: "",
-    celebrity_crush: "",
+    my_type_of_person: "",
+    intent: "",
+    who_open_to_meeting: "",
+    home_country: "",
+    home_region: "",
     shy_indicator: false,
     voice_intro_url: "",
-    date_of_birth: "",
   });
 
   useEffect(() => {
@@ -76,10 +95,13 @@ const Profile = () => {
         bio: user.bio || "",
         photos: user.photos || ["", "", ""],
         presence_note: user.presence_note || "",
-        celebrity_crush: user.celebrity_crush || "",
+        my_type_of_person: user.my_type_of_person || "",
+        intent: user.intent || "",
+        who_open_to_meeting: user.who_open_to_meeting || "",
+        home_country: user.home_country || "",
+        home_region: user.home_region || "",
         shy_indicator: user.shy_indicator || false,
         voice_intro_url: user.voice_intro_url || "",
-        date_of_birth: user.date_of_birth || "",
       });
     }
   }, [user]);
@@ -125,6 +147,12 @@ const Profile = () => {
       toast.error("Add a short line so people get a sense of your vibe.");
       return;
     }
+    
+    // Validate my_type_of_person
+    if (formData.my_type_of_person && formData.my_type_of_person.trim().length < MIN_MY_TYPE_LENGTH) {
+      toast.error("Tell us a bit more about who you click with (at least 10 characters).");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -133,13 +161,15 @@ const Profile = () => {
         bio: formData.bio,
         photos: formData.photos,
         presence_note: formData.presence_note,
-        celebrity_crush: formData.celebrity_crush,
+        my_type_of_person: formData.my_type_of_person,
+        intent: formData.intent,
+        who_open_to_meeting: formData.who_open_to_meeting,
+        home_country: formData.home_country,
+        home_region: formData.home_region,
         shy_indicator: formData.shy_indicator,
         voice_intro_url: formData.voice_intro_url,
-        date_of_birth: formData.date_of_birth,
       });
       
-      // Update user context with saved data
       updateUser(response.data);
       toast.success("Profile saved!");
     } catch (error) {

@@ -203,12 +203,9 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
     
-    # Validate and process date_of_birth
-    if "date_of_birth" in update_data and update_data["date_of_birth"]:
-        if not validate_dob_minimum_age(update_data["date_of_birth"], 18):
-            raise HTTPException(status_code=400, detail="You must be 18 or older")
-        # Calculate and store age
-        update_data["age"] = calculate_age_from_dob(update_data["date_of_birth"])
+    # DOB is NOT editable via profile update - remove if present
+    if "date_of_birth" in update_data:
+        del update_data["date_of_birth"]
     
     # Validate presence_note (max 40 chars)
     if "presence_note" in update_data and update_data["presence_note"]:
@@ -216,11 +213,27 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
     
-    # Validate celebrity_crush
-    if "celebrity_crush" in update_data and update_data["celebrity_crush"]:
-        is_valid, error_msg = validate_free_text(update_data["celebrity_crush"], "celebrity crush", max_length=50)
+    # Validate my_type_of_person (10-40 chars, required for complete profile)
+    if "my_type_of_person" in update_data and update_data["my_type_of_person"]:
+        is_valid, error_msg = validate_free_text(update_data["my_type_of_person"], "my type of person", min_length=10, max_length=40)
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Validate intent (must be one of the allowed values)
+    if "intent" in update_data and update_data["intent"]:
+        allowed_intents = ["dating", "friends", "open_to_both"]
+        if update_data["intent"] not in allowed_intents:
+            raise HTTPException(status_code=400, detail="Intent must be 'dating', 'friends', or 'open_to_both'")
+    
+    # Validate who_open_to_meeting (must be one of the allowed values)
+    if "who_open_to_meeting" in update_data and update_data["who_open_to_meeting"]:
+        allowed_values = ["men", "women", "everyone", "prefer_not_to_say"]
+        if update_data["who_open_to_meeting"] not in allowed_values:
+            raise HTTPException(status_code=400, detail="Invalid value for 'who I'm open to meeting'")
+    
+    # Remove celebrity_crush if present (deprecated field)
+    if "celebrity_crush" in update_data:
+        del update_data["celebrity_crush"]
     
     await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
     updated = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "password": 0})

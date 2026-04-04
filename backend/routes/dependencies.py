@@ -81,13 +81,18 @@ class UserProfile(BaseModel):
     avatar_url: Optional[str] = ""
     photos: Optional[List[str]] = []
     interests: List[str] = []
-    date_of_birth: Optional[str] = None  # YYYY-MM-DD format
+    # DOB not editable via profile - set during registration only
     gender: Optional[str] = ""
     orientation: Optional[str] = ""
     relationship_status: Optional[str] = ""
     seeking: Optional[str] = ""
     presence_note: Optional[str] = ""
-    celebrity_crush: Optional[str] = ""
+    # New fields
+    my_type_of_person: Optional[str] = ""  # 10-40 chars, required
+    intent: Optional[str] = ""  # "dating", "friends", "open_to_both"
+    who_open_to_meeting: Optional[str] = ""  # "men", "women", "everyone", "prefer_not_to_say" - PRIVATE
+    home_country: Optional[str] = ""
+    home_region: Optional[str] = ""
     shy_indicator: Optional[bool] = False
     voice_intro_url: Optional[str] = ""
 
@@ -100,16 +105,15 @@ class UserResponse(BaseModel):
     avatar_url: str = ""
     photos: List[str] = []
     interests: List[str] = []
-    date_of_birth: Optional[str] = None  # YYYY-MM-DD format
-    age: Optional[int] = None  # Calculated from date_of_birth
+    age: Optional[int] = None  # Calculated from date_of_birth (DOB stays private)
     gender: str = ""
     orientation: str = ""
     relationship_status: str = ""
     seeking: str = ""
     created_at: str
     is_visible: bool = True
-    visibility: Optional[str] = "visible"  # "visible" or "hidden"
-    presence_status: Optional[str] = "not_here"  # "here" or "not_here"
+    visibility: Optional[str] = "visible"
+    presence_status: Optional[str] = "not_here"
     is_premium: bool = False
     premium_expires_at: Optional[str] = None
     token_balance: int = 0
@@ -117,11 +121,14 @@ class UserResponse(BaseModel):
     daily_tokens_remaining: int = 1
     glances_reset_at: Optional[str] = None
     profile_theme: Optional[str] = None
-    active_venue_id: Optional[str] = None
-    active_venue_timestamp: Optional[str] = None
     voice_intro_url: Optional[str] = ""
     presence_note: Optional[str] = ""
-    celebrity_crush: Optional[str] = ""
+    # New fields
+    my_type_of_person: Optional[str] = ""
+    intent: Optional[str] = ""  # "dating", "friends", "open_to_both"
+    who_open_to_meeting: Optional[str] = ""  # Private - for matching only
+    home_country: Optional[str] = ""
+    home_region: Optional[str] = ""
     shy_indicator: Optional[bool] = False
     lat: Optional[float] = None
     lng: Optional[float] = None
