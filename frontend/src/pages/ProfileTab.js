@@ -138,7 +138,7 @@ const Profile = () => {
 
     setUploadingPhoto(index);
     const formDataUpload = new FormData();
-    formDataUpload.append("photo", file);
+    formDataUpload.append("file", file);
     formDataUpload.append("slot", index.toString());
 
     try {
