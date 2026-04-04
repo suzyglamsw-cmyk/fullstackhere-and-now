@@ -257,6 +257,12 @@ Comprehensive list including:
   - ✅ Friends-only users hidden from Dating/Open to both intent users
   - ✅ Friends intent users see everyone (no dating filter)
   - ✅ Applied to: /discovery/not-here, /discovery/here, /venues/{id}/people
+- ✅ **Backend Monolith Refactoring** (April 2026):
+  - ✅ Extracted venues routes → /app/backend/routes/venues.py (530 lines)
+  - ✅ Extracted discovery routes → /app/backend/routes/discovery.py (393 lines)
+  - ✅ Extracted connections routes → /app/backend/routes/connections.py (698 lines)
+  - ✅ Centralized shared models/helpers → /app/backend/routes/dependencies.py (748 lines)
+  - ✅ All 30 endpoint tests passing
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)
