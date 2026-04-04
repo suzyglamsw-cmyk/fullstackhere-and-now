@@ -1,7 +1,7 @@
 """
 Photo upload and management routes with AI-powered image moderation
 """
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from fastapi.responses import Response
 from datetime import datetime, timezone
 from typing import Optional
@@ -216,7 +216,7 @@ def check_photo_age_warning(image_data: bytes) -> Optional[str]:
 @router.post("/upload")
 async def upload_photo(
     file: UploadFile = File(...),
-    slot: int = 0,
+    slot: int = Form(0),
     current_user: dict = Depends(get_current_user)
 ):
     """Upload a profile photo (up to 3 photos, slots 0-2) with AI moderation"""

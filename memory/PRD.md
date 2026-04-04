@@ -307,6 +307,8 @@ Comprehensive list including:
   - Fixed photo upload race condition: backend now fetches fresh photos array before updating
   - All 3 photo slots are properly persisted to database
   - Backend returns complete photos[] array in upload/delete responses
+  - **Fixed photo slot index bug**: Changed `slot: int = 0` to `slot: int = Form(0)` to properly parse form data
+    - Photo 1 → photos[0], Photo 2 → photos[1], Photo 3 → photos[2]
 
 ## Known Technical Debt
 
