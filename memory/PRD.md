@@ -266,7 +266,7 @@ Comprehensive list including:
 - ✅ **Production API Keys Verified** (April 2026):
   - ✅ Google Places API - Working with real venue data (20 venues, photos, ratings)
   - ✅ Stripe Payments - LIVE mode (cs_live_ sessions, real price IDs)
-  - ✅ Google Play Billing - REMOVED (not needed)
+  - ✅ Google Play Billing - REMOVED from backend and frontend
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)
