@@ -498,6 +498,9 @@ async def get_people_at_venue(
         
         first_name = get_first_name(user.get("display_name", "Someone"))
         
+        # Check if user wants to hide their photo in venues (silhouette mode)
+        hide_photo = user.get("hide_photo_in_venues", False)
+        
         people.append({
             "id": user["id"],
             "display_name": user["display_name"] if is_revealed else first_name,
@@ -518,6 +521,7 @@ async def get_people_at_venue(
             "shy_indicator": user.get("shy_indicator", False),
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
             "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
+            "hide_photo_in_venues": hide_photo,  # Used to show silhouette instead of blurred photo
         })
     
     # Sort: Premium first, then by check-in time

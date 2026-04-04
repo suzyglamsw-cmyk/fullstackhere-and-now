@@ -24,6 +24,7 @@ import {
   Building2,
   ArrowRight,
   ArrowLeft,
+  User,
 } from "lucide-react";
 import {
   Dialog,
@@ -44,17 +45,24 @@ const RADIUS_OPTIONS = [
   { value: "10-25", label: "10–25 miles" },
 ];
 
+// Silhouette component for users who have "Hide photo in venues" enabled
+const SilhouetteAvatar = ({ className = "" }) => (
+  <div className={`w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center ${className}`}>
+    <User className="w-1/2 h-1/2 text-slate-500/60" strokeWidth={1.5} />
+  </div>
+);
+
 const Discovery = ({ defaultMode = null }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   
   // Determine mode from route or prop
   const getInitialMode = () => {
     if (location.pathname === "/discover/here") return "here";
     if (location.pathname === "/discover/not-here") return "not-here";
     if (defaultMode) return defaultMode;
-    return null; // Show mode selector
+    return null; // Show mode selector (gateway)
   };
   
   const [mode, setMode] = useState(getInitialMode());
@@ -107,27 +115,32 @@ const Discovery = ({ defaultMode = null }) => {
     }
   }, [mode, radius, venue]);
 
-  // Handle mode selection - navigate to proper route
-  const handleSelectMode = (selectedMode) => {
-    if (selectedMode === "here") {
-      // Always go to venues page for Here & Now
-      navigate("/venues");
-    } else {
-      navigate("/discover/not-here");
+  // Handle mode selection from gateway - set discovery_mode on backend
+  const handleSelectMode = async (selectedMode) => {
+    try {
+      if (selectedMode === "here") {
+        // Set discovery_mode to "here_now" and navigate to venues
+        await axios.post(`${API}/settings/discovery-mode`, { mode: "here_now" });
+        navigate("/venues");
+      } else {
+        // Set discovery_mode to "not_here" and navigate to not-here
+        await axios.post(`${API}/settings/discovery-mode`, { mode: "not_here" });
+        navigate("/discover/not-here");
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to set discovery mode"));
     }
   };
 
-  // Handle tab click
-  const handleTabClick = (tabMode) => {
-    if (tabMode === "here") {
-      // If no venue, go to venues page
-      if (!venue && !venueLoading) {
-        navigate("/venues");
-      } else {
-        navigate("/discover/here");
-      }
-    } else {
-      navigate("/discover/not-here");
+  // Handle "Back to Discovery" - clear discovery_mode
+  const handleBackToDiscovery = async () => {
+    try {
+      // Clear discovery_mode on backend (sets to null)
+      await axios.post(`${API}/settings/discovery-mode`, { mode: null });
+      navigate("/discover/select");
+    } catch (error) {
+      // Navigate anyway even if API fails
+      navigate("/discover/select");
     }
   };
 
@@ -254,7 +267,7 @@ const Discovery = ({ defaultMode = null }) => {
   };
 
   // ============================================================================
-  // RENDER: Mode Selection Screen (/discover/select)
+  // RENDER: Mode Selection Screen (Gateway) - /discover/select
   // ============================================================================
   if (mode === null) {
     return (
@@ -282,15 +295,9 @@ const Discovery = ({ defaultMode = null }) => {
                       Here & Now
                     </h2>
                     <p className="text-slate-400 text-sm">
-                      {venue ? `You're at ${venue.venue_name}` : "Check into a venue to see who's there"}
+                      Check into a venue to see who's there
                     </p>
                   </div>
-                  {venue && (
-                    <div className="flex items-center gap-1 text-emerald-400 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Active
-                    </div>
-                  )}
                 </div>
               </button>
               
@@ -329,343 +336,452 @@ const Discovery = ({ defaultMode = null }) => {
   }
 
   // ============================================================================
-  // RENDER: Here & Now / Not Here Mode
+  // RENDER: Here & Now Mode (/discover/here)
+  // ============================================================================
+  if (mode === "here") {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+          {/* Header - Back to Discovery only, NO tabs */}
+          <div className="sticky top-0 z-40 glass border-b border-white/5">
+            <div className="max-w-4xl mx-auto px-4 py-4">
+              {/* Back to Discovery Button */}
+              <button
+                data-testid="back-to-discovery"
+                onClick={handleBackToDiscovery}
+                className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-sm">Back to Discovery</span>
+              </button>
+
+              {/* Mode Title */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">Here & Now</h1>
+                  <p className="text-sm text-slate-400">People at venues near you</p>
+                </div>
+              </div>
+
+              {/* Current Venue Card */}
+              {venue ? (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                        <Building2 className="w-5 h-5 text-emerald-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-white">{venue.venue_name}</h2>
+                        <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>You're here • {venue.checked_in_count || people.length} people</span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Live Tracking Badge */}
+                    {hasLocationPermission && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
+                        <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+                        <span className="text-xs text-emerald-400 font-medium">Live</span>
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => navigate("/venues")}
+                    className="mt-3 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 p-0 h-auto"
+                  >
+                    Change venue <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-bold text-white">Not checked in</h2>
+                      <p className="text-slate-400 text-sm">Check into a venue to see who's around</p>
+                    </div>
+                    <Button
+                      data-testid="check-in-btn"
+                      onClick={() => navigate("/venues")}
+                      className="rounded-xl bg-indigo-500 hover:bg-indigo-600"
+                    >
+                      <Navigation className="w-4 h-4 mr-2" />
+                      Find venue
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Nearby Venues Section */}
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-slate-400 mb-2">
+                  {venue ? "Other venues nearby" : "Venues nearby"}
+                </h3>
+                {venuesLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+                  </div>
+                ) : nearbyVenues.length > 0 ? (
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {nearbyVenues.map((v) => (
+                      <button
+                        key={v.id}
+                        onClick={() => handleCheckIn(v.id)}
+                        className="flex-shrink-0 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                      >
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-slate-400" />
+                          <span className="text-white text-sm whitespace-nowrap">{v.name}</span>
+                          {v.checked_in_count > 0 && (
+                            <span className="text-xs text-slate-500">({v.checked_in_count})</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => navigate("/venues")}
+                      className="flex-shrink-0 px-4 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 transition-all"
+                    >
+                      <span className="text-indigo-400 text-sm whitespace-nowrap">See all →</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-slate-500 text-sm">No venues found nearby</p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => navigate("/venues")}
+                      className="mt-2 text-indigo-400"
+                    >
+                      Search venues
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Proximity Echoes */}
+          {proximityEchoes.length > 0 && (
+            <div className="max-w-4xl mx-auto px-4 py-3">
+              <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl p-3 flex items-center gap-3">
+                <Bell className="w-5 h-5 text-pink-400" />
+                <p className="text-sm text-pink-300">
+                  {proximityEchoes.length === 1
+                    ? "Someone nearby noticed you."
+                    : `${proximityEchoes.length} people nearby noticed you.`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Content - People Grid */}
+          <div className="max-w-4xl mx-auto px-4 py-6">
+            {loading || venueLoading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              </div>
+            ) : people.length === 0 ? (
+              <div className="text-center py-20">
+                <Users className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                <h2 className="text-xl font-bold text-white mb-2">No one's around</h2>
+                <p className="text-slate-400 mb-4">
+                  No one's checked in at this venue right now. Try again soon!
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {people.map((person) => (
+                  <PersonCard
+                    key={person.id}
+                    person={person}
+                    onGlance={handleGlance}
+                    onIcebreaker={handleOpenIcebreaker}
+                    glancing={glancing}
+                    isVenueContext={true}  // This is venue context - show silhouette if enabled
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Icebreaker Modal */}
+        <IcebreakerModal
+          show={showIcebreakerModal}
+          person={selectedPerson}
+          sending={sendingIcebreaker}
+          onClose={() => {
+            setShowIcebreakerModal(false);
+            setSelectedPerson(null);
+          }}
+          onSend={handleSendIcebreaker}
+        />
+      </Layout>
+    );
+  }
+
+  // ============================================================================
+  // RENDER: Not Here Mode (/discover/not-here)
   // ============================================================================
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-        {/* Header with Tabs */}
+        {/* Header - Back to Discovery only, NO tabs */}
         <div className="sticky top-0 z-40 glass border-b border-white/5">
           <div className="max-w-4xl mx-auto px-4 py-4">
             {/* Back to Discovery Button */}
             <button
               data-testid="back-to-discovery"
-              onClick={() => navigate("/discover/select")}
+              onClick={handleBackToDiscovery}
               className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="text-sm">Back to Discovery</span>
             </button>
 
-            {/* Mode Toggle Tabs */}
-            <div className="flex rounded-xl bg-white/5 p-1 mb-4">
-              <button
-                data-testid="tab-here"
-                onClick={() => handleTabClick("here")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                  mode === "here"
-                    ? "bg-indigo-500 text-white"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                HERE & NOW
-              </button>
-              <button
-                data-testid="tab-not-here"
-                onClick={() => handleTabClick("not-here")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                  mode === "not-here"
-                    ? "bg-indigo-500 text-white"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                NOT HERE
-              </button>
+            {/* Mode Title */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                <Users className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">Not Here</h1>
+                <p className="text-sm text-slate-400">People nearby who aren't at a venue</p>
+              </div>
             </div>
 
-            {/* Mode-specific header content */}
-            {mode === "here" ? (
-              <div>
-                {/* Current Venue Card */}
-                {venue ? (
-                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                          <Building2 className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div>
-                          <h2 className="text-lg font-bold text-white">{venue.venue_name}</h2>
-                          <div className="flex items-center gap-2 text-emerald-400 text-sm">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>You're here • {venue.checked_in_count || people.length} people</span>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Live Tracking Badge */}
-                      {hasLocationPermission && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
-                          <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
-                          <span className="text-xs text-emerald-400 font-medium">Live</span>
-                        </div>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => navigate("/venues")}
-                      className="mt-3 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 p-0 h-auto"
-                    >
-                      Change venue <ArrowRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h2 className="text-lg font-bold text-white">Not checked in</h2>
-                        <p className="text-slate-400 text-sm">Check into a venue to see who's around</p>
-                      </div>
-                      <Button
-                        data-testid="check-in-btn"
-                        onClick={() => navigate("/venues")}
-                        className="rounded-xl bg-indigo-500 hover:bg-indigo-600"
-                      >
-                        <Navigation className="w-4 h-4 mr-2" />
-                        Find venue
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Nearby Venues Section - Always Show */}
-                <div className="mb-4">
-                  <h3 className="text-sm font-medium text-slate-400 mb-2">
-                    {venue ? "Other venues nearby" : "Venues nearby"}
-                  </h3>
-                  {venuesLoading ? (
-                    <div className="flex justify-center py-4">
-                      <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
-                    </div>
-                  ) : nearbyVenues.length > 0 ? (
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                      {nearbyVenues.map((v) => (
-                        <button
-                          key={v.id}
-                          onClick={() => handleCheckIn(v.id)}
-                          className="flex-shrink-0 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
-                        >
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-slate-400" />
-                            <span className="text-white text-sm whitespace-nowrap">{v.name}</span>
-                            {v.checked_in_count > 0 && (
-                              <span className="text-xs text-slate-500">({v.checked_in_count})</span>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => navigate("/venues")}
-                        className="flex-shrink-0 px-4 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 transition-all"
-                      >
-                        <span className="text-indigo-400 text-sm whitespace-nowrap">See all →</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <p className="text-slate-500 text-sm">No venues found nearby</p>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => navigate("/venues")}
-                        className="mt-2 text-indigo-400"
-                      >
-                        Search venues
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div>
-                <p className="text-slate-400 text-sm mb-3">
-                  People nearby who aren't at a venue right now.
-                </p>
-                {/* Radius Selector */}
-                <div className="flex gap-2">
-                  {RADIUS_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      data-testid={`radius-${option.value}`}
-                      onClick={() => setRadius(option.value)}
-                      className={`px-4 py-2 rounded-xl text-sm transition-all ${
-                        radius === option.value
-                          ? "bg-indigo-500 text-white"
-                          : "bg-white/5 text-slate-400 hover:bg-white/10"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Radius Selector */}
+            <div className="flex gap-2">
+              {RADIUS_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  data-testid={`radius-${option.value}`}
+                  onClick={() => setRadius(option.value)}
+                  className={`px-4 py-2 rounded-xl text-sm transition-all ${
+                    radius === option.value
+                      ? "bg-cyan-500 text-white"
+                      : "bg-white/5 text-slate-400 hover:bg-white/10"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Proximity Echoes - Here & Now only */}
-        {mode === "here" && proximityEchoes.length > 0 && (
-          <div className="max-w-4xl mx-auto px-4 py-3">
-            <div className="bg-pink-500/10 border border-pink-500/30 rounded-xl p-3 flex items-center gap-3">
-              <Bell className="w-5 h-5 text-pink-400" />
-              <p className="text-sm text-pink-300">
-                {proximityEchoes.length === 1
-                  ? "Someone nearby noticed you."
-                  : `${proximityEchoes.length} people nearby noticed you.`}
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Content - People Grid */}
         <div className="max-w-4xl mx-auto px-4 py-6">
-          {loading || (mode === "here" && venueLoading) ? (
+          {loading ? (
             <div className="flex justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
             </div>
           ) : people.length === 0 ? (
             <div className="text-center py-20">
               <Users className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-white mb-2">
-                {mode === "here" ? "No one's around" : "No one nearby"}
-              </h2>
+              <h2 className="text-xl font-bold text-white mb-2">No one nearby</h2>
               <p className="text-slate-400 mb-4">
-                {mode === "here"
-                  ? "No one's around at the moment. Try again soon or switch to Not Here."
-                  : "No one is near enough right now. Try widening your radius."}
+                No one is near enough right now. Try widening your radius.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {people.map((person) => (
-                <div
+                <PersonCard
                   key={person.id}
-                  className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 transition-all group"
-                >
-                  {/* Photo */}
-                  <div className="relative aspect-[3/4]">
-                    <BlurredImage
-                      src={person.avatar_url || person.photos?.[0]}
-                      alt={person.display_name}
-                      isRevealed={person.is_revealed}
-                      isThumbnail={true}
-                      className="w-full h-full object-cover"
-                    />
-                    
-                    {/* Badges overlay */}
-                    <div className="absolute top-2 left-2 flex flex-col gap-1">
-                      {person.is_premium && (
-                        <div className="bg-amber-500/90 rounded-full p-1">
-                          <Crown className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      {person.is_shy && (
-                        <div className="bg-pink-500/90 rounded-full p-1">
-                          <Heart className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      {person.has_voice_intro && (
-                        <div className="bg-indigo-500/90 rounded-full p-1">
-                          <Mic className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Safety Halo */}
-                    {person.safety_halo && (
-                      <div className="absolute top-2 right-2 bg-emerald-500/90 rounded-full p-1">
-                        <Shield className="w-3 h-3 text-white" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-white truncate">
-                        {person.display_name}, {person.age}
-                      </h3>
-                    </div>
-                    
-                    {/* Presence Note */}
-                    {person.presence_note && (
-                      <p className="text-xs text-slate-400 mb-2 line-clamp-2">
-                        "{person.presence_note}"
-                      </p>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      {/* Glance Button */}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleGlance(person.id)}
-                        disabled={glancing === person.id || person.has_glanced}
-                        className={`flex-1 h-8 text-xs ${
-                          person.has_glanced 
-                            ? "bg-indigo-500/20 text-indigo-400" 
-                            : "hover:bg-white/10"
-                        }`}
-                      >
-                        {glancing === person.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <>
-                            <Eye className="w-3 h-3 mr-1" />
-                            {person.has_glanced ? "Glanced" : "Glance"}
-                          </>
-                        )}
-                      </Button>
-                      
-                      {/* Icebreaker Button */}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleOpenIcebreaker(person)}
-                        disabled={person.has_icebreaker}
-                        className={`flex-1 h-8 text-xs ${
-                          person.has_icebreaker 
-                            ? "bg-cyan-500/20 text-cyan-400" 
-                            : "hover:bg-white/10"
-                        }`}
-                      >
-                        <Snowflake className="w-3 h-3 mr-1" />
-                        {person.has_icebreaker ? "Sent" : "Break ice"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                  person={person}
+                  onGlance={handleGlance}
+                  onIcebreaker={handleOpenIcebreaker}
+                  glancing={glancing}
+                  isVenueContext={false}  // NOT venue context - never show silhouette
+                />
               ))}
             </div>
           )}
         </div>
-
-        {/* Icebreaker Modal */}
-        <Dialog open={showIcebreakerModal} onOpenChange={setShowIcebreakerModal}>
-          <DialogContent className="bg-slate-900 border-white/10 max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="text-white text-center">
-                Send an Icebreaker
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 mt-4">
-              {ICEBREAKER_MESSAGES.map((msg) => (
-                <button
-                  key={msg.id}
-                  onClick={() => handleSendIcebreaker(msg.id)}
-                  disabled={sendingIcebreaker}
-                  className="w-full p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all flex items-center gap-3"
-                >
-                  <span className="text-2xl">{msg.icon}</span>
-                  <span className="text-white">{msg.name}</span>
-                </button>
-              ))}
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      {/* Icebreaker Modal */}
+      <IcebreakerModal
+        show={showIcebreakerModal}
+        person={selectedPerson}
+        sending={sendingIcebreaker}
+        onClose={() => {
+          setShowIcebreakerModal(false);
+          setSelectedPerson(null);
+        }}
+        onSend={handleSendIcebreaker}
+      />
     </Layout>
+  );
+};
+
+// ============================================================================
+// Person Card Component
+// ============================================================================
+const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }) => {
+  const navigate = useNavigate();
+  
+  // Determine if we should show silhouette
+  // Only show silhouette if: user has hide_photo_in_venues=true AND we're in venue context AND not revealed
+  const showSilhouette = isVenueContext && person.hide_photo_in_venues && !person.is_revealed;
+  
+  return (
+    <div
+      className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 transition-all group"
+    >
+      {/* Photo */}
+      <div className="relative aspect-[3/4]">
+        {showSilhouette ? (
+          <SilhouetteAvatar />
+        ) : (
+          <BlurredImage
+            src={person.avatar_url || person.photos?.[0]}
+            alt={person.display_name}
+            isRevealed={person.is_revealed}
+            className="w-full h-full object-cover"
+          />
+        )}
+        
+        {/* Premium badge */}
+        {person.is_premium && (
+          <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-amber-500/90 flex items-center gap-1">
+            <Crown className="w-3 h-3 text-white" />
+          </div>
+        )}
+        
+        {/* Safety Halo */}
+        {person.has_safety_halo && person.is_revealed && (
+          <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-emerald-500/90 flex items-center gap-1">
+            <Shield className="w-3 h-3 text-white" />
+          </div>
+        )}
+        
+        {/* Voice intro indicator */}
+        {person.voice_intro_url && person.is_revealed && (
+          <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-purple-500/90 flex items-center justify-center">
+            <Mic className="w-4 h-4 text-white" />
+          </div>
+        )}
+        
+        {/* Overlay info */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+          <p className="text-white font-medium truncate">{person.first_name || person.display_name}</p>
+          {person.age && <p className="text-slate-300 text-sm">{person.age}</p>}
+          {person.presence_note && (
+            <p className="text-slate-400 text-xs mt-1 truncate">{person.presence_note}</p>
+          )}
+          {person.shy_indicator && (
+            <div className="flex items-center gap-1 mt-1">
+              <Heart className="w-3 h-3 text-pink-400" />
+              <span className="text-pink-300 text-xs">May be shy to start</span>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Actions */}
+      <div className="p-3 flex gap-2">
+        {person.is_connected ? (
+          <Button
+            size="sm"
+            className="flex-1 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+            onClick={() => navigate(`/messages/${person.id}`)}
+          >
+            Message
+          </Button>
+        ) : person.is_revealed ? (
+          <Button
+            size="sm"
+            className="flex-1 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30"
+            onClick={() => navigate(`/profile/${person.id}`)}
+          >
+            View Profile
+          </Button>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={`flex-1 ${
+                person.i_glanced_at
+                  ? "bg-pink-500/20 text-pink-400"
+                  : "bg-white/5 text-slate-300 hover:bg-white/10"
+              }`}
+              onClick={() => onGlance(person.id)}
+              disabled={glancing === person.id || person.i_glanced_at}
+            >
+              {glancing === person.id ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 mr-1" />
+                  {person.i_glanced_at ? "Glanced" : "Glance"}
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1 bg-white/5 text-slate-300 hover:bg-white/10"
+              onClick={() => onIcebreaker(person)}
+            >
+              <Snowflake className="w-4 h-4 mr-1" />
+              Ice
+            </Button>
+          </>
+        )}
+      </div>
+      
+      {/* Mutual interest indicator */}
+      {person.has_glanced_at_me && !person.i_glanced_at && (
+        <div className="px-3 pb-3">
+          <div className="flex items-center gap-2 text-pink-400 text-xs">
+            <Sparkles className="w-3 h-3" />
+            <span>Showed interest in you</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================================
+// Icebreaker Modal Component
+// ============================================================================
+const IcebreakerModal = ({ show, person, sending, onClose, onSend }) => {
+  if (!show || !person) return null;
+  
+  return (
+    <Dialog open={show} onOpenChange={onClose}>
+      <DialogContent className="bg-slate-900 border-slate-700">
+        <DialogHeader>
+          <DialogTitle className="text-white">Send Icebreaker to {person.first_name || person.display_name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 mt-4">
+          {ICEBREAKER_MESSAGES.map((msg) => (
+            <button
+              key={msg.id}
+              onClick={() => onSend(msg.id)}
+              disabled={sending}
+              className="w-full p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-indigo-500/50 transition-all flex items-center gap-3 disabled:opacity-50"
+            >
+              <span className="text-2xl">{msg.icon}</span>
+              <span className="text-white">{msg.name}</span>
+              {sending && <Loader2 className="w-4 h-4 animate-spin ml-auto text-indigo-400" />}
+            </button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

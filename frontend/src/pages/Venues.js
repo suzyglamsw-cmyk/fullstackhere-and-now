@@ -281,6 +281,16 @@ const Venues = () => {
 
   const displayVenues = nearbyVenues.length > 0 ? nearbyVenues : venues;
 
+  // Handle back to discovery - clear discovery_mode
+  const handleBackToDiscovery = async () => {
+    try {
+      await axios.post(`${API}/settings/discovery-mode`, { mode: null });
+    } catch (error) {
+      // Navigate anyway even if API fails
+    }
+    navigate("/discover/select");
+  };
+
   const getVenueTypeColor = (type) => {
     const t = type?.toLowerCase() || '';
     if (t.includes('bar') || t.includes('night')) return "text-pink-400";
@@ -298,7 +308,7 @@ const Venues = () => {
         {/* Back to Discovery Button */}
         <button
           data-testid="back-to-discovery"
-          onClick={() => navigate("/discover/select")}
+          onClick={handleBackToDiscovery}
           className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />

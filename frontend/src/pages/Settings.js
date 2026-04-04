@@ -17,7 +17,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X } from "lucide-react";
+import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, ShieldCheck, Eye, User } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, isSubscribedToPush } from "../utils/pushNotifications";
 
@@ -25,6 +25,12 @@ const Settings = () => {
   const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
   const [deleting, setDeleting] = useState(false);
+
+  // Privacy settings state
+  const [privacySettings, setPrivacySettings] = useState({
+    hide_photo_in_venues: false
+  });
+  const [privacyLoading, setPrivacyLoading] = useState(false);
 
   const [pushSettings, setPushSettings] = useState({
     enabled: true,
@@ -49,10 +55,38 @@ const Settings = () => {
     setPushSupported(isPushSupported());
     fetchPushSettings();
     checkPushSubscription();
+    fetchPrivacySettings();
     if (user?.is_premium) {
       fetchProfileViewers();
     }
   }, [user?.is_premium]);
+
+  const fetchPrivacySettings = async () => {
+    try {
+      const response = await axios.get(`${API}/settings/privacy`);
+      setPrivacySettings({
+        hide_photo_in_venues: response.data.hide_photo_in_venues || false
+      });
+    } catch (error) {
+      // Silently fail - use defaults
+    }
+  };
+
+  const handlePrivacySettingChange = async (key, value) => {
+    const newSettings = { ...privacySettings, [key]: value };
+    setPrivacySettings(newSettings);
+    setPrivacyLoading(true);
+    
+    try {
+      await axios.put(`${API}/settings/privacy`, { [key]: value });
+      toast.success("Privacy setting updated");
+    } catch (error) {
+      toast.error("Failed to update privacy setting");
+      setPrivacySettings(privacySettings); // Revert
+    } finally {
+      setPrivacyLoading(false);
+    }
+  };
 
   const fetchProfileViewers = async () => {
     setViewersLoading(true);
@@ -314,6 +348,53 @@ const Settings = () => {
               )}
             </div>
           )}
+        </div>
+
+        {/* Privacy & Safety Section */}
+        <div className="glass rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-white">Privacy & Safety</h2>
+          </div>
+
+          <div className="space-y-4">
+            {/* Hide Photo in Venues Toggle */}
+            <div className="p-4 rounded-xl bg-white/5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1 mr-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-500/20 flex items-center justify-center flex-shrink-0">
+                    <User className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Hide my photo in venues</p>
+                    <p className="text-slate-400 text-sm mt-1">
+                      Your photo will be replaced with a generic silhouette in venue lists. Helpful if you'd prefer a little extra comfort in smaller or less busy places. You can change this anytime.
+                    </p>
+                  </div>
+                </div>
+                {privacyLoading ? (
+                  <Loader2 className="w-5 h-5 text-emerald-400 animate-spin flex-shrink-0" />
+                ) : (
+                  <Switch
+                    data-testid="hide-photo-venues-toggle"
+                    checked={privacySettings.hide_photo_in_venues}
+                    onCheckedChange={(checked) => handlePrivacySettingChange("hide_photo_in_venues", checked)}
+                    disabled={privacyLoading}
+                  />
+                )}
+              </div>
+              {privacySettings.hide_photo_in_venues && (
+                <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="text-emerald-300 text-xs flex items-center gap-2">
+                    <Eye className="w-3 h-3" />
+                    Active when you're in Here & Now mode. Has no effect in Not Here or other views.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Premium & Tokens Section */}
