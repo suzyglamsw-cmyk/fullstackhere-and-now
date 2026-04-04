@@ -252,6 +252,11 @@ Comprehensive list including:
   - ✅ Pre-reveal layout: Name, Age, Presence Note, Shy indicator
   - ✅ Post-reveal layout: Bio, My Type, Intent, Home Area, Voice intro
   - ✅ Profile Preview modal with Before/After reveal tabs
+- ✅ **Dating Compatibility Matching Logic** (April 2026):
+  - ✅ Bidirectional gender preference filtering in all discovery endpoints
+  - ✅ Friends-only users hidden from Dating/Open to both intent users
+  - ✅ Friends intent users see everyone (no dating filter)
+  - ✅ Applied to: /discovery/not-here, /discovery/here, /venues/{id}/people
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)
@@ -270,7 +275,6 @@ Comprehensive list including:
 ## Backlog / Future Tasks
 
 ### P1 - High Priority
-- Matching logic for "Who I'm open to meeting" - Add discovery filtering based on Intent (Dating/Friends) and open_to_meeting preferences
 - Production API keys (Google Places, Google Play Billing)
 
 ### P2 - Medium Priority
