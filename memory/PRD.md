@@ -309,6 +309,8 @@ Comprehensive list including:
   - Backend returns complete photos[] array in upload/delete responses
   - **Fixed photo slot index bug**: Changed `slot: int = 0` to `slot: int = Form(0)` to properly parse form data
     - Photo 1 → photos[0], Photo 2 → photos[1], Photo 3 → photos[2]
+  - **Premium badge now shows in self-preview** (both before and after reveal)
+  - **Removed Safety Halo** from profile editor and preview (not needed for final product)
 
 ## Known Technical Debt
 

@@ -15,7 +15,6 @@ import {
   User,
   Mic,
   MicOff,
-  Shield,
   Heart,
   Sparkles,
   X,
@@ -33,6 +32,7 @@ import {
   Home,
   Users,
   Target,
+  Crown,
 } from "lucide-react";
 
 const MAX_BIO_LENGTH = 500;
@@ -646,11 +646,13 @@ const Profile = () => {
   }, []);
 
   const mainPhoto = formData.photos[0] || user?.avatar_url;
-  const hasSafetyHalo = user?.reports_count === 0 && user?.blocks_received_count === 0;
   
   // Get all valid photos for carousel (filter out empty strings)
   const allPhotos = formData.photos.filter(p => p && p.trim() !== '');
   const hasMultiplePhotos = allPhotos.length > 1;
+  
+  // Check if user is premium
+  const isPremium = user?.is_premium === true;
   
   // Carousel navigation handlers
   const handleNextPhoto = () => {
@@ -1387,29 +1389,6 @@ const Profile = () => {
 
           {/* Divider */}
           <div className="h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
-
-          {/* Safety Halo */}
-          {hasSafetyHalo && (
-            <section 
-              className="p-5 rounded-2xl"
-              style={{ 
-                background: 'rgba(16, 185, 129, 0.08)',
-                border: '2px solid rgba(16, 185, 129, 0.3)'
-              }}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-emerald-200 font-medium">Safety Halo Active</p>
-                  <p className="text-xs mt-0.5 text-purple-300/60">
-                    Visible after mutual curiosity • Based on respectful behavior
-                  </p>
-                </div>
-              </div>
-            </section>
-          )}
           
           {/* Bottom padding for save button area */}
           <div className="h-4" />
@@ -1534,6 +1513,14 @@ const Profile = () => {
                     </>
                   )}
                   
+                  {/* Premium Badge */}
+                  {isPremium && (
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-amber-500 flex items-center gap-1.5 shadow-lg">
+                      <Crown className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs text-white font-medium">Premium</span>
+                    </div>
+                  )}
+                  
                   {/* Pre-reveal Info Overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <div className="flex items-center gap-2">
@@ -1631,6 +1618,14 @@ const Profile = () => {
                     </>
                   )}
                   
+                  {/* Premium Badge */}
+                  {isPremium && (
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-amber-500 flex items-center gap-1.5 shadow-lg">
+                      <Crown className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs text-white font-medium">Premium</span>
+                    </div>
+                  )}
+                  
                   {/* Full Info Overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <div className="flex items-center gap-2">
@@ -1639,14 +1634,6 @@ const Profile = () => {
                     </div>
                     {formData.presence_note && (
                       <p className="text-sm text-purple-100/80 mt-1">{formData.presence_note}</p>
-                    )}
-                    
-                    {/* Safety Halo */}
-                    {hasSafetyHalo && (
-                      <span className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs">
-                        <Shield className="w-3 h-3" />
-                        Safety Halo
-                      </span>
                     )}
                   </div>
                 </div>
