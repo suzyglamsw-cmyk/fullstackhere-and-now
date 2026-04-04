@@ -253,7 +253,10 @@ async def upload_photo(
     await db.photos.delete_one({"user_id": current_user["id"], "slot": slot})
     await db.photos.insert_one(photo_data)
     
-    photos = current_user.get("photos", ["", "", ""])
+    # IMPORTANT: Fetch the CURRENT photos array from the database
+    # This prevents race conditions when uploading multiple photos quickly
+    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "photos": 1})
+    photos = fresh_user.get("photos", ["", "", ""]) if fresh_user else ["", "", ""]
     if len(photos) < 3:
         photos = photos + [""] * (3 - len(photos))
     
@@ -277,6 +280,7 @@ async def upload_photo(
         "photo_id": photo_id,
         "url": photo_url,
         "slot": slot,
+        "photos": photos,  # Return the complete photos array
         "message": "Photo uploaded successfully"
     }
     
@@ -313,7 +317,9 @@ async def delete_photo(slot: int, current_user: dict = Depends(get_current_user)
     
     await db.photos.delete_one({"user_id": current_user["id"], "slot": slot})
     
-    photos = current_user.get("photos", ["", "", ""])
+    # IMPORTANT: Fetch the CURRENT photos array from the database
+    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "photos": 1})
+    photos = fresh_user.get("photos", ["", "", ""]) if fresh_user else ["", "", ""]
     if len(photos) < 3:
         photos = photos + [""] * (3 - len(photos))
     photos[slot] = ""
@@ -327,7 +333,7 @@ async def delete_photo(slot: int, current_user: dict = Depends(get_current_user)
         {"$set": update_data}
     )
     
-    return {"message": "Photo deleted", "slot": slot}
+    return {"message": "Photo deleted", "slot": slot, "photos": photos}
 
 
 @router.post("/make-main/{slot}")
@@ -336,7 +342,9 @@ async def make_main_photo(slot: int, current_user: dict = Depends(get_current_us
     if slot < 1 or slot > 2:
         raise HTTPException(status_code=400, detail="Invalid slot. Use 1 or 2.")
     
-    photos = current_user.get("photos", ["", "", ""])
+    # IMPORTANT: Fetch the CURRENT photos array from the database
+    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "photos": 1})
+    photos = fresh_user.get("photos", ["", "", ""]) if fresh_user else ["", "", ""]
     if len(photos) < 3:
         photos = photos + [""] * (3 - len(photos))
     

@@ -304,6 +304,9 @@ Comprehensive list including:
   - Profile preview now shows ALL photos in swipeable carousel (not just main photo)
   - Required field validation: bio and "here to..." fields must be filled before saving
   - Carousel includes navigation arrows and dot indicators for multiple photos
+  - Fixed photo upload race condition: backend now fetches fresh photos array before updating
+  - All 3 photo slots are properly persisted to database
+  - Backend returns complete photos[] array in upload/delete responses
 
 ## Known Technical Debt
 

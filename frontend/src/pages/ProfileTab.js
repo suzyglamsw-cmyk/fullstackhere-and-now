@@ -179,14 +179,21 @@ const Profile = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Update local state for UI
-      const newPhotos = [...formData.photos];
-      newPhotos[index] = response.data.url;
-      setFormData(prev => ({ ...prev, photos: newPhotos }));
+      // Backend returns the complete updated photos array
+      const updatedPhotos = response.data.photos || [...formData.photos];
+      updatedPhotos[index] = response.data.url;
       
-      // Update user context directly (photo is already saved to DB by backend)
+      // Ensure array has 3 slots
+      while (updatedPhotos.length < 3) {
+        updatedPhotos.push("");
+      }
+      
+      // Update local state for UI
+      setFormData(prev => ({ ...prev, photos: updatedPhotos }));
+      
+      // Update user context directly with complete photos array
       updateUser({ 
-        photos: newPhotos, 
+        photos: updatedPhotos, 
         avatar_url: index === 0 ? response.data.url : user?.avatar_url 
       });
       
@@ -202,16 +209,23 @@ const Profile = () => {
   const handlePhotoDelete = async (index) => {
     try {
       // Delete photo from backend independently
-      await axios.delete(`${API}/photos/${index}`);
+      const response = await axios.delete(`${API}/photos/${index}`);
+      
+      // Backend returns the complete updated photos array
+      const updatedPhotos = response.data.photos || [...formData.photos];
+      updatedPhotos[index] = "";
+      
+      // Ensure array has 3 slots
+      while (updatedPhotos.length < 3) {
+        updatedPhotos.push("");
+      }
       
       // Update local state
-      const newPhotos = [...formData.photos];
-      newPhotos[index] = "";
-      setFormData(prev => ({ ...prev, photos: newPhotos }));
+      setFormData(prev => ({ ...prev, photos: updatedPhotos }));
       
-      // Update user context (already saved to DB)
+      // Update user context with complete photos array
       updateUser({ 
-        photos: newPhotos,
+        photos: updatedPhotos,
         avatar_url: index === 0 ? "" : user?.avatar_url
       });
       
