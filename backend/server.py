@@ -6801,10 +6801,16 @@ async def websocket_endpoint(websocket: WebSocket, venue_id: str, user_id: str):
 from routes.auth import router as auth_router
 from routes.photos import router as photos_router
 from routes.voice_intro import router as voice_intro_router
+from routes.venues import router as venues_router
+from routes.discovery import router as discovery_router
+from routes.connections import router as connections_router
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(photos_router, prefix="/api")
 app.include_router(voice_intro_router, prefix="/api")
+app.include_router(venues_router, prefix="/api")
+app.include_router(discovery_router, prefix="/api")
+app.include_router(connections_router, prefix="/api")
 
 # Include main router (legacy routes)
 app.include_router(api_router)
