@@ -324,8 +324,8 @@ const Discovery = ({ defaultMode = null }) => {
             </div>
             
             {/* User-facing presence micro-copy */}
-            <p className="w-full max-w-md mt-6 text-center text-sm text-slate-500">
-              "Here" auto-checks you out after 1hr. "Not here" expires after 24hrs of inactivity.
+            <p className="w-full max-w-md mt-6 text-center text-sm text-slate-500 px-4">
+              "Here" auto-checks you out after 1 hour of inactivity. "Not here" expires after 24 hours of inactivity. You can rejoin either option anytime by returning to this Discovery page.
             </p>
             
             {venueLoading && (
