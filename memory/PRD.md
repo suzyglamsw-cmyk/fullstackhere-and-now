@@ -204,7 +204,7 @@ Comprehensive list including:
 - **friends**: Friend connections
 - **notifications**: User notifications
 
-## What's Been Implemented (as of March 2026)
+## What's Been Implemented (as of April 2026)
 
 ### Completed
 - ✅ Full authentication flow (register, login, logout)
@@ -240,6 +240,18 @@ Comprehensive list including:
 - ✅ **Enhanced Content Moderation** - Full name detection in text, image AI analysis for QR/screenshots, expanded profanity filtering (April 2026)
 - ✅ **Profile Input Style Override** - Global Shadcn Input/Textarea components overridden with custom warm lavender aesthetic: #E7D9FF 12% opacity background, #F3E8FF 2px solid border, subtle outer glow, large 16-20px corner radius (April 2026)
 - ✅ **Location & Presence System** - Distance-based discovery (0-25 miles), GPS-verified check-ins, Here/Not Here presence modes, venue check-in privacy (April 2026)
+- ✅ **11-Point Profile Layout Overhaul** (April 2026):
+  - ✅ DOB uneditable (display Age only, set during registration)
+  - ✅ Removed "Celebrity Crush" field
+  - ✅ Added "Intent" dropdown (Dating/Friends/Open to both)
+  - ✅ Added "My type of person is" text field (10-40 chars)
+  - ✅ Added "Who I'm open to meeting" (PRIVATE - for matching only)
+  - ✅ Added "Home Area" 2-step Country→Region picker
+  - ✅ Compact text fields (reduced heights)
+  - ✅ Quick Controls at top (Shy + Hide from discovery toggles)
+  - ✅ Pre-reveal layout: Name, Age, Presence Note, Shy indicator
+  - ✅ Post-reveal layout: Bio, My Type, Intent, Home Area, Voice intro
+  - ✅ Profile Preview modal with Before/After reveal tabs
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)
@@ -258,6 +270,7 @@ Comprehensive list including:
 ## Backlog / Future Tasks
 
 ### P1 - High Priority
+- Matching logic for "Who I'm open to meeting" - Add discovery filtering based on Intent (Dating/Friends) and open_to_meeting preferences
 - Production API keys (Google Places, Google Play Billing)
 
 ### P2 - Medium Priority
