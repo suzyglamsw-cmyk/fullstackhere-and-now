@@ -4,7 +4,7 @@ Shared dependencies and utilities for all route modules.
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 import os
@@ -113,7 +113,7 @@ class UserResponse(BaseModel):
     gender: str = ""
     orientation: str = ""
     relationship_status: str = ""
-    seeking: List[str] = []  # Multi-select: ["male"], ["female"], or both
+    seeking: Optional[List[str]] = []  # Multi-select: ["male"], ["female"], or both
     created_at: str
     is_visible: bool = True
     visibility: Optional[str] = "visible"
@@ -141,6 +141,16 @@ class UserResponse(BaseModel):
     show_as: Optional[str] = ""  # "male" or "female" - gender appearance
     rainbow: Optional[bool] = False  # LGBTQ+ visibility flag
     open_to_all: Optional[bool] = False  # Open to everyone (overrides rainbow separation)
+    
+    @field_validator('seeking', mode='before')
+    @classmethod
+    def convert_seeking_to_list(cls, v):
+        """Convert empty string or None to empty list for seeking field"""
+        if v is None or v == "":
+            return []
+        if isinstance(v, str):
+            return [v] if v else []
+        return v
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
