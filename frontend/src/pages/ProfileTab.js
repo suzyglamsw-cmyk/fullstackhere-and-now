@@ -1031,28 +1031,7 @@ const Profile = () => {
             </p>
           </section>
 
-          {/* Bio Section */}
-          <section className="space-y-3">
-            <Label className="text-purple-200/70 text-sm font-medium">About You</Label>
-            <Textarea
-              value={formData.bio}
-              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              placeholder="Share a little about yourself..."
-              maxLength={MAX_BIO_LENGTH}
-              className="min-h-24 px-6 py-4 rounded-[20px] text-white placeholder:text-purple-300/40"
-              style={{
-                background: 'rgba(139, 92, 246, 0.08)',
-                border: '2px solid rgba(168, 85, 247, 0.3)',
-              }}
-              data-testid="bio-textarea"
-            />
-            <div className="flex justify-between text-xs px-1 text-purple-300/60">
-              <span>Minimum {MIN_BIO_LENGTH} characters</span>
-              <span>{formData.bio.length}/{MAX_BIO_LENGTH}</span>
-            </div>
-          </section>
-
-          {/* Presence Note - Compact */}
+          {/* Presence Note - Compact (above About You per user request) */}
           <section className="space-y-3">
             <Label className="text-purple-200/70 text-sm font-medium">Presence Note</Label>
             <p className="text-xs pl-1 text-purple-300/70">A tiny hint of who you are — visible even while blurred</p>
@@ -1070,6 +1049,27 @@ const Profile = () => {
             />
             <div className="text-right text-xs pr-1 text-purple-300/60">
               {formData.presence_note.length}/{MAX_PRESENCE_NOTE_LENGTH}
+            </div>
+          </section>
+
+          {/* Bio Section (below Presence Note per user request) */}
+          <section className="space-y-3">
+            <Label className="text-purple-200/70 text-sm font-medium">About You</Label>
+            <Textarea
+              value={formData.bio}
+              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+              placeholder="Share a little about yourself..."
+              maxLength={MAX_BIO_LENGTH}
+              className="min-h-24 px-6 py-4 rounded-[20px] text-white placeholder:text-purple-300/40"
+              style={{
+                background: 'rgba(139, 92, 246, 0.08)',
+                border: '2px solid rgba(168, 85, 247, 0.3)',
+              }}
+              data-testid="bio-textarea"
+            />
+            <div className="flex justify-between text-xs px-1 text-purple-300/60">
+              <span>Minimum {MIN_BIO_LENGTH} characters</span>
+              <span>{formData.bio.length}/{MAX_BIO_LENGTH}</span>
             </div>
           </section>
 

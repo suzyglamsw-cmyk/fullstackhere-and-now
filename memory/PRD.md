@@ -87,12 +87,19 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 #### Safety Halo
 - Shown after reveal if: No reports, no blocked users, respectful behavior
 
-### 4. Profile Tab (NEW)
+### 4. Profile Tab (UPDATED - April 2026)
 - Separate bottom nav tab for identity + connection features
 - Photos (1 large + 2 optional smaller)
 - Display Name (locked after registration)
-- Bio (min 10 chars, validated for placeholder text)
-- Connection Comfort: Presence Note, Celebrity Crush, Shy Indicator, Voice Intro
+- Age (calculated dynamically from date_of_birth)
+- **Layout Order** (as of April 5, 2026):
+  1. Presence Note (visible even while blurred)
+  2. About You (bio, min 10 chars)
+  3. Gender & Identity section
+  4. Home Area section
+  5. Voice Intro section (at bottom)
+- Quick Controls: "I'm feeling shy", "Hide me from discovery", "Hide my photo in venues"
+- "My type of person" section REMOVED
 - Safety Halo display
 
 ### 5. Settings (Simplified)
@@ -350,8 +357,14 @@ Comprehensive list including:
 
 ### RESOLVED
 - ✅ `server.py` has been modularized - routes extracted to `/backend/routes/` (venues.py, discovery.py, connections.py)
+- ✅ ProfileTab.js layout reorganized (April 5, 2026):
+  - Presence Note moved above About You
+  - Voice Recording moved to bottom
+  - "My type of person" section removed
+  - Quick Action boxes reduced by 20%
 
 ### HIGH
+- `ProfileTab.js` is ~2000 lines - should be split into smaller components
 - `Connections.js` is 1300+ lines - should be split into smaller components
 
 ## Backlog / Future Tasks
