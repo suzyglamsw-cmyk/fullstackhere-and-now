@@ -1226,26 +1226,26 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Rainbow Toggle */}
+            {/* Rainbow Toggle - Compact */}
             <div 
-              className="p-5 rounded-[20px] transition-all duration-300"
+              className="p-3 rounded-xl transition-all duration-300"
               style={{ 
                 background: formData.rainbow ? 'rgba(147, 51, 234, 0.15)' : 'rgba(139, 92, 246, 0.08)',
                 border: formData.rainbow ? '2px solid rgba(167, 139, 250, 0.5)' : '2px solid rgba(168, 85, 247, 0.3)',
               }}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1 mr-4">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                <div className="flex items-center gap-2.5 flex-1 mr-3">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                     formData.rainbow ? 'bg-gradient-to-r from-red-500/30 via-yellow-500/30 to-blue-500/30' : 'bg-white/5'
                   }`}>
-                    <span className="text-lg">🌈</span>
+                    <span className="text-sm">🌈</span>
                   </div>
                   <div>
-                    <p className={`font-medium transition-colors ${formData.rainbow ? 'text-purple-100' : 'text-purple-200/70'}`}>
+                    <p className={`text-sm font-medium transition-colors ${formData.rainbow ? 'text-purple-100' : 'text-purple-200/70'}`}>
                       Rainbow / Rainbow-friendly
                     </p>
-                    <p className="text-xs mt-0.5 text-purple-300/60">
+                    <p className="text-[11px] text-purple-300/60">
                       I'm LGBTQ+ and/or open to seeing LGBTQ+ people.
                     </p>
                   </div>
@@ -1255,41 +1255,41 @@ const Profile = () => {
                   type="button"
                   data-testid="rainbow-toggle"
                   onClick={() => setFormData({ ...formData, rainbow: !formData.rainbow })}
-                  className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
+                  className={`relative w-12 h-6 rounded-full transition-all duration-300 shrink-0 ${
                     formData.rainbow 
-                      ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-lg shadow-purple-500/30' 
+                      ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-md shadow-purple-500/30' 
                       : 'bg-white/10'
                   }`}
                 >
                   <div 
-                    className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
-                      formData.rainbow ? 'left-7' : 'left-1'
+                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 ${
+                      formData.rainbow ? 'left-6' : 'left-0.5'
                     }`}
                   />
                 </button>
               </div>
             </div>
 
-            {/* Open to All Toggle */}
+            {/* Open to All Toggle - Compact */}
             <div 
-              className="p-5 rounded-[20px] transition-all duration-300"
+              className="p-3 rounded-xl transition-all duration-300"
               style={{ 
                 background: formData.open_to_all ? 'rgba(251, 191, 36, 0.15)' : 'rgba(139, 92, 246, 0.08)',
                 border: formData.open_to_all ? '2px solid rgba(251, 191, 36, 0.5)' : '2px solid rgba(168, 85, 247, 0.3)',
               }}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1 mr-4">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                <div className="flex items-center gap-2.5 flex-1 mr-3">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                     formData.open_to_all ? 'bg-amber-500/30' : 'bg-white/5'
                   }`}>
-                    <span className="text-lg">🤗</span>
+                    <span className="text-sm">🤗</span>
                   </div>
                   <div>
-                    <p className={`font-medium transition-colors ${formData.open_to_all ? 'text-amber-100' : 'text-purple-200/70'}`}>
+                    <p className={`text-sm font-medium transition-colors ${formData.open_to_all ? 'text-amber-100' : 'text-purple-200/70'}`}>
                       Open to everyone
                     </p>
-                    <p className="text-xs mt-0.5 text-purple-300/60">
+                    <p className="text-[11px] text-purple-300/60">
                       I'm happy to connect with anyone.
                     </p>
                   </div>
@@ -1299,18 +1299,44 @@ const Profile = () => {
                   type="button"
                   data-testid="open-to-all-toggle"
                   onClick={() => setFormData({ ...formData, open_to_all: !formData.open_to_all })}
-                  className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
+                  className={`relative w-12 h-6 rounded-full transition-all duration-300 shrink-0 ${
                     formData.open_to_all 
-                      ? 'bg-gradient-to-r from-amber-400 to-orange-400 shadow-lg shadow-amber-500/30' 
+                      ? 'bg-gradient-to-r from-amber-400 to-orange-400 shadow-md shadow-amber-500/30' 
                       : 'bg-white/10'
                   }`}
                 >
                   <div 
-                    className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
-                      formData.open_to_all ? 'left-7' : 'left-1'
+                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 ${
+                      formData.open_to_all ? 'left-6' : 'left-0.5'
                     }`}
                   />
                 </button>
+              </div>
+            </div>
+
+            {/* Intent - Now directly under toggles */}
+            <div className="space-y-2">
+              <Label className={`text-sm ${showAsChanged ? 'text-amber-300' : 'text-purple-200/70'}`}>
+                What are you here for? {showAsChanged && <span className="text-amber-400">*</span>}
+              </Label>
+              <div className="relative">
+                <select
+                  value={formData.intent}
+                  onChange={(e) => setFormData({ ...formData, intent: e.target.value })}
+                  className="w-full h-11 px-4 pr-10 rounded-xl text-white text-sm appearance-none cursor-pointer"
+                  style={{ 
+                    background: 'rgba(139, 92, 246, 0.08)',
+                    border: showAsChanged && !formData.intent ? '2px solid rgba(251, 191, 36, 0.5)' : '2px solid rgba(168, 85, 247, 0.3)',
+                  }}
+                  data-testid="intent-select"
+                >
+                  {INTENT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-slate-900 text-white">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400/50 pointer-events-none" />
               </div>
             </div>
           </section>
@@ -1325,40 +1351,13 @@ const Profile = () => {
                 <Target className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <h2 className="text-lg font-medium text-purple-100">Connection preferences</h2>
-                <p className="text-sm text-purple-300/70">Help us find the right people for you</p>
+                <h2 className="text-lg font-medium text-purple-100">About you</h2>
+                <p className="text-sm text-purple-300/70">Tell others what makes you tick</p>
               </div>
-            </div>
-
-            {/* Intent Dropdown */}
-            <div className="space-y-2.5">
-              <Label className="text-purple-200/70 text-sm">What are you here for?</Label>
-              <div className="relative">
-                <select
-                  value={formData.intent}
-                  onChange={(e) => setFormData({ ...formData, intent: e.target.value })}
-                  className="w-full h-14 px-6 pr-12 rounded-[20px] text-white appearance-none cursor-pointer"
-                  style={{ 
-                    background: 'rgba(139, 92, 246, 0.08)',
-                    border: showAsChanged && !formData.intent ? '2px solid rgba(251, 191, 36, 0.5)' : '2px solid rgba(168, 85, 247, 0.3)',
-                  }}
-                  data-testid="intent-select"
-                >
-                  {INTENT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value} className="bg-slate-900 text-white">
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400/50 pointer-events-none" />
-              </div>
-              {showAsChanged && !formData.intent && (
-                <p className="text-amber-400 text-xs">Please select your intent</p>
-              )}
             </div>
 
             {/* My Type of Person - Compact */}
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               <Label className="text-purple-200/70 text-sm">My type of person is...</Label>
               <p className="text-xs pl-1 text-purple-300/70">Describe who you click with (10-40 chars)</p>
               <Input
@@ -1366,7 +1365,7 @@ const Profile = () => {
                 onChange={(e) => setFormData({ ...formData, my_type_of_person: e.target.value })}
                 placeholder="e.g., Curious minds who love good banter"
                 maxLength={MAX_MY_TYPE_LENGTH}
-                className="h-14 px-6 rounded-[20px] text-white placeholder:text-purple-300/40"
+                className="h-11 px-4 rounded-xl text-white text-sm placeholder:text-purple-300/40"
                 style={{
                   background: 'rgba(139, 92, 246, 0.08)',
                   border: '2px solid rgba(168, 85, 247, 0.3)',
