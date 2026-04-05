@@ -1010,8 +1010,8 @@ const Profile = () => {
 
           {/* Presence Note - Compact (above About You per user request) */}
           <section className="space-y-3">
-            <Label className="text-purple-200/70 text-sm font-medium">Presence Note</Label>
-            <p className="text-xs pl-1 text-purple-300/70">A tiny hint of who you are — visible even while blurred</p>
+            <h2 className="text-lg font-medium text-purple-100">Presence Note</h2>
+            <p className="text-base pl-1 text-purple-300/70">A tiny hint of who you are — visible even while blurred</p>
             <Input
               value={formData.presence_note}
               onChange={(e) => setFormData({ ...formData, presence_note: e.target.value })}
@@ -1032,8 +1032,8 @@ const Profile = () => {
           {/* Bio Section (below Presence Note per user request) */}
           <section className="space-y-3">
             <div>
-              <Label className="text-purple-200/70 text-sm font-medium">About You</Label>
-              <p className="text-xs pl-1 text-purple-300/60 mt-1">Information visible after mutual reveal</p>
+              <h2 className="text-lg font-medium text-purple-100">About You</h2>
+              <p className="text-base pl-1 text-purple-300/60 mt-1">Information visible after mutual reveal</p>
             </div>
             <Textarea
               value={formData.bio}
