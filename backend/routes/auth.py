@@ -253,6 +253,36 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
         if update_data["who_open_to_meeting"] not in allowed_values:
             raise HTTPException(status_code=400, detail="Invalid value for 'who I'm open to meeting'")
     
+    # Validate show_as (gender appearance)
+    if "show_as" in update_data and update_data["show_as"]:
+        allowed_show_as = ["male", "female"]
+        if update_data["show_as"].lower() not in allowed_show_as:
+            raise HTTPException(status_code=400, detail="show_as must be 'male' or 'female'")
+        update_data["show_as"] = update_data["show_as"].lower()
+        
+        # Check if show_as is being changed - if so, reset seeking and intent
+        current_show_as = current_user.get("show_as", "")
+        if current_show_as and current_show_as != update_data["show_as"]:
+            update_data["seeking"] = []
+            update_data["intent"] = ""
+    
+    # Validate seeking (multi-select array)
+    if "seeking" in update_data:
+        seeking = update_data["seeking"]
+        if isinstance(seeking, str):
+            seeking = [seeking] if seeking else []
+        if isinstance(seeking, list):
+            allowed_seeking = ["male", "female"]
+            normalized = []
+            for s in seeking:
+                if s and s.lower() in allowed_seeking:
+                    normalized.append(s.lower())
+            update_data["seeking"] = normalized
+    
+    # Validate rainbow flag (boolean)
+    if "rainbow" in update_data:
+        update_data["rainbow"] = bool(update_data["rainbow"])
+    
     # Remove celebrity_crush if present (deprecated field)
     if "celebrity_crush" in update_data:
         del update_data["celebrity_crush"]

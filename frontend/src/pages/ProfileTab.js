@@ -112,7 +112,14 @@ const Profile = () => {
     home_region: "",
     shy_indicator: false,
     voice_intro_url: "",
+    // Gender/Rainbow visibility fields
+    show_as: "",
+    seeking: [],
+    rainbow: false,
   });
+
+  // Track if show_as is being changed (to trigger reset warning)
+  const [showAsChanged, setShowAsChanged] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -128,7 +135,12 @@ const Profile = () => {
         home_region: user.home_region || "",
         shy_indicator: user.shy_indicator || false,
         voice_intro_url: user.voice_intro_url || "",
+        // Gender/Rainbow visibility fields
+        show_as: user.show_as || "",
+        seeking: user.seeking || [],
+        rainbow: user.rainbow || false,
       });
+      setShowAsChanged(false);
       // Fetch privacy settings
       fetchPrivacySettings();
     }
@@ -261,6 +273,18 @@ const Profile = () => {
       return;
     }
 
+    // If show_as changed, require re-selection of seeking and intent
+    if (showAsChanged) {
+      if (!formData.seeking || formData.seeking.length === 0) {
+        toast.error("Please select who you're open to meeting after changing your gender.");
+        return;
+      }
+      if (!formData.intent) {
+        toast.error("Please select your intent after changing your gender.");
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       // Save non-photo profile fields only
@@ -274,9 +298,14 @@ const Profile = () => {
         home_country: formData.home_country,
         home_region: formData.home_region,
         shy_indicator: formData.shy_indicator,
+        // Gender/Rainbow visibility fields
+        show_as: formData.show_as,
+        seeking: formData.seeking,
+        rainbow: formData.rainbow,
       });
       
       updateUser(response.data);
+      setShowAsChanged(false);
       toast.success("Profile saved!");
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to save profile"));
@@ -1056,6 +1085,197 @@ const Profile = () => {
           {/* Divider */}
           <div className="h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
 
+          {/* Gender & Identity Section */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-pink-500/20 flex items-center justify-center">
+                <User className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-medium text-purple-100">Gender & Identity</h2>
+                <p className="text-sm text-purple-300/70">Controls who sees you and who you see</p>
+              </div>
+            </div>
+
+            {/* Show As (Gender Appearance) */}
+            <div className="space-y-2.5">
+              <Label className="text-purple-200/70 text-sm">I appear as</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  data-testid="show-as-male-btn"
+                  onClick={() => {
+                    const oldShowAs = formData.show_as;
+                    if (oldShowAs && oldShowAs !== "male") {
+                      // Changing gender - trigger reset
+                      setFormData({ ...formData, show_as: "male", seeking: [], intent: "" });
+                      setShowAsChanged(true);
+                      toast.info("Gender changed. Please re-select who you're seeking and your intent.");
+                    } else {
+                      setFormData({ ...formData, show_as: "male" });
+                    }
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-center gap-3 ${
+                    formData.show_as === "male"
+                      ? "border-blue-400 bg-blue-500/20"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
+                    formData.show_as === "male" ? "bg-blue-500/30 text-blue-300" : "bg-white/10 text-slate-400"
+                  }`}>
+                    M
+                  </div>
+                  <span className={`font-medium ${formData.show_as === "male" ? "text-blue-200" : "text-slate-300"}`}>
+                    Male
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="show-as-female-btn"
+                  onClick={() => {
+                    const oldShowAs = formData.show_as;
+                    if (oldShowAs && oldShowAs !== "female") {
+                      // Changing gender - trigger reset
+                      setFormData({ ...formData, show_as: "female", seeking: [], intent: "" });
+                      setShowAsChanged(true);
+                      toast.info("Gender changed. Please re-select who you're seeking and your intent.");
+                    } else {
+                      setFormData({ ...formData, show_as: "female" });
+                    }
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-center gap-3 ${
+                    formData.show_as === "female"
+                      ? "border-pink-400 bg-pink-500/20"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
+                    formData.show_as === "female" ? "bg-pink-500/30 text-pink-300" : "bg-white/10 text-slate-400"
+                  }`}>
+                    F
+                  </div>
+                  <span className={`font-medium ${formData.show_as === "female" ? "text-pink-200" : "text-slate-300"}`}>
+                    Female
+                  </span>
+                </button>
+              </div>
+              {showAsChanged && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 mt-2">
+                  <p className="text-amber-300 text-xs flex items-center gap-2">
+                    <span className="text-amber-400">!</span>
+                    You changed your gender. Please re-select your preferences below before saving.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Seeking (Multi-select) */}
+            <div className="space-y-2.5">
+              <Label className="text-purple-200/70 text-sm">I'm looking to meet</Label>
+              <p className="text-xs pl-1 text-purple-300/70">Select one or both options</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  data-testid="seeking-male-btn"
+                  onClick={() => {
+                    const currentSeeking = formData.seeking || [];
+                    const newSeeking = currentSeeking.includes("male")
+                      ? currentSeeking.filter(s => s !== "male")
+                      : [...currentSeeking, "male"];
+                    setFormData({ ...formData, seeking: newSeeking });
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-center gap-3 ${
+                    (formData.seeking || []).includes("male")
+                      ? "border-blue-400 bg-blue-500/20"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    (formData.seeking || []).includes("male") ? "bg-blue-500/30 text-blue-300" : "bg-white/10 text-slate-400"
+                  }`}>
+                    M
+                  </div>
+                  <span className={`font-medium ${(formData.seeking || []).includes("male") ? "text-blue-200" : "text-slate-300"}`}>
+                    Men
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="seeking-female-btn"
+                  onClick={() => {
+                    const currentSeeking = formData.seeking || [];
+                    const newSeeking = currentSeeking.includes("female")
+                      ? currentSeeking.filter(s => s !== "female")
+                      : [...currentSeeking, "female"];
+                    setFormData({ ...formData, seeking: newSeeking });
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-center gap-3 ${
+                    (formData.seeking || []).includes("female")
+                      ? "border-pink-400 bg-pink-500/20"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    (formData.seeking || []).includes("female") ? "bg-pink-500/30 text-pink-300" : "bg-white/10 text-slate-400"
+                  }`}>
+                    F
+                  </div>
+                  <span className={`font-medium ${(formData.seeking || []).includes("female") ? "text-pink-200" : "text-slate-300"}`}>
+                    Women
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Rainbow Toggle */}
+            <div 
+              className="p-5 rounded-[20px] transition-all duration-300"
+              style={{ 
+                background: formData.rainbow ? 'rgba(147, 51, 234, 0.15)' : 'rgba(139, 92, 246, 0.08)',
+                border: formData.rainbow ? '2px solid rgba(167, 139, 250, 0.5)' : '2px solid rgba(168, 85, 247, 0.3)',
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1 mr-4">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                    formData.rainbow ? 'bg-gradient-to-r from-red-500/30 via-yellow-500/30 to-blue-500/30' : 'bg-white/5'
+                  }`}>
+                    <span className="text-lg">🌈</span>
+                  </div>
+                  <div>
+                    <p className={`font-medium transition-colors ${formData.rainbow ? 'text-purple-100' : 'text-purple-200/70'}`}>
+                      Rainbow / Rainbow-friendly
+                    </p>
+                    <p className="text-xs mt-0.5 text-purple-300/60">
+                      I'm LGBTQ+ and/or open to seeing LGBTQ+ people.
+                    </p>
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  data-testid="rainbow-toggle"
+                  onClick={() => setFormData({ ...formData, rainbow: !formData.rainbow })}
+                  className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
+                    formData.rainbow 
+                      ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-lg shadow-purple-500/30' 
+                      : 'bg-white/10'
+                  }`}
+                >
+                  <div 
+                    className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${
+                      formData.rainbow ? 'left-7' : 'left-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
+
           {/* Connection Preferences Section */}
           <section className="space-y-6">
             <div className="flex items-center gap-3">
@@ -1078,7 +1298,7 @@ const Profile = () => {
                   className="w-full h-14 px-6 pr-12 rounded-[20px] text-white appearance-none cursor-pointer"
                   style={{ 
                     background: 'rgba(139, 92, 246, 0.08)',
-                    border: '2px solid rgba(168, 85, 247, 0.3)',
+                    border: showAsChanged && !formData.intent ? '2px solid rgba(251, 191, 36, 0.5)' : '2px solid rgba(168, 85, 247, 0.3)',
                   }}
                   data-testid="intent-select"
                 >
@@ -1090,6 +1310,9 @@ const Profile = () => {
                 </select>
                 <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400/50 pointer-events-none" />
               </div>
+              {showAsChanged && !formData.intent && (
+                <p className="text-amber-400 text-xs">Please select your intent</p>
+              )}
             </div>
 
             {/* My Type of Person - Compact */}

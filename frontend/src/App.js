@@ -7,6 +7,7 @@ import axios from "axios";
 // Pages
 import Landing from "./pages/Landing";
 import OnboardingDiscover from "./pages/OnboardingDiscover";
+import OnboardingGender from "./pages/OnboardingGender";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -127,6 +128,11 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/onboarding/discover" element={<OnboardingDiscover />} />
+            <Route path="/onboarding-gender" element={
+              <ProtectedRoute>
+                <OnboardingGender />
+              </ProtectedRoute>
+            } />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

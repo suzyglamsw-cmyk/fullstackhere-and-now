@@ -85,7 +85,7 @@ class UserProfile(BaseModel):
     gender: Optional[str] = ""
     orientation: Optional[str] = ""
     relationship_status: Optional[str] = ""
-    seeking: Optional[str] = ""
+    seeking: Optional[List[str]] = []  # Multi-select: ["male"], ["female"], or ["male", "female"]
     presence_note: Optional[str] = ""
     # New fields
     my_type_of_person: Optional[str] = ""  # 10-40 chars, required
@@ -95,6 +95,9 @@ class UserProfile(BaseModel):
     home_region: Optional[str] = ""
     shy_indicator: Optional[bool] = False
     voice_intro_url: Optional[str] = ""
+    # Gender/Rainbow visibility fields
+    show_as: Optional[str] = ""  # "male" or "female" - gender appearance
+    rainbow: Optional[bool] = False  # LGBTQ+ visibility flag
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -109,7 +112,7 @@ class UserResponse(BaseModel):
     gender: str = ""
     orientation: str = ""
     relationship_status: str = ""
-    seeking: str = ""
+    seeking: List[str] = []  # Multi-select: ["male"], ["female"], or both
     created_at: str
     is_visible: bool = True
     visibility: Optional[str] = "visible"
@@ -133,6 +136,9 @@ class UserResponse(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     location_updated_at: Optional[str] = None
+    # Gender/Rainbow visibility fields
+    show_as: Optional[str] = ""  # "male" or "female" - gender appearance
+    rainbow: Optional[bool] = False  # LGBTQ+ visibility flag
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
@@ -530,6 +536,8 @@ class WhoIsHereUser(BaseModel):
     distance_miles: Optional[float] = None
     hide_photo_in_venues: bool = False  # Show silhouette instead of blurred photo in venue lists
     is_self: bool = False  # True if this is the current user's own card
+    show_as: Optional[str] = ""  # "male" or "female" - gender appearance
+    rainbow: bool = False  # LGBTQ+ visibility flag
 
 class GlanceCreate(BaseModel):
     to_user_id: str
@@ -748,3 +756,58 @@ def get_venue_checkin_radius(venue_type: str) -> int:
         "venue": 150,  # Default
     }
     return radius_map.get(venue_type, 150)
+
+
+def check_visibility_match(current_user: dict, other_user: dict) -> bool:
+    """
+    Check if other_user should be visible to current_user based on:
+    1. Gender matching (seeking preferences) - bidirectional
+    2. Rainbow boundary rules - strict two-way
+    
+    Returns True if other_user should be visible to current_user.
+    
+    Visibility rules:
+    - User A sees User B only if:
+      a) A's seeking includes B's show_as AND B's seeking includes A's show_as
+      b) Rainbow boundaries are respected:
+         - Non-rainbow users ONLY see non-rainbow users
+         - Rainbow users can see both but ONLY appear to other rainbow users
+    """
+    # Get current user's seeking preferences and show_as
+    current_seeking = current_user.get("seeking", [])
+    if isinstance(current_seeking, str):
+        current_seeking = [current_seeking] if current_seeking else []
+    current_show_as = (current_user.get("show_as") or "").lower()
+    
+    # Get other user's seeking preferences and show_as
+    other_seeking = other_user.get("seeking", [])
+    if isinstance(other_seeking, str):
+        other_seeking = [other_seeking] if other_seeking else []
+    other_show_as = (other_user.get("show_as") or "").lower()
+    
+    # 1. Bidirectional Gender visibility check
+    # Skip if either user hasn't set their preferences yet (backward compatibility)
+    if current_seeking and other_show_as:
+        current_seeking_lower = [s.lower() for s in current_seeking]
+        if other_show_as not in current_seeking_lower:
+            return False
+    
+    if other_seeking and current_show_as:
+        other_seeking_lower = [s.lower() for s in other_seeking]
+        if current_show_as not in other_seeking_lower:
+            return False
+    
+    # 2. Rainbow boundary check - STRICT two-way rules
+    current_rainbow = current_user.get("rainbow", False)
+    other_rainbow = other_user.get("rainbow", False)
+    
+    # Rule: Non-rainbow users ONLY see non-rainbow users
+    if not current_rainbow and other_rainbow:
+        return False
+    
+    # Rule: Rainbow users can see both, but only APPEAR to other rainbow users
+    # (This is checked from the other user's perspective)
+    if not other_rainbow and current_rainbow:
+        return False
+    
+    return True

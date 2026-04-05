@@ -629,6 +629,33 @@ const PersonCard = ({
             <Sparkles className="w-3 h-3 text-white" />
           </div>
         )}
+        
+        {/* Gender indicator - bottom left */}
+        {person.show_as && (
+          <div 
+            className={`absolute -bottom-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow-md ${
+              person.show_as === "male" 
+                ? "bg-blue-400/90 text-white" 
+                : "bg-pink-400/90 text-white"
+            }`}
+            data-testid={`gender-indicator-${person.id}`}
+          >
+            {person.show_as === "male" ? "M" : "F"}
+          </div>
+        )}
+        
+        {/* Rainbow indicator - bottom right */}
+        {person.rainbow && (
+          <div 
+            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-md overflow-hidden"
+            style={{ 
+              background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
+            }}
+            data-testid={`rainbow-indicator-${person.id}`}
+          >
+            <div className="w-3 h-3 rounded-full bg-slate-900/40" />
+          </div>
+        )}
       </div>
 
       {/* Info */}

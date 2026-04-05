@@ -13,7 +13,7 @@ from .dependencies import (
     LocationUpdateRequest, VisibilityRequest, WhoIsHereUser,
     calculate_distance_meters, calculate_distance_miles, calculate_safety_halo,
     get_venue_checkin_radius, is_checkin_valid, get_first_name,
-    check_dating_compatibility,
+    check_dating_compatibility, check_visibility_match,
     FREE_DAILY_GLANCES, PREMIUM_DAILY_GLANCES
 )
 
@@ -491,6 +491,10 @@ async def get_people_at_venue(
         if not check_dating_compatibility(current_user, user):
             continue
         
+        # Gender/Rainbow visibility filter
+        if not check_visibility_match(current_user, user):
+            continue
+        
         # Apply last_active filter
         if last_active_filter:
             last_activity = checkin.get("last_activity_at") or checkin.get("checked_in_at")
@@ -556,6 +560,8 @@ async def get_people_at_venue(
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
             "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
             "hide_photo_in_venues": hide_photo,  # Used to show silhouette instead of blurred photo
+            "show_as": user.get("show_as", ""),
+            "rainbow": user.get("rainbow", False),
         })
     
     # Sort: Premium first, then by check-in time

@@ -114,8 +114,8 @@ const Register = () => {
         date_of_birth: formData.date_of_birth,
       });
       login(response.data.token, response.data.user);
-      toast.success("Account created! Let's set up your profile.");
-      navigate("/profile-setup");
+      toast.success("Account created! Let's get to know you.");
+      navigate("/onboarding-gender");
     } catch (error) {
       toast.error(getErrorMessage(error, "Registration failed"));
     } finally {

@@ -10,46 +10,14 @@ from .dependencies import (
     db, get_current_user, IS_TEST_BUILD,
     WhoIsHereUser,
     calculate_distance_miles, calculate_safety_halo,
-    is_checkin_valid, get_first_name, check_dating_compatibility
+    is_checkin_valid, get_first_name, check_dating_compatibility,
+    check_visibility_match
 )
 
 router = APIRouter()
 
 # Fake test users for test mode
 FAKE_TEST_USERS = []
-
-
-def check_visibility_match(current_user: dict, other_user: dict) -> bool:
-    """
-    Check if other_user should be visible to current_user based on:
-    1. Gender matching (seeking preferences)
-    2. Rainbow boundary rules
-    
-    Returns True if other_user should be visible to current_user.
-    """
-    # Get current user's seeking preferences
-    current_seeking = current_user.get("seeking", [])
-    if isinstance(current_seeking, str):
-        current_seeking = [current_seeking] if current_seeking else []
-    
-    # Get other user's show_as
-    other_show_as = other_user.get("show_as", "").lower()
-    
-    # 1. Gender visibility check
-    if current_seeking and other_show_as:
-        current_seeking_lower = [s.lower() for s in current_seeking]
-        if other_show_as not in current_seeking_lower:
-            return False
-    
-    # 2. Rainbow boundary check
-    current_rainbow = current_user.get("rainbow", False)
-    other_rainbow = other_user.get("rainbow", False)
-    
-    # If current user is NOT rainbow, they can only see non-rainbow users
-    if not current_rainbow and other_rainbow:
-        return False
-    
-    return True
 
 
 # ============================================================================
@@ -156,6 +124,10 @@ async def get_people_not_here(
         if not check_dating_compatibility(current_user, user):
             continue
         
+        # Gender/Rainbow visibility filter
+        if not check_visibility_match(current_user, user):
+            continue
+        
         # Check glance status
         has_glanced_at_me = await db.glances.find_one({
             "from_user_id": user["id"],
@@ -201,6 +173,8 @@ async def get_people_not_here(
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
             "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
             "distance_miles": round(distance, 1),
+            "show_as": user.get("show_as", ""),
+            "rainbow": user.get("rainbow", False),
         })
     
     # Sort: Premium first, then by distance
@@ -334,6 +308,10 @@ async def get_people_here(
         if not check_dating_compatibility(current_user, user):
             continue
         
+        # Gender/Rainbow visibility filter
+        if not check_visibility_match(current_user, user):
+            continue
+        
         # Check glance status
         has_glanced_at_me = await db.glances.find_one({
             "from_user_id": user["id"],
@@ -390,6 +368,8 @@ async def get_people_here(
             "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
             "distance_miles": round(distance, 1),
             "venue_name": venue_name if is_revealed else None,
+            "show_as": user.get("show_as", ""),
+            "rainbow": user.get("rainbow", False),
         })
     
     # Sort: Premium first, then by distance
@@ -448,6 +428,10 @@ async def get_proximity_echoes(current_user: dict = Depends(get_current_user)):
             
             # Dating compatibility filter
             if not check_dating_compatibility(current_user, user):
+                continue
+            
+            # Gender/Rainbow visibility filter
+            if not check_visibility_match(current_user, user):
                 continue
             
             venue = await db.venues.find_one({"id": venue_id}, {"_id": 0})

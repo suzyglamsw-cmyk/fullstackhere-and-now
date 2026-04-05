@@ -737,6 +737,33 @@ const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }
           </div>
         )}
         
+        {/* Gender indicator - bottom left */}
+        {person.show_as && (
+          <div 
+            className={`absolute bottom-14 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${
+              person.show_as === "male" 
+                ? "bg-blue-400/90 text-white" 
+                : "bg-pink-400/90 text-white"
+            }`}
+            data-testid={`gender-indicator-${person.id}`}
+          >
+            {person.show_as === "male" ? "M" : "F"}
+          </div>
+        )}
+        
+        {/* Rainbow indicator - next to gender */}
+        {person.rainbow && (
+          <div 
+            className="absolute bottom-14 left-9 w-6 h-6 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
+            style={{ 
+              background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
+            }}
+            data-testid={`rainbow-indicator-${person.id}`}
+          >
+            <div className="w-4 h-4 rounded-full bg-slate-900/50" />
+          </div>
+        )}
+        
         {/* Safety Halo */}
         {person.has_safety_halo && person.is_revealed && (
           <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-emerald-500/90 flex items-center gap-1">
