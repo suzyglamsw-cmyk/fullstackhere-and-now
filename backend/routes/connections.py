@@ -491,27 +491,37 @@ async def get_glances(current_user: dict = Depends(get_current_user)):
     sent = await db.glances.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     received = await db.glances.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     
-    sent_list = []
+    # Check for mutual glances
+    sent_to_ids = {g["to_user_id"] for g in sent}
+    received_from_ids = {g["from_user_id"] for g in received}
+    
+    outgoing_list = []
     for g in sent:
         user = await db.users.find_one({"id": g["to_user_id"]}, {"_id": 0})
         if user:
-            sent_list.append({
+            is_mutual = g["to_user_id"] in received_from_ids
+            outgoing_list.append({
                 **g,
-                "user_name": user.get("display_name"),
-                "user_avatar": user.get("avatar_url", "")
+                "user_id": g["to_user_id"],
+                "display_name": user.get("display_name"),
+                "avatar_url": user.get("avatar_url", ""),
+                "is_mutual": is_mutual
             })
     
-    received_list = []
+    incoming_list = []
     for g in received:
         user = await db.users.find_one({"id": g["from_user_id"]}, {"_id": 0})
         if user:
-            received_list.append({
+            is_mutual = g["from_user_id"] in sent_to_ids
+            incoming_list.append({
                 **g,
-                "user_name": get_first_name(user.get("display_name")),
-                "user_avatar": user.get("avatar_url", "")
+                "user_id": g["from_user_id"],
+                "display_name": get_first_name(user.get("display_name")),
+                "avatar_url": user.get("avatar_url", ""),
+                "is_mutual": is_mutual
             })
     
-    return {"sent": sent_list, "received": received_list}
+    return {"incoming": incoming_list, "outgoing": outgoing_list}
 
 
 @router.get("/connections/icebreakers")
@@ -520,27 +530,61 @@ async def get_icebreakers(current_user: dict = Depends(get_current_user)):
     sent = await db.icebreakers.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     received = await db.icebreakers.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     
-    sent_list = []
+    outgoing_list = []
     for ib in sent:
         user = await db.users.find_one({"id": ib["to_user_id"]}, {"_id": 0})
         if user:
-            sent_list.append({
+            outgoing_list.append({
                 **ib,
-                "user_name": user.get("display_name"),
-                "user_avatar": user.get("avatar_url", "")
+                "user_id": ib["to_user_id"],
+                "display_name": user.get("display_name"),
+                "avatar_url": user.get("avatar_url", "")
             })
     
-    received_list = []
+    incoming_list = []
     for ib in received:
         user = await db.users.find_one({"id": ib["from_user_id"]}, {"_id": 0})
         if user:
-            received_list.append({
+            incoming_list.append({
                 **ib,
-                "user_name": user.get("display_name"),
-                "user_avatar": user.get("avatar_url", "")
+                "user_id": ib["from_user_id"],
+                "display_name": user.get("display_name"),
+                "avatar_url": user.get("avatar_url", "")
             })
     
-    return {"sent": sent_list, "received": received_list}
+    return {"incoming": incoming_list, "outgoing": outgoing_list}
+
+
+
+@router.get("/connections/chat-requests")
+async def get_chat_requests(current_user: dict = Depends(get_current_user)):
+    """Get chat requests sent and received"""
+    sent = await db.chat_requests.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    received = await db.chat_requests.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    
+    outgoing_list = []
+    for req in sent:
+        user = await db.users.find_one({"id": req["to_user_id"]}, {"_id": 0})
+        if user:
+            outgoing_list.append({
+                **req,
+                "user_id": req["to_user_id"],
+                "display_name": user.get("display_name"),
+                "avatar_url": user.get("avatar_url", "")
+            })
+    
+    incoming_list = []
+    for req in received:
+        user = await db.users.find_one({"id": req["from_user_id"]}, {"_id": 0})
+        if user:
+            incoming_list.append({
+                **req,
+                "user_id": req["from_user_id"],
+                "display_name": user.get("display_name"),
+                "avatar_url": user.get("avatar_url", "")
+            })
+    
+    return {"incoming": incoming_list, "outgoing": outgoing_list}
 
 
 # ============================================================================
