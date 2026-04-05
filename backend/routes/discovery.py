@@ -19,6 +19,39 @@ router = APIRouter()
 FAKE_TEST_USERS = []
 
 
+def check_visibility_match(current_user: dict, other_user: dict) -> bool:
+    """
+    Check if other_user should be visible to current_user based on:
+    1. Gender matching (seeking preferences)
+    2. Rainbow boundary rules
+    
+    Returns True if other_user should be visible to current_user.
+    """
+    # Get current user's seeking preferences
+    current_seeking = current_user.get("seeking", [])
+    if isinstance(current_seeking, str):
+        current_seeking = [current_seeking] if current_seeking else []
+    
+    # Get other user's show_as
+    other_show_as = other_user.get("show_as", "").lower()
+    
+    # 1. Gender visibility check
+    if current_seeking and other_show_as:
+        current_seeking_lower = [s.lower() for s in current_seeking]
+        if other_show_as not in current_seeking_lower:
+            return False
+    
+    # 2. Rainbow boundary check
+    current_rainbow = current_user.get("rainbow", False)
+    other_rainbow = other_user.get("rainbow", False)
+    
+    # If current user is NOT rainbow, they can only see non-rainbow users
+    if not current_rainbow and other_rainbow:
+        return False
+    
+    return True
+
+
 # ============================================================================
 # DISCOVERY ROUTES
 # ============================================================================

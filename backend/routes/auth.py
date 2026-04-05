@@ -60,7 +60,9 @@ async def register(data: UserCreate):
         "gender": "",
         "orientation": "",
         "relationship_status": "",
-        "seeking": "",
+        "show_as": "",  # Gender appearance: "male" or "female"
+        "seeking": [],  # Multi-select: ["male"], ["female"], or ["male", "female"]
+        "rainbow": False,  # LGBTQ+ visibility flag
         "is_visible": False,
         "profile_complete": False,
         "is_premium": is_permanent_premium,
