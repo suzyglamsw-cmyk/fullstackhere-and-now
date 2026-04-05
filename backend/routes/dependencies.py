@@ -559,6 +559,7 @@ class WhoIsHereUser(BaseModel):
     show_as: Optional[str] = ""  # "male" or "female" - gender appearance
     rainbow: bool = False  # LGBTQ+ visibility flag
     open_to_all: bool = False  # Open to everyone (overrides rainbow separation)
+    intent: Optional[str] = ""  # "dating", "friends", "open_to_both"
 
 class GlanceCreate(BaseModel):
     to_user_id: str

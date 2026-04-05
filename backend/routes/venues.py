@@ -461,6 +461,7 @@ async def get_people_at_venue(
         "show_as": current_user.get("show_as", ""),
         "rainbow": current_user.get("rainbow", False),
         "open_to_all": current_user.get("open_to_all", False),
+        "intent": current_user.get("intent", ""),
     }
     
     # Calculate 1-hour cutoff for inactivity
@@ -587,6 +588,7 @@ async def get_people_at_venue(
             "show_as": user.get("show_as", ""),
             "rainbow": user.get("rainbow", False),
             "open_to_all": user.get("open_to_all", False),
+            "intent": user.get("intent", ""),
         })
     
     # Sort: Premium first, then by check-in time

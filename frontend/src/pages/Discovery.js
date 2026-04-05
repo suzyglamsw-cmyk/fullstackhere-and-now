@@ -791,8 +791,19 @@ const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }
         
         {/* Overlay info */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-          <p className="text-white font-medium truncate">{person.first_name || person.display_name}</p>
-          {person.age && <p className="text-slate-300 text-sm">{person.age}</p>}
+          <p className="text-white font-medium truncate">{person.first_name || person.display_name}{person.age ? `, ${person.age}` : ""}</p>
+          {/* Intent badge */}
+          {person.intent && (
+            <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full ${
+              person.intent === "dating" ? "bg-pink-500/30 text-pink-300" :
+              person.intent === "friends" ? "bg-emerald-500/30 text-emerald-300" :
+              "bg-purple-500/30 text-purple-300"
+            }`}>
+              {person.intent === "dating" ? "Dating" : 
+               person.intent === "friends" ? "Friends" : 
+               person.intent === "open_to_both" ? "Open to both" : ""}
+            </span>
+          )}
           {person.presence_note && (
             <p className="text-slate-400 text-xs mt-1 truncate">{person.presence_note}</p>
           )}

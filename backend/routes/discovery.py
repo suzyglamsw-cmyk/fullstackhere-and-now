@@ -186,6 +186,7 @@ async def get_people_not_here(
             "show_as": user.get("show_as", ""),
             "rainbow": user.get("rainbow", False),
             "open_to_all": user.get("open_to_all", False),
+            "intent": user.get("intent", ""),
         })
     
     # Sort: Premium first, then by distance
@@ -289,6 +290,7 @@ async def get_people_here(
             "show_as": current_user.get("show_as", ""),
             "rainbow": current_user.get("rainbow", False),
             "open_to_all": current_user.get("open_to_all", False),
+            "intent": current_user.get("intent", ""),
         }
     
     # Find visible users with presence_status = "here" who were active in last 1 hour

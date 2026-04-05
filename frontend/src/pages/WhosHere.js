@@ -594,6 +594,18 @@ const PersonCard = ({
           <h3 className="font-semibold text-white truncate">
             You're here{person.age ? `, ${person.age}` : ""}
           </h3>
+          {/* Intent badge */}
+          {person.intent && (
+            <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full ${
+              person.intent === "dating" ? "bg-pink-500/20 text-pink-300" :
+              person.intent === "friends" ? "bg-emerald-500/20 text-emerald-300" :
+              "bg-purple-500/20 text-purple-300"
+            }`}>
+              {person.intent === "dating" ? "Dating" : 
+               person.intent === "friends" ? "Friends" : 
+               person.intent === "open_to_both" ? "Open to both" : ""}
+            </span>
+          )}
           {person.presence_note && (
             <p className="text-slate-400 text-xs mt-1 line-clamp-2">{person.presence_note}</p>
           )}
@@ -716,6 +728,18 @@ const PersonCard = ({
             : `${person.first_name || person.display_name?.split(' ')[0] || "Someone"}${person.age ? `, ${person.age}` : ""}`
           }
         </h3>
+        {/* Intent badge */}
+        {person.intent && (
+          <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full ${
+            person.intent === "dating" ? "bg-pink-500/20 text-pink-300" :
+            person.intent === "friends" ? "bg-emerald-500/20 text-emerald-300" :
+            "bg-purple-500/20 text-purple-300"
+          }`}>
+            {person.intent === "dating" ? "Dating" : 
+             person.intent === "friends" ? "Friends" : 
+             person.intent === "open_to_both" ? "Open to both" : ""}
+          </span>
+        )}
         {person.is_revealed && person.bio && (
           <p className="text-slate-400 text-xs mt-1 line-clamp-2">{person.bio}</p>
         )}

@@ -55,7 +55,6 @@ const OPEN_TO_MEETING_OPTIONS = [
   { value: "men", label: "Men" },
   { value: "women", label: "Women" },
   { value: "everyone", label: "Everyone" },
-  { value: "prefer_not_to_say", label: "Prefer not to say" },
 ];
 
 // Country and region data
@@ -1100,36 +1099,50 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Show As (Gender Appearance) */}
+            {/* Gender Change Warning - shown at top when gender changed */}
+            {showAsChanged && (
+              <div className="p-4 rounded-xl bg-amber-500/15 border border-amber-500/30">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-amber-400 text-sm font-bold">!</span>
+                  </div>
+                  <div>
+                    <p className="text-amber-200 text-sm font-medium">Gender changed</p>
+                    <p className="text-amber-300/70 text-xs mt-1">Please re-select who you're looking to meet and your intent below before saving.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show As (Gender Appearance) - Compact */}
             <div className="space-y-2.5">
               <Label className="text-purple-200/70 text-sm">I appear as</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex gap-3">
                 <button
                   type="button"
                   data-testid="show-as-male-btn"
                   onClick={() => {
                     const oldShowAs = formData.show_as;
                     if (oldShowAs && oldShowAs !== "male") {
-                      // Changing gender - trigger reset
                       setFormData({ ...formData, show_as: "male", seeking: [], intent: "" });
                       setShowAsChanged(true);
-                      toast.info("Gender changed. Please re-select who you're seeking and your intent.");
+                      toast.info("Gender changed. Please re-select your preferences.");
                     } else {
                       setFormData({ ...formData, show_as: "male" });
                     }
                   }}
-                  className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-center gap-3 ${
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
                     formData.show_as === "male"
                       ? "border-blue-400 bg-blue-500/20"
                       : "border-white/10 bg-white/5 hover:border-white/20"
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
                     formData.show_as === "male" ? "bg-blue-500/30 text-blue-300" : "bg-white/10 text-slate-400"
                   }`}>
                     M
                   </div>
-                  <span className={`font-medium ${formData.show_as === "male" ? "text-blue-200" : "text-slate-300"}`}>
+                  <span className={`text-sm font-medium ${formData.show_as === "male" ? "text-blue-200" : "text-slate-300"}`}>
                     Male
                   </span>
                 </button>
@@ -1139,45 +1152,38 @@ const Profile = () => {
                   onClick={() => {
                     const oldShowAs = formData.show_as;
                     if (oldShowAs && oldShowAs !== "female") {
-                      // Changing gender - trigger reset
                       setFormData({ ...formData, show_as: "female", seeking: [], intent: "" });
                       setShowAsChanged(true);
-                      toast.info("Gender changed. Please re-select who you're seeking and your intent.");
+                      toast.info("Gender changed. Please re-select your preferences.");
                     } else {
                       setFormData({ ...formData, show_as: "female" });
                     }
                   }}
-                  className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-center gap-3 ${
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
                     formData.show_as === "female"
                       ? "border-pink-400 bg-pink-500/20"
                       : "border-white/10 bg-white/5 hover:border-white/20"
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
                     formData.show_as === "female" ? "bg-pink-500/30 text-pink-300" : "bg-white/10 text-slate-400"
                   }`}>
                     F
                   </div>
-                  <span className={`font-medium ${formData.show_as === "female" ? "text-pink-200" : "text-slate-300"}`}>
+                  <span className={`text-sm font-medium ${formData.show_as === "female" ? "text-pink-200" : "text-slate-300"}`}>
                     Female
                   </span>
                 </button>
               </div>
-              {showAsChanged && (
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 mt-2">
-                  <p className="text-amber-300 text-xs flex items-center gap-2">
-                    <span className="text-amber-400">!</span>
-                    You changed your gender. Please re-select your preferences below before saving.
-                  </p>
-                </div>
-              )}
             </div>
 
-            {/* Seeking (Multi-select) */}
+            {/* Seeking (Multi-select) - Compact */}
             <div className="space-y-2.5">
-              <Label className="text-purple-200/70 text-sm">I'm looking to meet</Label>
-              <p className="text-xs pl-1 text-purple-300/70">Select one or both options</p>
-              <div className="grid grid-cols-2 gap-3">
+              <Label className={`text-sm ${showAsChanged ? 'text-amber-300' : 'text-purple-200/70'}`}>
+                I'm looking to meet {showAsChanged && <span className="text-amber-400">*</span>}
+              </Label>
+              <p className="text-xs pl-1 text-purple-300/70">Select one or both</p>
+              <div className="flex gap-3">
                 <button
                   type="button"
                   data-testid="seeking-male-btn"
@@ -1188,18 +1194,18 @@ const Profile = () => {
                       : [...currentSeeking, "male"];
                     setFormData({ ...formData, seeking: newSeeking });
                   }}
-                  className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-center gap-3 ${
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
                     (formData.seeking || []).includes("male")
                       ? "border-blue-400 bg-blue-500/20"
-                      : "border-white/10 bg-white/5 hover:border-white/20"
+                      : showAsChanged ? "border-amber-500/30 bg-white/5" : "border-white/10 bg-white/5 hover:border-white/20"
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                     (formData.seeking || []).includes("male") ? "bg-blue-500/30 text-blue-300" : "bg-white/10 text-slate-400"
                   }`}>
                     M
                   </div>
-                  <span className={`font-medium ${(formData.seeking || []).includes("male") ? "text-blue-200" : "text-slate-300"}`}>
+                  <span className={`text-sm font-medium ${(formData.seeking || []).includes("male") ? "text-blue-200" : "text-slate-300"}`}>
                     Men
                   </span>
                 </button>
@@ -1213,18 +1219,18 @@ const Profile = () => {
                       : [...currentSeeking, "female"];
                     setFormData({ ...formData, seeking: newSeeking });
                   }}
-                  className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-center gap-3 ${
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
                     (formData.seeking || []).includes("female")
                       ? "border-pink-400 bg-pink-500/20"
-                      : "border-white/10 bg-white/5 hover:border-white/20"
+                      : showAsChanged ? "border-amber-500/30 bg-white/5" : "border-white/10 bg-white/5 hover:border-white/20"
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                     (formData.seeking || []).includes("female") ? "bg-pink-500/30 text-pink-300" : "bg-white/10 text-slate-400"
                   }`}>
                     F
                   </div>
-                  <span className={`font-medium ${(formData.seeking || []).includes("female") ? "text-pink-200" : "text-slate-300"}`}>
+                  <span className={`text-sm font-medium ${(formData.seeking || []).includes("female") ? "text-pink-200" : "text-slate-300"}`}>
                     Women
                   </span>
                 </button>

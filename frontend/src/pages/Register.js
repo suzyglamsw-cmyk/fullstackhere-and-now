@@ -50,12 +50,16 @@ const Register = () => {
     date_of_birth: "",
     show_as: "", // Gender selection
   });
+  
+  // Track if this is a new registration (to prevent redirect to discovery)
+  const [isNewRegistration, setIsNewRegistration] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    // Only redirect existing users to discovery, not new registrations
+    if (user && !isNewRegistration) {
       navigate("/discovery");
     }
-  }, [user, navigate]);
+  }, [user, navigate, isNewRegistration]);
 
   const handleNameChange = (e) => {
     const name = e.target.value;
@@ -116,6 +120,7 @@ const Register = () => {
     }
     
     setLoading(true);
+    setIsNewRegistration(true); // Mark as new registration to prevent redirect
 
     try {
       const response = await axios.post(`${API}/auth/register`, {
@@ -130,6 +135,7 @@ const Register = () => {
       navigate("/profile-setup");
     } catch (error) {
       toast.error(getErrorMessage(error, "Registration failed"));
+      setIsNewRegistration(false);
     } finally {
       setLoading(false);
     }
