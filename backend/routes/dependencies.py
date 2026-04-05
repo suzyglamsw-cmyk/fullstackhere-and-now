@@ -762,16 +762,17 @@ def check_visibility_match(current_user: dict, other_user: dict) -> bool:
     """
     Check if other_user should be visible to current_user based on:
     1. Gender matching (seeking preferences) - bidirectional
-    2. Rainbow boundary rules - strict two-way
+    2. Rainbow boundary rules - STRICT separation (no cross-visibility)
     
     Returns True if other_user should be visible to current_user.
     
     Visibility rules:
     - User A sees User B only if:
       a) A's seeking includes B's show_as AND B's seeking includes A's show_as
-      b) Rainbow boundaries are respected:
+      b) Rainbow boundaries are strictly matched:
          - Non-rainbow users ONLY see non-rainbow users
-         - Rainbow users can see both but ONLY appear to other rainbow users
+         - Rainbow users ONLY see rainbow users
+         - NO cross-visibility in either direction
     """
     # Get current user's seeking preferences and show_as
     current_seeking = current_user.get("seeking", [])
@@ -797,17 +798,12 @@ def check_visibility_match(current_user: dict, other_user: dict) -> bool:
         if current_show_as not in other_seeking_lower:
             return False
     
-    # 2. Rainbow boundary check - STRICT two-way rules
+    # 2. Rainbow boundary check - STRICT separation (no cross-visibility)
     current_rainbow = current_user.get("rainbow", False)
     other_rainbow = other_user.get("rainbow", False)
     
-    # Rule: Non-rainbow users ONLY see non-rainbow users
-    if not current_rainbow and other_rainbow:
-        return False
-    
-    # Rule: Rainbow users can see both, but only APPEAR to other rainbow users
-    # (This is checked from the other user's perspective)
-    if not other_rainbow and current_rainbow:
+    # Rainbow users ONLY see rainbow users, non-rainbow ONLY see non-rainbow
+    if current_rainbow != other_rainbow:
         return False
     
     return True

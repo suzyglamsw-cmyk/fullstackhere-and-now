@@ -326,8 +326,8 @@ Comprehensive list including:
     - **Reset Logic**: Changing show_as clears seeking and intent, forces re-selection
   - **Visibility Rules (Bidirectional)**:
     - User A sees User B only if A's seeking includes B's show_as AND B's seeking includes A's show_as
-    - Non-rainbow users ONLY see non-rainbow users
-    - Rainbow users can see both but ONLY appear to other rainbow users
+    - **Rainbow STRICT separation**: rainbow=true ONLY sees rainbow=true; rainbow=false ONLY sees rainbow=false
+    - NO cross-visibility between rainbow and non-rainbow users in either direction
   - **Thumbnail Indicators**:
     - Gender indicator: "M" (soft blue) or "F" (soft pink) badge on person cards
     - Rainbow arc icon: Subtle rainbow gradient circle for rainbow=true users
