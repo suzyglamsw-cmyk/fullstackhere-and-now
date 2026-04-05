@@ -90,14 +90,13 @@ Build a real-time, location-based social connection app called "Here & Now". Cor
 ### 4. Profile Tab (UPDATED - April 2026)
 - Separate bottom nav tab for identity + connection features
 - Photos (1 large + 2 optional smaller)
-- Display Name (locked after registration)
-- Age (calculated dynamically from date_of_birth)
+- **Name & Age**: Plain text display below photos (no input boxes - set at registration)
 - **Layout Order** (as of April 5, 2026):
   1. Presence Note (visible even while blurred)
   2. About You (bio, min 10 chars)
-  3. Gender & Identity section
-  4. Home Area section
-  5. Voice Intro section (at bottom)
+  3. Voice Intro (immediately below About You)
+  4. Gender & Identity section
+  5. Home Area section
 - Quick Controls: "I'm feeling shy", "Hide me from discovery", "Hide my photo in venues"
 - "My type of person" section REMOVED
 - Safety Halo display
