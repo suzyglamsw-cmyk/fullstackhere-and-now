@@ -1344,42 +1344,9 @@ const Profile = () => {
           {/* Divider */}
           <div className="h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
 
-          {/* Connection Preferences Section */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                <Target className="w-5 h-5 text-purple-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-medium text-purple-100">About you</h2>
-                <p className="text-sm text-purple-300/70">Tell others what makes you tick</p>
-              </div>
-            </div>
+          {/* Connection Preferences Section - REMOVED "My type of person" */}
 
-            {/* My Type of Person - Compact */}
-            <div className="space-y-2">
-              <Label className="text-purple-200/70 text-sm">My type of person is...</Label>
-              <p className="text-xs pl-1 text-purple-300/70">Describe who you click with (10-40 chars)</p>
-              <Input
-                value={formData.my_type_of_person}
-                onChange={(e) => setFormData({ ...formData, my_type_of_person: e.target.value })}
-                placeholder="e.g., Curious minds who love good banter"
-                maxLength={MAX_MY_TYPE_LENGTH}
-                className="h-11 px-4 rounded-xl text-white text-sm placeholder:text-purple-300/40"
-                style={{
-                  background: 'rgba(139, 92, 246, 0.08)',
-                  border: '2px solid rgba(168, 85, 247, 0.3)',
-                }}
-                data-testid="my-type-input"
-              />
-              <div className="flex justify-between text-xs px-1 text-purple-300/60">
-                <span>{formData.my_type_of_person.length < MIN_MY_TYPE_LENGTH ? `${MIN_MY_TYPE_LENGTH - formData.my_type_of_person.length} more needed` : '✓'}</span>
-                <span>{formData.my_type_of_person.length}/{MAX_MY_TYPE_LENGTH}</span>
-              </div>
-            </div>
-
-            {/* NOTE: who_open_to_meeting is REMOVED - visibility controlled by seeking, rainbow, openToAll */}
-          </section>
+          {/* NOTE: who_open_to_meeting is REMOVED - visibility controlled by seeking, rainbow, openToAll */}
 
           {/* Divider */}
           <div className="h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
