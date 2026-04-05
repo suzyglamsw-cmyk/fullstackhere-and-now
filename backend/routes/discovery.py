@@ -152,11 +152,21 @@ async def get_people_not_here(
         
         first_name = get_first_name(user.get("display_name", "Someone"))
         
+        # Calculate age from date_of_birth if not already set
+        user_age = user.get("age")
+        if not user_age and user.get("date_of_birth"):
+            try:
+                dob = datetime.fromisoformat(user["date_of_birth"].replace("Z", "+00:00"))
+                today = datetime.now(timezone.utc)
+                user_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            except Exception:
+                pass
+        
         people.append({
             "id": user["id"],
             "display_name": user["display_name"] if is_revealed else first_name,
             "first_name": first_name,
-            "age": user.get("age"),
+            "age": user_age,
             "avatar_url": user.get("avatar_url", ""),
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
@@ -242,11 +252,22 @@ async def get_people_here(
     # Only include self card if user is in Here & Now mode (has discovery_mode = "here_now")
     if current_user.get("discovery_mode") == "here_now":
         first_name = get_first_name(current_user.get("display_name", "You"))
+        
+        # Calculate age from date_of_birth if not already set
+        current_age = current_user.get("age")
+        if not current_age and current_user.get("date_of_birth"):
+            try:
+                dob = datetime.fromisoformat(current_user["date_of_birth"].replace("Z", "+00:00"))
+                today = datetime.now(timezone.utc)
+                current_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            except Exception:
+                pass
+        
         self_card = {
             "id": current_user["id"],
             "display_name": current_user.get("display_name", "You"),
             "first_name": first_name,
-            "age": current_user.get("age"),
+            "age": current_age,
             "avatar_url": current_user.get("avatar_url", ""),
             "bio": "",  # Don't show bio on self card
             "interests": [],
@@ -265,6 +286,9 @@ async def get_people_here(
             "distance_miles": 0,
             "hide_photo_in_venues": current_user.get("hide_photo_in_venues", False),
             "is_self": True,  # Mark as self card
+            "show_as": current_user.get("show_as", ""),
+            "rainbow": current_user.get("rainbow", False),
+            "open_to_all": current_user.get("open_to_all", False),
         }
     
     # Find visible users with presence_status = "here" who were active in last 1 hour
@@ -335,6 +359,16 @@ async def get_people_here(
         
         first_name = get_first_name(user.get("display_name", "Someone"))
         
+        # Calculate age from date_of_birth if not already set
+        user_age = user.get("age")
+        if not user_age and user.get("date_of_birth"):
+            try:
+                dob = datetime.fromisoformat(user["date_of_birth"].replace("Z", "+00:00"))
+                today = datetime.now(timezone.utc)
+                user_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            except Exception:
+                pass
+        
         # Get their current venue if checked in
         user_checkin = await db.checkins.find_one({
             "user_id": user["id"],
@@ -351,7 +385,7 @@ async def get_people_here(
             "id": user["id"],
             "display_name": user["display_name"] if is_revealed else first_name,
             "first_name": first_name,
-            "age": user.get("age"),
+            "age": user_age,
             "avatar_url": user.get("avatar_url", ""),
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
@@ -371,6 +405,7 @@ async def get_people_here(
             "venue_name": venue_name if is_revealed else None,
             "show_as": user.get("show_as", ""),
             "rainbow": user.get("rainbow", False),
+            "open_to_all": user.get("open_to_all", False),
         })
     
     # Sort: Premium first, then by distance

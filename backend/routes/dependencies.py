@@ -169,12 +169,19 @@ class LocationUpdate(BaseModel):
 # ============================================================================
 
 def calculate_age_from_dob(date_of_birth: str) -> Optional[int]:
-    """Calculate age from date of birth string (YYYY-MM-DD format)"""
+    """Calculate age from date of birth string (supports YYYY-MM-DD and ISO formats)"""
     if not date_of_birth:
         return None
     try:
-        dob = datetime.strptime(date_of_birth, "%Y-%m-%d")
-        today = datetime.now()
+        # Handle ISO format with timezone (e.g., "1997-06-15T00:00:00Z")
+        if "T" in date_of_birth:
+            dob = datetime.fromisoformat(date_of_birth.replace("Z", "+00:00"))
+            today = datetime.now(timezone.utc)
+        else:
+            # Handle simple YYYY-MM-DD format
+            dob = datetime.strptime(date_of_birth, "%Y-%m-%d")
+            today = datetime.now()
+        
         age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
         return age
     except (ValueError, TypeError):

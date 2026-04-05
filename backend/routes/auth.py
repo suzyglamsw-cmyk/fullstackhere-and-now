@@ -191,6 +191,10 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     """Get current user profile"""
     current_user = await handle_premium_expiration(current_user["id"], current_user)
     
+    # Calculate age from date_of_birth if not already set
+    if not current_user.get("age") and current_user.get("date_of_birth"):
+        current_user["age"] = calculate_age_from_dob(current_user["date_of_birth"])
+    
     checkin = await db.checkins.find_one({"user_id": current_user["id"], "is_active": True}, {"_id": 0})
     
     if checkin and is_checkin_valid(checkin):
