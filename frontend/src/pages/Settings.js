@@ -17,7 +17,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, Eye, MapPin } from "lucide-react";
+import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, Eye, MapPin, Shield, ShieldOff, UserX } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, isSubscribedToPush } from "../utils/pushNotifications";
 
@@ -39,6 +39,11 @@ const Settings = () => {
   const [profileViewers, setProfileViewers] = useState([]);
   const [viewersLoading, setViewersLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  
+  // Blocked users state
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [blockedLoading, setBlockedLoading] = useState(false);
+  const [unblocking, setUnblocking] = useState(null);
 
   // App download link - update this when iOS version is released
   const APP_DOWNLOAD_URL = "https://hereandnow.app/download";
@@ -49,10 +54,36 @@ const Settings = () => {
     setPushSupported(isPushSupported());
     fetchPushSettings();
     checkPushSubscription();
+    fetchBlockedUsers();
     if (user?.is_premium) {
       fetchProfileViewers();
     }
   }, [user?.is_premium]);
+
+  const fetchBlockedUsers = async () => {
+    setBlockedLoading(true);
+    try {
+      const response = await axios.get(`${API}/users/blocked`);
+      setBlockedUsers(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch blocked users:", error);
+    } finally {
+      setBlockedLoading(false);
+    }
+  };
+
+  const handleUnblock = async (userId) => {
+    setUnblocking(userId);
+    try {
+      await axios.post(`${API}/users/unblock`, { user_id: userId });
+      toast.success("User unblocked. You can now see each other again.");
+      setBlockedUsers(prev => prev.filter(u => u.id !== userId));
+    } catch (error) {
+      toast.error("Failed to unblock user");
+    } finally {
+      setUnblocking(null);
+    }
+  };
 
   const fetchProfileViewers = async () => {
     setViewersLoading(true);
@@ -376,6 +407,81 @@ const Settings = () => {
               </div>
               <ChevronRight className="w-5 h-5 text-slate-400" />
             </button>
+          </div>
+        </div>
+
+        {/* Safety Section - Blocked Users */}
+        <div className="glass rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-red-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Safety</h2>
+              <p className="text-slate-400 text-sm">Manage blocked users</p>
+            </div>
+          </div>
+          
+          {/* Blocked Users List */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-medium flex items-center gap-2">
+                <UserX className="w-4 h-4 text-slate-400" />
+                Blocked Users
+              </h3>
+              <span className="text-slate-500 text-sm">{blockedUsers.length}</span>
+            </div>
+            
+            {blockedLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+              </div>
+            ) : blockedUsers.length === 0 ? (
+              <p className="text-slate-500 text-sm py-4 text-center">
+                No blocked users. Users you block will appear here.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {blockedUsers.map((blockedUser) => (
+                  <div
+                    key={blockedUser.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-white/5"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                        {blockedUser.avatar_url ? (
+                          <img
+                            src={`${API}/photos/serve/${blockedUser.avatar_url}?blur=true`}
+                            alt=""
+                            className="w-full h-full object-cover filter blur-sm"
+                          />
+                        ) : (
+                          <span className="text-slate-400">{blockedUser.display_name?.charAt(0) || '?'}</span>
+                        )}
+                      </div>
+                      <span className="text-white">{blockedUser.display_name}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleUnblock(blockedUser.id)}
+                      disabled={unblocking === blockedUser.id}
+                      className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                    >
+                      {unblocking === blockedUser.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "Unblock"
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <p className="text-slate-600 text-xs mt-2">
+              Unblocking restores visibility but does not restore previous matches or chat history.
+            </p>
           </div>
         </div>
 

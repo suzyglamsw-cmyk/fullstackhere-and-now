@@ -2026,21 +2026,41 @@ async def get_friends_list(current_user: dict = Depends(get_current_user)):
     return friends
 
 # ============================================
-# Blocking (Updated)
+# Blocking (Updated - Bilateral)
 # ============================================
 
 @api_router.post("/users/block")
 async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_current_user)):
-    """Block a user - they won't see you and you won't see them"""
+    """
+    Block a user - BILATERAL blocking:
+    - Both users are added to each other's blocked_users list
+    - Removes from discovery, matches, recents, and chat for both
+    - Clears all notifications and chat facilities
+    - Prevents future messaging, visibility, matching, and presence
+    """
     if data.user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="Cannot block yourself")
     
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Add to BOTH users' blocked lists (bilateral)
     await db.users.update_one(
         {"id": current_user["id"]},
         {"$addToSet": {"blocked_users": data.user_id}}
     )
+    await db.users.update_one(
+        {"id": data.user_id},
+        {"$addToSet": {"blocked_by_users": current_user["id"]}}  # Track who blocked them
+    )
     
-    # Remove from friends
+    # Increment blocks received count for the blocked user
+    await db.users.update_one(
+        {"id": data.user_id},
+        {"$inc": {"blocks_received_count": 1}}
+    )
+    
+    # Remove ALL mutual connections and relationships
+    # 1. Remove from friends (both directions)
     await db.friends.delete_many({
         "$or": [
             {"user1_id": current_user["id"], "user2_id": data.user_id},
@@ -2048,7 +2068,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # Remove any existing connection
+    # 2. Remove connections (both directions)
     await db.connections.delete_many({
         "$or": [
             {"user1_id": current_user["id"], "user2_id": data.user_id},
@@ -2056,7 +2076,108 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    return {"message": "They won't be able to contact you."}
+    # 3. Remove glances (both directions)
+    await db.glances.delete_many({
+        "$or": [
+            {"from_user_id": current_user["id"], "to_user_id": data.user_id},
+            {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
+        ]
+    })
+    
+    # 4. Remove/cancel icebreakers (both directions)
+    await db.icebreakers.delete_many({
+        "$or": [
+            {"from_user_id": current_user["id"], "to_user_id": data.user_id},
+            {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
+        ]
+    })
+    
+    # 5. Remove/cancel chat requests (both directions)
+    await db.chat_requests.delete_many({
+        "$or": [
+            {"from_user_id": current_user["id"], "to_user_id": data.user_id},
+            {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
+        ]
+    })
+    
+    # 6. Remove friend requests (both directions)
+    await db.friend_requests.delete_many({
+        "$or": [
+            {"from_user_id": current_user["id"], "to_user_id": data.user_id},
+            {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
+        ]
+    })
+    
+    # 7. Archive/hide chat messages (both directions) - soft delete
+    await db.messages.update_many(
+        {
+            "$or": [
+                {"from_user_id": current_user["id"], "to_user_id": data.user_id},
+                {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
+            ]
+        },
+        {"$set": {"is_hidden_by_block": True, "blocked_at": now}}
+    )
+    
+    # 8. Clear notifications related to this user (both directions)
+    await db.notifications.delete_many({
+        "$or": [
+            {"user_id": current_user["id"], "from_user_id": data.user_id},
+            {"user_id": data.user_id, "from_user_id": current_user["id"]}
+        ]
+    })
+    
+    # 9. Remove from profile views/recents (both directions)
+    await db.profile_views.delete_many({
+        "$or": [
+            {"viewer_id": current_user["id"], "viewed_id": data.user_id},
+            {"viewer_id": data.user_id, "viewed_id": current_user["id"]}
+        ]
+    })
+    
+    return {"message": "User blocked. They won't be able to see or contact you."}
+
+
+@api_router.post("/users/unblock")
+async def unblock_user(data: BlockUserRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Unblock a user:
+    - Restores visibility and allows future matching/messaging
+    - Does NOT restore previous match state, reveal state, or chat history
+    - Both users start fresh as if they never interacted
+    """
+    if data.user_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Cannot unblock yourself")
+    
+    # Remove from blocker's blocked list
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$pull": {"blocked_users": data.user_id}}
+    )
+    
+    # Remove from blocked user's "blocked_by" list
+    await db.users.update_one(
+        {"id": data.user_id},
+        {"$pull": {"blocked_by_users": current_user["id"]}}
+    )
+    
+    return {"message": "User unblocked. You can now see each other again."}
+
+
+@api_router.get("/users/blocked")
+async def get_blocked_users(current_user: dict = Depends(get_current_user)):
+    """Get list of users blocked by current user"""
+    blocked_ids = current_user.get("blocked_users", [])
+    
+    if not blocked_ids:
+        return []
+    
+    blocked_users = await db.users.find(
+        {"id": {"$in": blocked_ids}},
+        {"_id": 0, "id": 1, "display_name": 1, "avatar_url": 1}
+    ).to_list(100)
+    
+    return blocked_users
 
 # ============================================
 # Report User (Updated)
@@ -2089,6 +2210,36 @@ async def report_user(data: ReportUserRequest, current_user: dict = Depends(get_
     await db.reports.insert_one(report)
     
     return {"message": "Thank you — we'll take a look."}
+
+
+@api_router.post("/connections/unmatch")
+async def unmatch_user(data: BlockUserRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Unmatch a user (hard reset):
+    - Removes connections and glances between the two users
+    - Does NOT block - they can still see each other and re-match
+    - Preserves chat history
+    """
+    if data.user_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Cannot unmatch yourself")
+    
+    # Remove connections (both directions)
+    await db.connections.delete_many({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": data.user_id},
+            {"user1_id": data.user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    # Remove glances (both directions)
+    await db.glances.delete_many({
+        "$or": [
+            {"from_user_id": current_user["id"], "to_user_id": data.user_id},
+            {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
+        ]
+    })
+    
+    return {"message": "Unmatched successfully. You can still see and re-match with this user."}
 
 # ============================================
 # Admin Inbox
@@ -4138,14 +4289,19 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
             detail="no_glances_remaining"  # Special code for frontend to show upgrade prompt
         )
     
-    # Check if target user has blocked current user
+    # Check if target user has blocked current user OR current user is in their blocked_by list
     target_user = await db.users.find_one({"id": data.to_user_id}, {"_id": 0})
-    if target_user and current_user["id"] in target_user.get("blocked_users", []):
-        raise HTTPException(status_code=403, detail="Cannot glance at this user")
+    if target_user:
+        if current_user["id"] in target_user.get("blocked_users", []):
+            raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+        if current_user["id"] in target_user.get("blocked_by_users", []):
+            raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
     # Check if current user blocked target
     if data.to_user_id in current_user.get("blocked_users", []):
-        raise HTTPException(status_code=403, detail="You have blocked this user")
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.to_user_id in current_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
     # Check if already glanced
     existing = await db.glances.find_one({
@@ -4261,15 +4417,19 @@ async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(g
     # Check if user has blocked icebreakers from sender (soft block)
     icebreaker_blocks = target_user.get("icebreaker_blocked_users", [])
     if current_user["id"] in icebreaker_blocks:
-        raise HTTPException(status_code=403, detail="You can't send an icebreaker to this person.")
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
-    # Check if user is fully blocked
+    # Check if user is fully blocked (bilateral check)
     if current_user["id"] in target_user.get("blocked_users", []):
-        raise HTTPException(status_code=403, detail="You can't send an icebreaker to this person.")
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if current_user["id"] in target_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
-    # Check if current user is blocked by target
+    # Check if current user blocked target (bilateral check)
     if data.to_user_id in current_user.get("blocked_users", []):
-        raise HTTPException(status_code=403, detail="You can't send an icebreaker to this person.")
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.to_user_id in current_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
     # Check cooldown (30 min after decline/not_right_now)
     last_declined = await db.icebreakers.find_one({
@@ -5132,6 +5292,25 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "status": "pending"
     }) is not None
     
+    # Check if user is blocked (bilateral)
+    is_blocked = user_id in current_user.get("blocked_users", [])
+    is_blocked_by_them = current_user["id"] in user.get("blocked_users", []) or current_user["id"] in user.get("blocked_by_users", [])
+    
+    # If blocked in either direction, show soft "unavailable" state
+    if is_blocked or is_blocked_by_them:
+        return {
+            "id": user.get("id"),
+            "display_name": "Unavailable",
+            "avatar_url": "",
+            "bio": "",
+            "age": None,
+            "interests": [],
+            "photos": [],
+            "is_blocked": True,
+            "is_unavailable": True,
+            "unavailable_message": "Sorry, this user is unavailable right now."
+        }
+    
     # Return full profile data
     return {
         "id": user.get("id"),
@@ -5160,7 +5339,8 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "unlock_reason": unlock_reason,
         "icebreaker_sent": icebreaker_sent,
         "icebreaker_received": icebreaker_received,
-        "chat_request_sent": chat_request_sent
+        "chat_request_sent": chat_request_sent,
+        "is_blocked": is_blocked
     }
 
 @api_router.get("/profile/viewers")

@@ -5,7 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Snowflake, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2, Ban, UserMinus, MoreVertical, Wine } from "lucide-react";
+import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Snowflake, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2, Ban, UserMinus, MoreVertical, Wine, Archive } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
 import BlurredImage from "../components/BlurredImage";
 
@@ -1296,28 +1296,60 @@ const Connections = () => {
               <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mx-auto mb-4">
                 <UserMinus className="w-8 h-8 text-orange-400" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Clear from Matches?</h3>
+              <h3 className="text-xl font-bold text-white mb-2">Manage Match</h3>
               <p className="text-slate-400 text-sm">
-                Remove <span className="text-white font-medium">{clearConfirmUser.display_name}</span> from your mutual matches. Your chat history will be preserved.
+                What would you like to do with <span className="text-white font-medium">{clearConfirmUser.display_name}</span>?
               </p>
             </div>
 
             <div className="space-y-2">
+              {/* Stay Matched & Clear (soft archive) */}
               <Button
-                data-testid="confirm-clear-btn"
+                data-testid="stay-matched-clear-btn"
                 onClick={() => handleClearFromMatches(clearConfirmUser.user_id, clearConfirmUser.display_name)}
-                className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+                className="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold"
               >
-                Clear from Matches
+                <Archive className="w-4 h-4 mr-2" />
+                Stay Matched & Clear
               </Button>
+              <p className="text-slate-500 text-xs text-center px-2">
+                Removes from list but preserves match. You can re-match easily.
+              </p>
+              
+              {/* Unmatch & Clear (hard reset) */}
+              <Button
+                data-testid="unmatch-clear-btn"
+                onClick={() => {
+                  handleClearFromMatches(clearConfirmUser.user_id, clearConfirmUser.display_name);
+                  // Also delete glances and connections
+                  axios.post(`${API}/connections/unmatch`, { user_id: clearConfirmUser.user_id }).catch(() => {});
+                }}
+                variant="ghost"
+                className="w-full h-12 rounded-xl text-red-400 hover:bg-red-500/10 font-semibold"
+              >
+                <UserMinus className="w-4 h-4 mr-2" />
+                Unmatch & Clear
+              </Button>
+              <p className="text-slate-500 text-xs text-center px-2">
+                Removes match completely. You'll need to re-glance to match again.
+              </p>
+              
+              {/* Cancel */}
               <Button
                 data-testid="cancel-clear-btn"
                 onClick={() => setClearConfirmUser(null)}
                 variant="ghost"
-                className="w-full h-12 rounded-xl text-slate-300 hover:bg-white/5"
+                className="w-full h-12 rounded-xl text-slate-300 hover:bg-white/5 mt-2"
               >
                 Cancel
               </Button>
+            </div>
+            
+            {/* Note about blocking */}
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="text-slate-600 text-xs text-center">
+                Unmatching does not block. To block a user, visit their profile.
+              </p>
             </div>
           </div>
         </div>

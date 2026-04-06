@@ -6,9 +6,19 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
-import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflake, MessageSquare, Lock } from "lucide-react";
+import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflake, MessageSquare, Lock, ShieldOff, AlertTriangle } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
 import BlurredImage from "../components/BlurredImage";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Preset icebreaker options - NO free text allowed
 const ICEBREAKER_MESSAGES = [
@@ -31,6 +41,8 @@ const UserProfile = () => {
   const [showIcebreakerModal, setShowIcebreakerModal] = useState(false);
   const [showChatRequestModal, setShowChatRequestModal] = useState(false);
   const [selectedIcebreaker, setSelectedIcebreaker] = useState(null);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [blocking, setBlocking] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -162,6 +174,20 @@ const UserProfile = () => {
     }
   };
 
+  const handleBlockUser = async () => {
+    setBlocking(true);
+    try {
+      await axios.post(`${API}/users/block`, { user_id: userId });
+      toast.success("User blocked. They won't be able to see or contact you.");
+      setShowBlockModal(false);
+      navigate(-1); // Go back to previous page
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to block user"));
+    } finally {
+      setBlocking(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -177,6 +203,30 @@ const UserProfile = () => {
       <Layout>
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-slate-400">Profile not found</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Handle unavailable/blocked user
+  if (profile.is_unavailable) {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto px-4 py-6">
+          <PageHeader title="Profile" />
+          <div className="glass rounded-3xl p-8 text-center">
+            <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
+              <ShieldOff className="w-10 h-10 text-slate-500" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">User Unavailable</h2>
+            <p className="text-slate-400">{profile.unavailable_message || "Sorry, this user is unavailable right now."}</p>
+            <Button
+              onClick={() => navigate(-1)}
+              className="mt-6 bg-slate-700 hover:bg-slate-600 text-white"
+            >
+              Go Back
+            </Button>
+          </div>
         </div>
       </Layout>
     );
@@ -481,9 +531,65 @@ const UserProfile = () => {
                 You've glanced at {profile.display_name}. Waiting for them to glance back...
               </p>
             )}
+            
+            {/* Block User Button - Available both pre-reveal and post-reveal */}
+            <div className="mt-6 pt-4 border-t border-white/10">
+              <Button
+                data-testid="block-user-btn"
+                onClick={() => setShowBlockModal(true)}
+                variant="ghost"
+                className="w-full text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              >
+                <ShieldOff className="w-4 h-4 mr-2" />
+                Block User
+              </Button>
+              <p className="text-center text-slate-600 text-xs mt-2">
+                Blocking removes all visibility and messaging between you.
+              </p>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Block Confirmation Modal */}
+      <AlertDialog open={showBlockModal} onOpenChange={setShowBlockModal}>
+        <AlertDialogContent className="bg-slate-900 border border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              Block {profile?.display_name || 'this user'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will:
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                <li>Remove them from your discovery, matches, and chats</li>
+                <li>Prevent future messaging and visibility between you</li>
+                <li>Clear all notifications and chat history</li>
+              </ul>
+              <p className="mt-3 text-xs text-slate-500">
+                You can unblock them later from Settings → Safety → Blocked Users.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 text-white hover:bg-slate-700 border-0">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBlockUser}
+              disabled={blocking}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              {blocking ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <ShieldOff className="w-4 h-4 mr-2" />
+              )}
+              Block
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* No Glances Remaining Prompt */}
       {showUpgradePrompt && (

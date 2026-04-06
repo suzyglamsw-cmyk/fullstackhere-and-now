@@ -64,13 +64,18 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
     elif not bypass_limits:
         raise HTTPException(status_code=429, detail="no_glances_remaining")
     
-    # Check blocks
+    # Check blocks (bilateral)
     target_user = await db.users.find_one({"id": data.to_user_id}, {"_id": 0})
-    if target_user and current_user["id"] in target_user.get("blocked_users", []):
-        raise HTTPException(status_code=403, detail="Cannot glance at this user")
+    if target_user:
+        if current_user["id"] in target_user.get("blocked_users", []):
+            raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+        if current_user["id"] in target_user.get("blocked_by_users", []):
+            raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
     if data.to_user_id in current_user.get("blocked_users", []):
-        raise HTTPException(status_code=403, detail="You have blocked this user")
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.to_user_id in current_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
     # Check if already glanced
     existing = await db.glances.find_one({
