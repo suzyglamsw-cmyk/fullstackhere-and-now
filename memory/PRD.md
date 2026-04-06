@@ -410,10 +410,18 @@ Comprehensive list including:
 ## Backlog / Future Tasks
 
 ### P2 - Medium Priority
-- Cloud storage for photos (S3/GCS)
+- Group check-ins
 
 ### P3 - Lower Priority
-- Group check-ins
+- None currently
+
+## Recent Bug Fixes (April 2026)
+
+### Glance Deletion Fix (April 6, 2026)
+- **Issue**: Bin icons in Matches section failing to delete glances (recipients couldn't delete incoming glances)
+- **Root Cause**: Backend only allowed sender (`from_user_id`) to delete glances
+- **Fix**: Updated `DELETE /api/glances/{glance_id}` to allow both sender AND recipient to delete
+- **File Changed**: `/app/backend/routes/connections.py` (lines 178-190)
 
 ## Environment Variables
 
@@ -428,4 +436,4 @@ Comprehensive list including:
 - REACT_APP_BACKEND_URL
 
 ---
-*Last Updated: April 6, 2026 - Block & Safety System*
+*Last Updated: April 6, 2026 - Glance Deletion Bug Fix*

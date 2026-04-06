@@ -177,14 +177,18 @@ async def get_remaining_glances(current_user: dict = Depends(get_current_user)):
 
 @router.delete("/glances/{glance_id}")
 async def delete_glance(glance_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a glance (withdraw)"""
+    """Delete a glance (both sender and recipient can delete)"""
+    # Allow deletion if user is either sender OR recipient
     result = await db.glances.delete_one({
         "id": glance_id,
-        "from_user_id": current_user["id"]
+        "$or": [
+            {"from_user_id": current_user["id"]},
+            {"to_user_id": current_user["id"]}
+        ]
     })
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Glance not found")
-    return {"message": "Glance withdrawn"}
+    return {"message": "Glance removed"}
 
 
 # ============================================================================
