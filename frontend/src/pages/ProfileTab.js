@@ -669,7 +669,7 @@ const Profile = () => {
   return (
     <Layout>
       {/* Redesigned Profile Edit Screen */}
-      <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%)' }}>
+      <div className="min-h-screen pb-24 bg-slate-950">
         {/* Header with gradient underline */}
         <div className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/80 border-b border-purple-500/20">
           <div className="max-w-lg mx-auto px-5 py-5 flex items-center justify-between">
