@@ -200,16 +200,20 @@ async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(g
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Check blocks
+    # Check blocks (bilateral - soft error message)
     icebreaker_blocks = target_user.get("icebreaker_blocked_users", [])
     if current_user["id"] in icebreaker_blocks:
-        raise HTTPException(status_code=403, detail="You can't send an icebreaker to this person.")
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
     if current_user["id"] in target_user.get("blocked_users", []):
-        raise HTTPException(status_code=403, detail="You can't send an icebreaker to this person.")
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if current_user["id"] in target_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
     if data.to_user_id in current_user.get("blocked_users", []):
-        raise HTTPException(status_code=403, detail="You can't send an icebreaker to this person.")
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.to_user_id in current_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
     # Check cooldown (30 min after decline/not_right_now)
     last_declined = await db.icebreakers.find_one({

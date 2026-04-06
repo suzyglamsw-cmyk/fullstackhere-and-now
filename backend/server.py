@@ -1630,6 +1630,22 @@ async def reset_password(data: PasswordResetConfirm):
 @api_router.post("/chat-request")
 async def send_chat_request(data: ChatRequestCreate, current_user: dict = Depends(get_current_user)):
     """Send a drink offer or chat request (costs 1 token)"""
+    
+    # Check blocks (bilateral - both directions)
+    target_user = await db.users.find_one({"id": data.to_user_id}, {"_id": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # If current user blocked target OR target blocked current user
+    if current_user["id"] in target_user.get("blocked_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if current_user["id"] in target_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.to_user_id in current_user.get("blocked_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.to_user_id in current_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    
     # Check token balance
     free_tokens = current_user.get("free_tokens", [])
     paid_balance = current_user.get("token_balance", 0)
@@ -1798,6 +1814,21 @@ async def get_chat_status(user_id: str, current_user: dict = Depends(get_current
 @api_router.post("/friends/add")
 async def add_friend(data: FriendRequest, current_user: dict = Depends(get_current_user)):
     """Send a friend request"""
+    
+    # Check blocks (bilateral)
+    target_user = await db.users.find_one({"id": data.user_id}, {"_id": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if current_user["id"] in target_user.get("blocked_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if current_user["id"] in target_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.user_id in current_user.get("blocked_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.user_id in current_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    
     # Check if chat is unlocked (required before adding friends)
     unlock_status = await check_chat_unlocked(current_user["id"], data.user_id)
     
@@ -5388,6 +5419,20 @@ async def get_profile_viewers(current_user: dict = Depends(get_current_user)):
 # Message Routes
 @api_router.post("/messages")
 async def send_message(data: MessageCreate, current_user: dict = Depends(get_current_user)):
+    # Check blocks (bilateral)
+    target_user = await db.users.find_one({"id": data.to_user_id}, {"_id": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if current_user["id"] in target_user.get("blocked_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if current_user["id"] in target_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.to_user_id in current_user.get("blocked_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    if data.to_user_id in current_user.get("blocked_by_users", []):
+        raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
+    
     # Check if chat is unlocked
     unlock_status = await check_chat_unlocked(current_user["id"], data.to_user_id)
     
