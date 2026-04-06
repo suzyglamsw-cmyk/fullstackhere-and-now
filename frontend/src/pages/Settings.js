@@ -17,7 +17,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, Eye } from "lucide-react";
+import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, Eye, MapPin } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, isSubscribedToPush } from "../utils/pushNotifications";
 
@@ -237,6 +237,25 @@ const Settings = () => {
               <ChevronRight className="w-5 h-5 text-slate-400" />
             </button>
           </div>
+        </div>
+
+        {/* For Venues Section */}
+        <div className="glass rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center">
+              <MapPin className="w-5 h-5 text-teal-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-white">For Venues</h2>
+          </div>
+          <h3 className="text-sm font-medium text-purple-300 mb-2">Where & How</h3>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Add your website, menu, socials or events to your venue page.
+            <br />
+            Email:{' '}
+            <a href="mailto:hereandnow.social.uk@gmail.com" className="text-purple-400 hover:text-purple-300 underline">
+              hereandnow.social.uk@gmail.com
+            </a>
+          </p>
         </div>
 
         {/* Push Notifications Section */}

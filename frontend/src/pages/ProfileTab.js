@@ -1490,19 +1490,6 @@ const Profile = () => {
               </div>
             )}
           </section>
-
-          {/* For Venues Section */}
-          <section className="space-y-2 mt-6 pt-6 border-t border-purple-500/10">
-            <h3 className="text-sm font-medium text-purple-200/70">For Venues</h3>
-            <p className="text-xs text-purple-300/60 leading-relaxed">
-              Add your website, menu, socials or events to your venue page.
-              <br />
-              Email:{' '}
-              <a href="mailto:hereandnow.social.uk@gmail.com" className="text-purple-400 hover:text-purple-300 underline">
-                hereandnow.social.uk@gmail.com
-              </a>
-            </p>
-          </section>
           
           {/* Bottom padding for save button area */}
           <div className="h-4" />
