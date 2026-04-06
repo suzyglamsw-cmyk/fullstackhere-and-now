@@ -159,56 +159,45 @@ const Premium = () => {
                 ))}
               </div>
 
-              {/* Premium Purchase Options */}
+              {/* Premium Purchase Options - Using API data */}
               <div className="space-y-3">
-                {/* Monthly Plan */}
-                <div
-                  data-testid="package-premium_monthly"
-                  className="rounded-xl p-4 flex items-center justify-between bg-white/5"
-                >
-                  <div>
-                    <h3 className="font-semibold text-white">Monthly</h3>
-                    <p className="text-slate-400 text-sm">30 days</p>
+                {loading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
                   </div>
-                  <Button
-                    data-testid="buy-premium_monthly"
-                    onClick={() => handlePurchase('premium_monthly')}
-                    disabled={purchasing === 'premium_monthly'}
-                    className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold hover:opacity-90"
-                  >
-                    {purchasing === 'premium_monthly' ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      '£7.99'
-                    )}
-                  </Button>
-                </div>
-                
-                {/* Yearly Plan */}
-                <div
-                  data-testid="package-premium_yearly"
-                  className="rounded-xl p-4 flex items-center justify-between bg-white/5 border border-amber-500/30"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-white">Yearly</h3>
-                      <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Best Value</span>
+                ) : (
+                  packages.map((pkg) => (
+                    <div
+                      key={pkg.id}
+                      data-testid={`package-${pkg.id}`}
+                      className={`rounded-xl p-4 flex items-center justify-between bg-white/5 ${
+                        pkg.id === 'premium_yearly' ? 'border border-amber-500/30' : ''
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-white">{pkg.name.replace('Premium ', '')}</h3>
+                          {pkg.id === 'premium_yearly' && (
+                            <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Best Value</span>
+                          )}
+                        </div>
+                        <p className="text-slate-400 text-sm">{pkg.duration_days} days</p>
+                      </div>
+                      <Button
+                        data-testid={`buy-${pkg.id}`}
+                        onClick={() => handlePurchase(pkg.id)}
+                        disabled={purchasing === pkg.id}
+                        className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold hover:opacity-90"
+                      >
+                        {purchasing === pkg.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          `£${pkg.price}`
+                        )}
+                      </Button>
                     </div>
-                    <p className="text-slate-400 text-sm">365 days</p>
-                  </div>
-                  <Button
-                    data-testid="buy-premium_yearly"
-                    onClick={() => handlePurchase('premium_yearly')}
-                    disabled={purchasing === 'premium_yearly'}
-                    className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold hover:opacity-90"
-                  >
-                    {purchasing === 'premium_yearly' ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      '£59.99'
-                    )}
-                  </Button>
-                </div>
+                  ))
+                )}
               </div>
             </div>
           )}
