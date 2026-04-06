@@ -301,6 +301,18 @@ Comprehensive list including:
   - ✅ Frontend shows "Location Required" prompt with "Enable Location" button when geolocation denied/unavailable
   - ✅ `/api/location/update` endpoint to save GPS coordinates
   - ✅ Privacy message: "Your exact location is used only for distance matching and is never shared publicly."
+- ✅ **Reveal & Messaging Logic V2** (April 2026):
+  - ✅ **Two reveal triggers** (both reveal BOTH profiles simultaneously):
+    1. Mutual glance (both users glance at each other)
+    2. Responded icebreaker (icebreaker sent + response accepted)
+  - ✅ **Before reveal**: Both profiles blurred, icebreakers visible/optional, messaging disabled
+  - ✅ **After reveal**: Both profiles clear, messaging unlocked, chat session created
+  - ✅ **Predefined icebreakers only** - no free-text chat box before reveal
+  - ✅ **Presence/venue status NEVER triggers reveal**
+  - ✅ Discovery thumbnail click opens pre-reveal profile screen
+  - ✅ Discovery cards show Glance and Icebreaker buttons pre-reveal
+  - ✅ Discovery cards show "Sent" state when icebreaker already sent
+  - ✅ Message button locked with "Reveal via mutual glance or responded icebreaker to unlock" message
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)
@@ -394,4 +406,4 @@ Comprehensive list including:
 - REACT_APP_BACKEND_URL
 
 ---
-*Last Updated: April 6, 2026*
+*Last Updated: April 6, 2026 - Reveal Logic V2*
