@@ -158,10 +158,10 @@ const UserProfile = () => {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-2xl font-bold text-white">
-                  {profile.display_name}
+                  {profile.is_revealed ? profile.display_name : (profile.display_name || "?").charAt(0)}
                   {profile.age && <span className="text-slate-400 ml-2">{profile.age}</span>}
                 </h1>
-                {profile.bio && (
+                {profile.is_revealed && profile.bio && (
                   <p className="text-slate-400 mt-1">{profile.bio}</p>
                 )}
               </div>
@@ -181,8 +181,8 @@ const UserProfile = () => {
               )}
             </div>
 
-            {/* Profile Details (gender, orientation, relationship, seeking) */}
-            {(profile.gender || profile.orientation || profile.relationship_status || profile.seeking) && (
+            {/* Profile Details (gender, orientation, relationship, seeking) - Only shown after reveal */}
+            {profile.is_revealed && (profile.gender || profile.orientation || profile.relationship_status || profile.seeking) && (
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {profile.gender && (
                   <div className="bg-white/5 rounded-xl px-3 py-2">
@@ -211,8 +211,8 @@ const UserProfile = () => {
               </div>
             )}
 
-            {/* Interests */}
-            {profile.interests && profile.interests.length > 0 && (
+            {/* Interests - Only shown after reveal */}
+            {profile.is_revealed && profile.interests && profile.interests.length > 0 && (
               <div className="mb-6">
                 <p className="text-slate-500 text-xs mb-2">Interests</p>
                 <div className="flex flex-wrap gap-2">
@@ -228,17 +228,19 @@ const UserProfile = () => {
               </div>
             )}
 
-            {/* Additional Photos */}
+            {/* Additional Photos - Only shown after reveal, otherwise blurred */}
             {profile.photos && profile.photos.filter((p, i) => i > 0 && p).length > 0 && (
               <div className="mb-6">
                 <p className="text-slate-500 text-xs mb-2">More Photos</p>
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {profile.photos.slice(1).filter(p => p).map((photo, index) => (
                     <div key={index} className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
-                      <img
+                      <BlurredImage
                         src={photo}
                         alt={`Photo ${index + 2}`}
-                        className="w-full h-full object-cover"
+                        isRevealed={profile.is_revealed}
+                        isThumbnail={true}
+                        fallbackInitial={profile.display_name?.charAt(0) || "?"}
                       />
                     </div>
                   ))}
