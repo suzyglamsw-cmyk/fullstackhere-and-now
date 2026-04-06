@@ -379,61 +379,6 @@ const Settings = () => {
           </div>
         </div>
 
-        {/* Profile Viewers Section (Premium Only) */}
-        {user?.is_premium && (
-          <div className="glass rounded-2xl p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Eye className="w-5 h-5 text-indigo-400" />
-              <h2 className="text-xl font-semibold text-white">Who Viewed Your Profile</h2>
-            </div>
-            <p className="text-slate-400 text-sm mb-4">Last 48 hours</p>
-            
-            {viewersLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
-              </div>
-            ) : profileViewers.length === 0 ? (
-              <div className="text-center py-6">
-                <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3">
-                  <Eye className="w-6 h-6 text-slate-600" />
-                </div>
-                <p className="text-slate-400 text-sm">No profile views yet</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {profileViewers.map((viewer, index) => (
-                  <button
-                    key={viewer.id || index}
-                    data-testid={`viewer-${viewer.id}`}
-                    onClick={() => navigate(`/profile/${viewer.id}`)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-                      {viewer.avatar_url ? (
-                        <img src={viewer.avatar_url} alt={viewer.display_name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-white text-sm font-medium">{viewer.display_name?.charAt(0) || "?"}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-white font-medium">{viewer.display_name}</p>
-                      <p className="text-slate-400 text-xs">
-                        {new Date(viewer.viewed_at).toLocaleString([], { 
-                          month: 'short', 
-                          day: 'numeric',
-                          hour: '2-digit', 
-                          minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Legal Section */}
         <div className="glass rounded-2xl p-6 mb-6">
           <button
