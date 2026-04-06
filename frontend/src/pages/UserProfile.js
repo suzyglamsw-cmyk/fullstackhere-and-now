@@ -468,7 +468,10 @@ const UserProfile = () => {
               {/* Locked Features Info */}
               {(!profile.can_message || !profile.can_add_friend) && !profile.is_friend && (
                 <p className="text-center text-slate-500 text-xs px-4">
-                  Unlocks after an icebreaker or chat request is accepted.
+                  {!profile.is_revealed 
+                    ? "Mutual reveal required. Send a glance, icebreaker, or chat request."
+                    : "Unlocks after an icebreaker or chat request is accepted."
+                  }
                 </p>
               )}
             </div>

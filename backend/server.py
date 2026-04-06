@@ -4899,8 +4899,45 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
     friend_request_sent = existing_friend is not None and existing_friend.get("status") == "pending" and existing_friend.get("user1_id") == current_user["id"]
     friend_request_received = existing_friend is not None and existing_friend.get("status") == "pending" and existing_friend.get("user2_id") == current_user["id"]
     
-    # Determine if profile photo should be revealed (mutual interaction)
-    is_revealed = is_mutual or can_message or is_friend
+    # Determine if profile photo should be revealed (STRICT: mutual glance ONLY, or accepted request)
+    # Reveal happens ONLY when:
+    # 1. Mutual glance exists (both users glanced at each other)
+    # 2. OR an icebreaker/chat request was accepted (which creates a connection)
+    is_revealed = is_mutual or is_friend
+    
+    # Check if there's an accepted request (icebreaker or chat) that should trigger reveal
+    if not is_revealed:
+        # Check accepted icebreaker
+        accepted_icebreaker = await db.icebreakers.find_one({
+            "$or": [
+                {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
+                {"from_user_id": user_id, "to_user_id": current_user["id"], "status": "accepted"}
+            ]
+        })
+        if accepted_icebreaker:
+            is_revealed = True
+        
+        # Check accepted chat request
+        if not is_revealed:
+            accepted_chat = await db.chat_requests.find_one({
+                "$or": [
+                    {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
+                    {"from_user_id": user_id, "to_user_id": current_user["id"], "status": "accepted"}
+                ]
+            })
+            if accepted_chat:
+                is_revealed = True
+    
+    # Check if icebreaker or chat request was already sent (for UI state)
+    icebreaker_sent = await db.icebreakers.find_one({
+        "from_user_id": current_user["id"],
+        "to_user_id": user_id
+    }) is not None
+    
+    chat_request_sent = await db.chat_requests.find_one({
+        "from_user_id": current_user["id"],
+        "to_user_id": user_id
+    }) is not None
     
     # Return full profile data
     return {
@@ -4921,12 +4958,15 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "is_mutual": is_mutual,
         "is_revealed": is_revealed,
         "can_glance_back": they_glanced_at_me and not i_glanced_at_them,
-        "can_message": can_message,
-        "can_add_friend": can_add_friend and not friend_request_sent,  # Can't send if already sent
+        # Message requires BOTH reveal AND chat unlocked
+        "can_message": is_revealed and can_message,
+        "can_add_friend": can_add_friend and not friend_request_sent and is_revealed,  # Can't send if already sent or not revealed
         "is_friend": is_friend,
         "friend_request_sent": friend_request_sent,
         "friend_request_received": friend_request_received,
-        "unlock_reason": unlock_reason
+        "unlock_reason": unlock_reason,
+        "icebreaker_sent": icebreaker_sent,
+        "chat_request_sent": chat_request_sent
     }
 
 @api_router.get("/profile/viewers")

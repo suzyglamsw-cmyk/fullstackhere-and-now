@@ -839,9 +839,16 @@ const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }
   }
   
   // Regular person card (non-self)
+  // Handle card click - always navigate to profile
+  const handleCardClick = () => {
+    navigate(`/profile/${person.id}`);
+  };
+  
   return (
     <div
-      className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 transition-all group"
+      data-testid={`person-card-${person.id}`}
+      onClick={handleCardClick}
+      className="bg-white/5 rounded-2xl overflow-hidden border border-white/10 hover:border-indigo-500/50 transition-all group cursor-pointer"
     >
       {/* Photo */}
       <div className="relative aspect-[3/4]">
@@ -949,23 +956,8 @@ const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }
       
       {/* Actions */}
       <div className="p-3 flex gap-2">
-        {person.is_connected ? (
-          <Button
-            size="sm"
-            className="flex-1 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
-            onClick={() => navigate(`/messages/${person.id}`)}
-          >
-            Message
-          </Button>
-        ) : person.is_revealed ? (
-          <Button
-            size="sm"
-            className="flex-1 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30"
-            onClick={() => navigate(`/profile/${person.id}`)}
-          >
-            View Profile
-          </Button>
-        ) : (
+        {/* Pre-reveal state: Show Glance and Icebreaker buttons */}
+        {!person.is_revealed ? (
           <>
             <Button
               size="sm"
@@ -975,7 +967,10 @@ const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }
                   ? "bg-pink-500/20 text-pink-400"
                   : "bg-white/5 text-slate-300 hover:bg-white/10"
               }`}
-              onClick={() => onGlance(person.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onGlance(person.id);
+              }}
               disabled={glancing === person.id || person.i_glanced_at}
             >
               {glancing === person.id ? (
@@ -991,12 +986,39 @@ const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }
               size="sm"
               variant="ghost"
               className="flex-1 bg-white/5 text-slate-300 hover:bg-white/10"
-              onClick={() => onIcebreaker(person)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onIcebreaker(person);
+              }}
             >
               <Snowflake className="w-4 h-4 mr-1" />
               Ice
             </Button>
           </>
+        ) : person.is_connected ? (
+          /* Post-reveal AND connected: Show Message button */
+          <Button
+            size="sm"
+            className="flex-1 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/chat/${person.id}`);
+            }}
+          >
+            Message
+          </Button>
+        ) : (
+          /* Post-reveal but NOT connected yet: Show View Profile */
+          <Button
+            size="sm"
+            className="flex-1 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/profile/${person.id}`);
+            }}
+          >
+            View Profile
+          </Button>
         )}
       </div>
       

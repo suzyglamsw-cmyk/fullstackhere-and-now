@@ -134,12 +134,12 @@ async def get_people_not_here(
         if not is_self and not check_visibility_match(current_user, user):
             continue
         
-        # For self, mark as revealed
+        # For self, mark appropriately - show as PRE-REVEAL (how others see them)
         if is_self:
             has_glanced_at_me = False
             i_glanced_at = False
             is_connected = False
-            is_revealed = True
+            is_revealed = False  # Self should see their card as others see it (blurred/pre-reveal)
         else:
             # Check glance status
             has_glanced_at_me = await db.glances.find_one({
