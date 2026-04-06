@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
-import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflake } from "lucide-react";
+import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflake, Send, MessageSquare, Lock } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
 import BlurredImage from "../components/BlurredImage";
 
@@ -18,6 +18,10 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [glancing, setGlancing] = useState(false);
   const [addingFriend, setAddingFriend] = useState(false);
+  const [sendingIcebreaker, setSendingIcebreaker] = useState(false);
+  const [sendingChatRequest, setSendingChatRequest] = useState(false);
+  const [showIcebreakerModal, setShowIcebreakerModal] = useState(false);
+  const [icebreakerMessage, setIcebreakerMessage] = useState("");
 
   useEffect(() => {
     fetchProfile();
@@ -109,6 +113,45 @@ const UserProfile = () => {
       }
     } catch (error) {
       toast.error("Failed to accept friend request");
+    }
+  };
+
+  const handleSendIcebreaker = async () => {
+    if (!icebreakerMessage.trim()) {
+      toast.error("Please enter a message");
+      return;
+    }
+    setSendingIcebreaker(true);
+    try {
+      await axios.post(`${API}/icebreaker`, {
+        to_user_id: userId,
+        message: icebreakerMessage.trim(),
+        venue_id: "profile_view"
+      });
+      toast.success("Icebreaker sent!");
+      setShowIcebreakerModal(false);
+      setIcebreakerMessage("");
+      await fetchProfile();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to send icebreaker"));
+    } finally {
+      setSendingIcebreaker(false);
+    }
+  };
+
+  const handleSendChatRequest = async () => {
+    setSendingChatRequest(true);
+    try {
+      await axios.post(`${API}/chat-request`, {
+        to_user_id: userId,
+        venue_id: "profile_view"
+      });
+      toast.success("Chat request sent!");
+      await fetchProfile();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to send chat request"));
+    } finally {
+      setSendingChatRequest(false);
     }
   };
 
@@ -249,47 +292,108 @@ const UserProfile = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="space-y-4">
-              {/* Glance Buttons */}
-              <div className="flex gap-3">
+            <div className="space-y-3">
+              {/* Primary Actions - Always Available Pre-Reveal */}
+              <div className="grid grid-cols-3 gap-2">
+                {/* Glance Button */}
                 {profile.can_glance_back ? (
                   <Button
                     data-testid="glance-back-btn"
                     onClick={handleGlance}
                     disabled={glancing}
-                    className="flex-1 rounded-xl bg-gradient-to-r from-pink-500 to-indigo-500 text-white font-semibold hover:opacity-90"
+                    className="rounded-xl bg-gradient-to-r from-pink-500 to-indigo-500 text-white font-medium hover:opacity-90 h-12"
                   >
                     {glancing ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Eye className="w-4 h-4 mr-2" />
+                      <>
+                        <Eye className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Glance Back</span>
+                      </>
                     )}
-                    Glance Back
                   </Button>
                 ) : !profile.i_glanced_at_them ? (
                   <Button
                     data-testid="glance-btn"
                     onClick={handleGlance}
                     disabled={glancing}
-                    className="flex-1 rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-semibold hover:opacity-90"
+                    className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:opacity-90 h-12"
                   >
                     {glancing ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Eye className="w-4 h-4 mr-2" />
+                      <>
+                        <Eye className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Glance</span>
+                      </>
                     )}
-                    Glance
                   </Button>
-                ) : null}
+                ) : (
+                  <Button
+                    disabled
+                    className="rounded-xl bg-indigo-500/20 text-indigo-300 h-12 cursor-default"
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    <span className="text-xs">Glanced</span>
+                  </Button>
+                )}
+
+                {/* Icebreaker Button */}
+                {profile.icebreaker_sent ? (
+                  <Button
+                    disabled
+                    className="rounded-xl bg-amber-500/20 text-amber-300 h-12 cursor-default"
+                  >
+                    <Snowflake className="w-4 h-4 mr-1" />
+                    <span className="text-xs">Sent</span>
+                  </Button>
+                ) : (
+                  <Button
+                    data-testid="icebreaker-btn"
+                    onClick={() => setShowIcebreakerModal(true)}
+                    className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium hover:opacity-90 h-12"
+                  >
+                    <Snowflake className="w-4 h-4 mr-1" />
+                    <span className="text-xs">Icebreaker</span>
+                  </Button>
+                )}
+
+                {/* Chat Request Button */}
+                {profile.chat_request_sent ? (
+                  <Button
+                    disabled
+                    className="rounded-xl bg-emerald-500/20 text-emerald-300 h-12 cursor-default"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-1" />
+                    <span className="text-xs">Requested</span>
+                  </Button>
+                ) : (
+                  <Button
+                    data-testid="chat-request-btn"
+                    onClick={handleSendChatRequest}
+                    disabled={sendingChatRequest}
+                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:opacity-90 h-12"
+                  >
+                    {sendingChatRequest ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <MessageSquare className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Chat Request</span>
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
-              
-              {/* Message & Add Friend Buttons */}
-              <div className="flex gap-3">
+
+              {/* Locked Actions - Unlock after icebreaker/chat accepted */}
+              <div className="flex gap-2">
+                {/* Message Button */}
                 {profile.can_message ? (
                   <Button
                     data-testid="message-btn"
                     onClick={() => navigate(`/chat/${userId}`)}
-                    className="flex-1 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
+                    className="flex-1 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white h-12"
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Message
@@ -298,18 +402,20 @@ const UserProfile = () => {
                   <Button
                     data-testid="message-locked-btn"
                     disabled
-                    className="flex-1 rounded-xl bg-slate-700/50 text-slate-500 cursor-not-allowed"
+                    className="flex-1 rounded-xl bg-slate-800/50 text-slate-500 cursor-not-allowed h-12"
                   >
-                    <MessageCircle className="w-4 h-4 mr-2" />
+                    <Lock className="w-3 h-3 mr-1" />
+                    <MessageCircle className="w-4 h-4 mr-1" />
                     Message
                   </Button>
                 )}
                 
+                {/* Add Friend Button */}
                 {profile.is_friend ? (
                   <Button
                     data-testid="friends-btn"
                     disabled
-                    className="flex-1 rounded-xl bg-emerald-500/20 text-emerald-400 cursor-default"
+                    className="flex-1 rounded-xl bg-emerald-500/20 text-emerald-400 cursor-default h-12"
                   >
                     <Heart className="w-4 h-4 mr-2" />
                     Friends
@@ -318,50 +424,51 @@ const UserProfile = () => {
                   <Button
                     data-testid="request-sent-btn"
                     disabled
-                    className="flex-1 rounded-xl bg-amber-500/20 text-amber-400 cursor-default"
+                    className="flex-1 rounded-xl bg-amber-500/20 text-amber-400 cursor-default h-12"
                   >
                     <Heart className="w-4 h-4 mr-2" />
-                    Request Sent
+                    Requested
                   </Button>
                 ) : profile.friend_request_received ? (
                   <Button
                     data-testid="accept-friend-btn"
                     onClick={handleAcceptFriendRequest}
-                    className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
+                    className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white h-12"
                   >
                     <Heart className="w-4 h-4 mr-2" />
-                    Accept Request
+                    Accept
                   </Button>
                 ) : profile.can_add_friend ? (
                   <Button
                     data-testid="add-friend-btn"
                     onClick={handleAddFriend}
                     disabled={addingFriend}
-                    className="flex-1 rounded-xl bg-pink-500 hover:bg-pink-600 text-white"
+                    className="flex-1 rounded-xl bg-pink-500 hover:bg-pink-600 text-white h-12"
                   >
                     {addingFriend ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : (
-                      <Heart className="w-4 h-4 mr-2" />
+                      <UserPlus className="w-4 h-4 mr-2" />
                     )}
-                    {addingFriend ? "Sending..." : "Send Friend Request"}
+                    Add Friend
                   </Button>
                 ) : (
                   <Button
                     data-testid="add-friend-locked-btn"
                     disabled
-                    className="flex-1 rounded-xl bg-slate-700/50 text-slate-500 cursor-not-allowed"
+                    className="flex-1 rounded-xl bg-slate-800/50 text-slate-500 cursor-not-allowed h-12"
                   >
-                    <Heart className="w-4 h-4 mr-2" />
+                    <Lock className="w-3 h-3 mr-1" />
+                    <UserPlus className="w-4 h-4 mr-1" />
                     Add Friend
                   </Button>
                 )}
               </div>
               
               {/* Locked Features Info */}
-              {!profile.can_message && !profile.can_add_friend && (
-                <p className="text-center text-slate-500 text-xs">
-                  Messaging and adding friends unlock after an icebreaker or chat request is accepted.
+              {(!profile.can_message || !profile.can_add_friend) && !profile.is_friend && (
+                <p className="text-center text-slate-500 text-xs px-4">
+                  Unlocks after an icebreaker or chat request is accepted.
                 </p>
               )}
             </div>
@@ -421,6 +528,66 @@ const UserProfile = () => {
               >
                 <Coins className="w-4 h-4 mr-2" />
                 Buy Glance Tokens
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Icebreaker Modal */}
+      {showIcebreakerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="glass rounded-3xl p-6 max-w-sm w-full relative">
+            <button
+              onClick={() => {
+                setShowIcebreakerModal(false);
+                setIcebreakerMessage("");
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center mx-auto mb-3">
+                <Snowflake className="w-6 h-6 text-cyan-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Send Icebreaker</h3>
+              <p className="text-slate-400 text-sm mt-1">
+                Send a message to {profile.is_revealed ? profile.display_name : (profile.display_name || "?").charAt(0)}
+              </p>
+            </div>
+
+            <textarea
+              value={icebreakerMessage}
+              onChange={(e) => setIcebreakerMessage(e.target.value)}
+              placeholder="Write something nice..."
+              className="w-full h-24 p-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 resize-none mb-4"
+              maxLength={200}
+            />
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowIcebreakerModal(false);
+                  setIcebreakerMessage("");
+                }}
+                variant="outline"
+                className="flex-1 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendIcebreaker}
+                disabled={sendingIcebreaker || !icebreakerMessage.trim()}
+                className="flex-1 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white"
+              >
+                {sendingIcebreaker ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Send className="w-4 h-4 mr-2" />
+                )}
+                Send
               </Button>
             </div>
           </div>
