@@ -6,9 +6,17 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
-import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflake, Send, MessageSquare, Lock } from "lucide-react";
+import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflake, MessageSquare, Lock } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
 import BlurredImage from "../components/BlurredImage";
+
+// Preset icebreaker options - NO free text allowed
+const ICEBREAKER_MESSAGES = [
+  { id: 0, name: "Hello", icon: "👋" },
+  { id: 1, name: "You seem interesting", icon: "✨" },
+  { id: 2, name: "Fancy a chat?", icon: "💬" },
+  { id: 3, name: "Can I buy you a drink?", icon: "🍸" },
+];
 
 const UserProfile = () => {
   const { userId } = useParams();
@@ -21,7 +29,8 @@ const UserProfile = () => {
   const [sendingIcebreaker, setSendingIcebreaker] = useState(false);
   const [sendingChatRequest, setSendingChatRequest] = useState(false);
   const [showIcebreakerModal, setShowIcebreakerModal] = useState(false);
-  const [icebreakerMessage, setIcebreakerMessage] = useState("");
+  const [showChatRequestModal, setShowChatRequestModal] = useState(false);
+  const [selectedIcebreaker, setSelectedIcebreaker] = useState(null);
 
   useEffect(() => {
     fetchProfile();
@@ -116,21 +125,17 @@ const UserProfile = () => {
     }
   };
 
-  const handleSendIcebreaker = async () => {
-    if (!icebreakerMessage.trim()) {
-      toast.error("Please enter a message");
-      return;
-    }
+  const handleSendIcebreaker = async (messageType) => {
     setSendingIcebreaker(true);
     try {
       await axios.post(`${API}/icebreaker`, {
         to_user_id: userId,
-        message: icebreakerMessage.trim(),
+        message_type: messageType,
         venue_id: "profile_view"
       });
       toast.success("Icebreaker sent!");
       setShowIcebreakerModal(false);
-      setIcebreakerMessage("");
+      setSelectedIcebreaker(null);
       await fetchProfile();
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to send icebreaker"));
@@ -144,9 +149,11 @@ const UserProfile = () => {
     try {
       await axios.post(`${API}/chat-request`, {
         to_user_id: userId,
-        venue_id: "profile_view"
+        venue_id: "profile_view",
+        request_type: "chat"
       });
       toast.success("Chat request sent!");
+      setShowChatRequestModal(false);
       await fetchProfile();
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to send chat request"));
@@ -370,18 +377,11 @@ const UserProfile = () => {
                 ) : (
                   <Button
                     data-testid="chat-request-btn"
-                    onClick={handleSendChatRequest}
-                    disabled={sendingChatRequest}
+                    onClick={() => setShowChatRequestModal(true)}
                     className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:opacity-90 h-12"
                   >
-                    {sendingChatRequest ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <MessageSquare className="w-4 h-4 mr-1" />
-                        <span className="text-xs">Chat Request</span>
-                      </>
-                    )}
+                    <MessageSquare className="w-4 h-4 mr-1" />
+                    <span className="text-xs">Chat Request</span>
                   </Button>
                 )}
               </div>
@@ -534,14 +534,14 @@ const UserProfile = () => {
         </div>
       )}
 
-      {/* Icebreaker Modal */}
+      {/* Icebreaker Modal - Preset Options Only */}
       {showIcebreakerModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="glass rounded-3xl p-6 max-w-sm w-full relative">
             <button
               onClick={() => {
                 setShowIcebreakerModal(false);
-                setIcebreakerMessage("");
+                setSelectedIcebreaker(null);
               }}
               className="absolute top-4 right-4 text-slate-400 hover:text-white"
             >
@@ -554,23 +554,34 @@ const UserProfile = () => {
               </div>
               <h3 className="text-lg font-bold text-white">Send Icebreaker</h3>
               <p className="text-slate-400 text-sm mt-1">
-                Send a message to {profile.is_revealed ? profile.display_name : (profile.display_name || "?").charAt(0)}
+                Choose a message to send to {profile.is_revealed ? profile.display_name : (profile.display_name || "?").charAt(0)}
               </p>
             </div>
 
-            <textarea
-              value={icebreakerMessage}
-              onChange={(e) => setIcebreakerMessage(e.target.value)}
-              placeholder="Write something nice..."
-              className="w-full h-24 p-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 resize-none mb-4"
-              maxLength={200}
-            />
+            {/* Preset Icebreaker Options */}
+            <div className="space-y-2 mb-4">
+              {ICEBREAKER_MESSAGES.map((msg) => (
+                <button
+                  key={msg.id}
+                  data-testid={`icebreaker-option-${msg.id}`}
+                  onClick={() => setSelectedIcebreaker(msg.id)}
+                  className={`w-full p-3 rounded-xl text-left transition-all flex items-center gap-3 ${
+                    selectedIcebreaker === msg.id
+                      ? "bg-cyan-500/20 border-2 border-cyan-400"
+                      : "bg-slate-800/50 border-2 border-transparent hover:border-slate-600"
+                  }`}
+                >
+                  <span className="text-xl">{msg.icon}</span>
+                  <span className="text-white font-medium">{msg.name}</span>
+                </button>
+              ))}
+            </div>
             
             <div className="flex gap-3">
               <Button
                 onClick={() => {
                   setShowIcebreakerModal(false);
-                  setIcebreakerMessage("");
+                  setSelectedIcebreaker(null);
                 }}
                 variant="outline"
                 className="flex-1 rounded-xl"
@@ -578,14 +589,63 @@ const UserProfile = () => {
                 Cancel
               </Button>
               <Button
-                onClick={handleSendIcebreaker}
-                disabled={sendingIcebreaker || !icebreakerMessage.trim()}
+                onClick={() => handleSendIcebreaker(selectedIcebreaker)}
+                disabled={sendingIcebreaker || selectedIcebreaker === null}
                 className="flex-1 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white"
               >
                 {sendingIcebreaker ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : (
-                  <Send className="w-4 h-4 mr-2" />
+                  <Snowflake className="w-4 h-4 mr-2" />
+                )}
+                Send
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Request Confirmation Modal */}
+      {showChatRequestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="glass rounded-3xl p-6 max-w-sm w-full relative">
+            <button
+              onClick={() => setShowChatRequestModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-3">
+                <MessageSquare className="w-6 h-6 text-emerald-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Send Chat Request</h3>
+              <p className="text-slate-400 text-sm mt-2">
+                Send a request to chat with {profile.is_revealed ? profile.display_name : (profile.display_name || "?").charAt(0)}?
+              </p>
+              <p className="text-slate-500 text-xs mt-2">
+                They will be notified and can accept or decline.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setShowChatRequestModal(false)}
+                variant="outline"
+                className="flex-1 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendChatRequest}
+                disabled={sendingChatRequest}
+                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
+              >
+                {sendingChatRequest ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <MessageSquare className="w-4 h-4 mr-2" />
                 )}
                 Send
               </Button>
