@@ -62,6 +62,79 @@ GOOGLE_PLACES_API_KEY = os.environ.get('GOOGLE_PLACES_API_KEY', '')
 
 
 # ============================================================================
+# PHOTO URL HELPERS
+# ============================================================================
+
+def get_photo_url(photo_id_or_url: str, blur: bool = False) -> str:
+    """
+    Generate a photo URL with optional blur parameter.
+    
+    Args:
+        photo_id_or_url: Photo ID or legacy URL (e.g., "/api/photos/xxx")
+        blur: Whether to return the blurred version (for pre-reveal)
+    
+    Returns:
+        URL to serve the photo with appropriate blur parameter
+    """
+    if not photo_id_or_url:
+        return ""
+    
+    # If it's already a full URL (external image like unsplash), return as-is
+    if photo_id_or_url.startswith("http"):
+        return photo_id_or_url
+    
+    # If it's a legacy URL format, extract the photo ID
+    if photo_id_or_url.startswith("/api/photos/"):
+        photo_id = photo_id_or_url.replace("/api/photos/", "")
+    else:
+        photo_id = photo_id_or_url
+    
+    # Return the serve endpoint with blur parameter
+    if blur:
+        return f"/api/photos/serve/{photo_id}?blur=true"
+    else:
+        return f"/api/photos/serve/{photo_id}"
+
+
+def get_photo_urls_for_display(photos_array: List[str], avatar_url: str, is_revealed: bool) -> dict:
+    """
+    Get avatar_url and photos array with appropriate blur based on reveal status.
+    
+    Args:
+        photos_array: User's photos array (photo IDs or URLs)
+        avatar_url: User's avatar URL/ID
+        is_revealed: Whether the viewer has revealed this user
+    
+    Returns:
+        {
+            "avatar_url": "url to main photo",
+            "photos": ["url1", "url2", "url3"]
+        }
+    """
+    blur = not is_revealed
+    
+    # Process photos array
+    processed_photos = []
+    for photo_ref in photos_array:
+        if photo_ref:
+            processed_photos.append(get_photo_url(photo_ref, blur=blur))
+        else:
+            processed_photos.append("")
+    
+    # Ensure 3 slots
+    while len(processed_photos) < 3:
+        processed_photos.append("")
+    
+    # Process avatar
+    processed_avatar = get_photo_url(avatar_url, blur=blur) if avatar_url else ""
+    
+    return {
+        "avatar_url": processed_avatar,
+        "photos": processed_photos
+    }
+
+
+# ============================================================================
 # PYDANTIC MODELS
 # ============================================================================
 

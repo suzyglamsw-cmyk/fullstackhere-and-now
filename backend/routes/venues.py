@@ -14,7 +14,7 @@ from .dependencies import (
     calculate_distance_meters, calculate_distance_miles, calculate_safety_halo,
     get_venue_checkin_radius, is_checkin_valid, get_first_name,
     check_dating_compatibility, check_visibility_match,
-    FREE_DAILY_GLANCES, PREMIUM_DAILY_GLANCES
+    FREE_DAILY_GLANCES, PREMIUM_DAILY_GLANCES, get_photo_url
 )
 
 router = APIRouter()
@@ -598,12 +598,16 @@ async def get_people_at_venue(
         # Check if user wants to hide their photo in venues (silhouette mode)
         hide_photo = user.get("hide_photo_in_venues", False)
         
+        # Get photo URL with appropriate blur based on reveal status
+        blur_photos = not is_revealed
+        avatar_url = get_photo_url(user.get("avatar_url", ""), blur=blur_photos)
+        
         people.append({
             "id": user["id"],
             "display_name": user["display_name"] if is_revealed else first_name,
             "first_name": first_name,
             "age": user_age,
-            "avatar_url": user.get("avatar_url", ""),
+            "avatar_url": avatar_url,
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
             "checked_in_at": checkin.get("checked_in_at"),

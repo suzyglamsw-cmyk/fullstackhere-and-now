@@ -9,6 +9,17 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { getErrorMessage } from "../utils/errorUtils";
+
+// Helper function to construct photo URL from photo ID
+const getPhotoUrl = (photoIdOrUrl) => {
+  if (!photoIdOrUrl) return '';
+  // External URLs (e.g., unsplash) - return as-is
+  if (photoIdOrUrl.startsWith('http')) return photoIdOrUrl;
+  // Already a full URL path - return as-is
+  if (photoIdOrUrl.startsWith('/api/')) return photoIdOrUrl;
+  // Just a photo ID - construct serve URL
+  return `${API}/photos/serve/${photoIdOrUrl}`;
+};
 import {
   Camera,
   Loader2,
@@ -736,7 +747,7 @@ const Profile = () => {
                 >
                   {mainPhoto ? (
                     <>
-                      <img src={mainPhoto} alt="Main" className="w-full h-full object-cover" />
+                      <img src={getPhotoUrl(mainPhoto)} alt="Main" className="w-full h-full object-cover" />
                       {/* Photo actions overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-4 left-4 right-4 flex gap-2">
@@ -799,7 +810,7 @@ const Profile = () => {
                 >
                   {formData.photos[index] ? (
                     <>
-                      <img src={formData.photos[index]} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                      <img src={getPhotoUrl(formData.photos[index])} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
                       {/* Photo actions overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity flex items-end justify-center pb-2">
                         <button
@@ -1544,7 +1555,7 @@ const Profile = () => {
                     >
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
                         {viewer.avatar_url ? (
-                          <img src={viewer.avatar_url} alt={viewer.display_name} className="w-full h-full object-cover" />
+                          <img src={getPhotoUrl(viewer.avatar_url)} alt={viewer.display_name} className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-white text-sm font-medium">{viewer.display_name?.charAt(0) || "?"}</span>
                         )}
@@ -1646,7 +1657,7 @@ const Profile = () => {
                 <div className="relative aspect-[3/4] max-w-xs mx-auto rounded-2xl overflow-hidden" style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
                   {allPhotos.length > 0 ? (
                     <img 
-                      src={allPhotos[previewPhotoIndex] || mainPhoto} 
+                      src={getPhotoUrl(allPhotos[previewPhotoIndex] || mainPhoto)} 
                       alt="Profile" 
                       className="w-full h-full object-cover transition-opacity duration-300"
                       style={{ filter: 'blur(8px)' }}
@@ -1796,7 +1807,7 @@ const Profile = () => {
                 <div className="relative aspect-[3/4] max-w-xs mx-auto rounded-2xl overflow-hidden" style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
                   {allPhotos.length > 0 ? (
                     <img 
-                      src={allPhotos[previewPhotoIndex] || mainPhoto} 
+                      src={getPhotoUrl(allPhotos[previewPhotoIndex] || mainPhoto)} 
                       alt="Profile" 
                       className="w-full h-full object-cover transition-opacity duration-300"
                     />

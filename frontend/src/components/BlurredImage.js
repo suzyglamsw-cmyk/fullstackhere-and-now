@@ -1,9 +1,41 @@
 import { useState, useRef, useEffect } from 'react';
 import { analyzeImageType, getBlurStrength, getBlurStyle } from '../utils/imageBlur';
+import { API } from '../App';
 
 /**
- * BlurredImage component that applies dynamic blur based on image characteristics
- * Close-up photos receive stronger blur to maintain consistent recognizability
+ * Helper function to construct the correct photo URL with blur parameter.
+ * Handles photo IDs, legacy URLs, and external URLs.
+ */
+const getPhotoUrl = (src, blur = false) => {
+  if (!src) return '';
+  
+  // External URLs (e.g., unsplash) - no modification
+  if (src.startsWith('http')) return src;
+  
+  // Already a serve URL - add blur parameter
+  if (src.includes('/photos/serve/')) {
+    const baseUrl = src.split('?')[0];
+    return blur ? `${baseUrl}?blur=true` : baseUrl;
+  }
+  
+  // Legacy URL format (/api/photos/xxx) - convert to serve URL
+  if (src.startsWith('/api/photos/')) {
+    const photoId = src.replace('/api/photos/', '');
+    return blur ? `${API}/photos/serve/${photoId}?blur=true` : `${API}/photos/serve/${photoId}`;
+  }
+  
+  // Just a photo ID - construct serve URL
+  if (src && !src.includes('/')) {
+    return blur ? `${API}/photos/serve/${src}?blur=true` : `${API}/photos/serve/${src}`;
+  }
+  
+  // Fallback - return as-is
+  return src;
+};
+
+/**
+ * BlurredImage component that applies blur based on reveal status.
+ * Uses server-side blurred images for pre-reveal, with CSS blur as fallback.
  */
 const BlurredImage = ({ 
   src, 
@@ -20,12 +52,15 @@ const BlurredImage = ({
   const [error, setError] = useState(false);
   const imgRef = useRef(null);
 
+  // Construct the correct URL based on reveal status
+  const imageUrl = getPhotoUrl(src, !isRevealed);
+
   useEffect(() => {
     // Reset state when src changes
     setLoaded(false);
     setError(false);
     setImageType('standard');
-  }, [src]);
+  }, [src, isRevealed]);
 
   const handleLoad = (e) => {
     const img = e.target;
@@ -56,13 +91,16 @@ const BlurredImage = ({
     );
   }
 
-  const blurStrength = getBlurStrength(imageType, isThumbnail);
-  const blurStyle = getBlurStyle(blurStrength, isRevealed);
+  // For server-side blurred images, we don't need additional CSS blur
+  // But keep CSS blur as fallback for external images or legacy photos
+  const needsCssBlur = src.startsWith('http') && !isRevealed;
+  const blurStrength = needsCssBlur ? getBlurStrength(imageType, isThumbnail) : 0;
+  const blurStyle = getBlurStyle(blurStrength, isRevealed || !needsCssBlur);
 
   return (
     <img
       ref={imgRef}
-      src={src}
+      src={imageUrl}
       alt={alt}
       className={`w-full h-full object-cover ${className}`}
       style={blurStyle}

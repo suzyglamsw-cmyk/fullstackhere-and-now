@@ -11,7 +11,7 @@ from .dependencies import (
     WhoIsHereUser,
     calculate_distance_miles, calculate_safety_halo,
     is_checkin_valid, get_first_name, check_dating_compatibility,
-    check_visibility_match
+    check_visibility_match, get_photo_url
 )
 
 router = APIRouter()
@@ -211,12 +211,16 @@ async def get_people_not_here(
             except Exception:
                 pass
         
+        # Get photo URL with appropriate blur based on reveal status
+        blur_photos = not is_revealed
+        avatar_url = get_photo_url(user.get("avatar_url", ""), blur=blur_photos)
+        
         entry = {
             "id": user["id"],
             "display_name": user["display_name"] if is_revealed else first_name,
             "first_name": first_name,
             "age": user_age,
-            "avatar_url": user.get("avatar_url", ""),
+            "avatar_url": avatar_url,
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
             "checked_in_at": None,
@@ -481,12 +485,16 @@ async def get_people_here(
             if venue:
                 venue_name = venue.get("name")
         
+        # Get photo URL with appropriate blur based on reveal status
+        blur_photos = not is_revealed
+        avatar_url = get_photo_url(user.get("avatar_url", ""), blur=blur_photos)
+        
         people.append({
             "id": user["id"],
             "display_name": user["display_name"] if is_revealed else first_name,
             "first_name": first_name,
             "age": user_age,
-            "avatar_url": user.get("avatar_url", ""),
+            "avatar_url": avatar_url,
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
             "checked_in_at": user_checkin.get("checked_in_at") if user_checkin else None,

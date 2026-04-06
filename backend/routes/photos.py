@@ -1,7 +1,7 @@
 """
 Photo upload and management routes with AI-powered image moderation
 """
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Query, Header
 from fastapi.responses import Response
 from datetime import datetime, timezone
 from typing import Optional
@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from .dependencies import db, get_current_user, logger
+from utils.storage import upload_photo_with_blur, get_photo_from_storage
 
 router = APIRouter(prefix="/photos", tags=["Photos"])
 
@@ -219,7 +220,7 @@ async def upload_photo(
     slot: int = Form(0),
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload a profile photo (up to 3 photos, slots 0-2) with AI moderation"""
+    """Upload a profile photo to cloud storage (up to 3 photos, slots 0-2) with AI moderation"""
     if slot < 0 or slot > 2:
         raise HTTPException(status_code=400, detail="Invalid slot. Use 0, 1, or 2.")
     
@@ -239,85 +240,183 @@ async def upload_photo(
     photo_age_warning = check_photo_age_warning(content)
     photo_id = str(uuid.uuid4())
     
-    photo_data = {
-        "id": photo_id,
-        "user_id": current_user["id"],
-        "slot": slot,
-        "content_type": file.content_type,
-        "data": base64.b64encode(content).decode("utf-8"),
-        "filename": file.filename,
-        "size": len(content),
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
+    try:
+        # Upload to cloud storage (creates both clear and blurred versions)
+        storage_result = upload_photo_with_blur(
+            user_id=current_user["id"],
+            photo_id=photo_id,
+            image_data=content,
+            content_type=file.content_type,
+            slot=slot
+        )
+        
+        # Store photo reference in database (no base64 data - just paths)
+        photo_data = {
+            "id": photo_id,
+            "user_id": current_user["id"],
+            "slot": slot,
+            "content_type": file.content_type,
+            "filename": file.filename,
+            "size": storage_result["size"],
+            "clear_path": storage_result["clear_path"],
+            "blurred_path": storage_result["blurred_path"],
+            "storage_type": "cloud",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Soft delete existing photo in this slot
+        await db.photos.update_one(
+            {"user_id": current_user["id"], "slot": slot, "is_deleted": {"$ne": True}},
+            {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        await db.photos.insert_one(photo_data)
+        
+        # Fetch fresh photos array to avoid race conditions
+        fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "photos": 1})
+        photos = fresh_user.get("photos", ["", "", ""]) if fresh_user else ["", "", ""]
+        if len(photos) < 3:
+            photos = photos + [""] * (3 - len(photos))
+        
+        # Store photo ID (backend resolves to correct URL based on reveal status)
+        photos[slot] = photo_id
+        
+        update_data = {"photos": photos}
+        if slot == 0:
+            update_data["avatar_url"] = photo_id
+        
+        if not current_user.get("profile_complete"):
+            update_data["profile_complete"] = True
+            update_data["is_visible"] = True
+        
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$set": update_data}
+        )
+        
+        response = {
+            "photo_id": photo_id,
+            "url": f"/api/photos/serve/{photo_id}",
+            "slot": slot,
+            "photos": photos,
+            "message": "Photo uploaded to cloud storage successfully"
+        }
+        
+        if photo_age_warning:
+            response["warning"] = photo_age_warning
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Failed to upload photo to cloud storage: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload photo. Please try again.")
+
+
+@router.get("/serve/{photo_id}")
+async def serve_photo(
+    photo_id: str,
+    blur: bool = Query(False, description="Return blurred version for pre-reveal"),
+):
+    """
+    Serve a photo with reveal-aware blurring.
+    - blur=False (default): Returns clear version (for revealed profiles or self)
+    - blur=True: Returns blurred version (for pre-reveal)
+    """
+    photo = await db.photos.find_one({"id": photo_id, "is_deleted": {"$ne": True}})
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
     
-    await db.photos.delete_one({"user_id": current_user["id"], "slot": slot})
-    await db.photos.insert_one(photo_data)
+    # Check if this is a cloud storage photo
+    if photo.get("storage_type") == "cloud":
+        try:
+            # Select clear or blurred path based on blur parameter
+            if blur and photo.get("blurred_path"):
+                storage_path = photo["blurred_path"]
+            else:
+                storage_path = photo.get("clear_path")
+            
+            if not storage_path:
+                raise HTTPException(status_code=404, detail="Photo path not found")
+            
+            content, content_type = get_photo_from_storage(storage_path)
+            return Response(
+                content=content,
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=3600",
+                    "Content-Disposition": f'inline; filename="{photo.get("filename", "photo")}"'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to get photo from cloud storage: {e}")
+            raise HTTPException(status_code=500, detail="Failed to retrieve photo")
     
-    # IMPORTANT: Fetch the CURRENT photos array from the database
-    # This prevents race conditions when uploading multiple photos quickly
-    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "photos": 1})
-    photos = fresh_user.get("photos", ["", "", ""]) if fresh_user else ["", "", ""]
-    if len(photos) < 3:
-        photos = photos + [""] * (3 - len(photos))
+    # Legacy: base64 encoded data in MongoDB (no blur support)
+    if "data" in photo:
+        content = base64.b64decode(photo["data"])
+        return Response(
+            content=content,
+            media_type=photo["content_type"],
+            headers={
+                "Cache-Control": "public, max-age=86400",
+                "Content-Disposition": f'inline; filename="{photo.get("filename", "photo")}"'
+            }
+        )
     
-    photo_url = f"/api/photos/{photo_id}"
-    photos[slot] = photo_url
-    
-    update_data = {"photos": photos}
-    if slot == 0:
-        update_data["avatar_url"] = photo_url
-    
-    if not current_user.get("profile_complete"):
-        update_data["profile_complete"] = True
-        update_data["is_visible"] = True
-    
-    await db.users.update_one(
-        {"id": current_user["id"]},
-        {"$set": update_data}
-    )
-    
-    response = {
-        "photo_id": photo_id,
-        "url": photo_url,
-        "slot": slot,
-        "photos": photos,  # Return the complete photos array
-        "message": "Photo uploaded successfully"
-    }
-    
-    if photo_age_warning:
-        response["warning"] = photo_age_warning
-    
-    return response
+    raise HTTPException(status_code=404, detail="Photo data not found")
 
 
 @router.get("/{photo_id}")
 async def get_photo(photo_id: str):
-    """Get a photo by ID (public endpoint for serving images)"""
-    photo = await db.photos.find_one({"id": photo_id})
+    """Get a photo by ID (legacy endpoint - returns clear version)"""
+    photo = await db.photos.find_one({"id": photo_id, "is_deleted": {"$ne": True}})
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     
-    content = base64.b64decode(photo["data"])
+    # Check if this is a cloud storage photo
+    if photo.get("storage_type") == "cloud" and photo.get("clear_path"):
+        try:
+            content, content_type = get_photo_from_storage(photo["clear_path"])
+            return Response(
+                content=content,
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=86400",
+                    "Content-Disposition": f'inline; filename="{photo.get("filename", "photo")}"'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to get photo from cloud storage: {e}")
+            raise HTTPException(status_code=500, detail="Failed to retrieve photo")
     
-    return Response(
-        content=content,
-        media_type=photo["content_type"],
-        headers={
-            "Cache-Control": "public, max-age=86400",
-            "Content-Disposition": f'inline; filename="{photo.get("filename", "photo")}"'
-        }
-    )
+    # Legacy: base64 encoded data in MongoDB
+    if "data" in photo:
+        content = base64.b64decode(photo["data"])
+        return Response(
+            content=content,
+            media_type=photo["content_type"],
+            headers={
+                "Cache-Control": "public, max-age=86400",
+                "Content-Disposition": f'inline; filename="{photo.get("filename", "photo")}"'
+            }
+        )
+    
+    raise HTTPException(status_code=404, detail="Photo data not found")
 
 
 @router.delete("/{slot}")
 async def delete_photo(slot: int, current_user: dict = Depends(get_current_user)):
-    """Delete a photo from a specific slot"""
+    """Delete a photo from a specific slot (soft delete - cloud storage preserved)"""
     if slot < 0 or slot > 2:
         raise HTTPException(status_code=400, detail="Invalid slot. Use 0, 1, or 2.")
     
-    await db.photos.delete_one({"user_id": current_user["id"], "slot": slot})
+    # Soft delete - mark as deleted instead of removing
+    await db.photos.update_one(
+        {"user_id": current_user["id"], "slot": slot, "is_deleted": {"$ne": True}},
+        {"$set": {"is_deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}}
+    )
     
-    # IMPORTANT: Fetch the CURRENT photos array from the database
+    # Fetch fresh photos array
     fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "photos": 1})
     photos = fresh_user.get("photos", ["", "", ""]) if fresh_user else ["", "", ""]
     if len(photos) < 3:

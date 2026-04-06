@@ -5,6 +5,17 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Logo, LogoIcon } from "./Logo";
 
+// Helper function to construct photo URL from photo ID
+const getPhotoUrl = (photoIdOrUrl) => {
+  if (!photoIdOrUrl) return '';
+  // External URLs (e.g., unsplash) - return as-is
+  if (photoIdOrUrl.startsWith('http')) return photoIdOrUrl;
+  // Already a full URL path - return as-is
+  if (photoIdOrUrl.startsWith('/api/')) return photoIdOrUrl;
+  // Just a photo ID - construct serve URL
+  return `${API}/photos/serve/${photoIdOrUrl}`;
+};
+
 const Layout = ({ children, hideNav = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -74,7 +85,7 @@ const Layout = ({ children, hideNav = false }) => {
                 data-testid="user-avatar-btn"
               >
                 <img
-                  src={user.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
+                  src={getPhotoUrl(user.avatar_url) || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
                   alt={user.display_name}
                   className="w-full h-full object-cover"
                 />
