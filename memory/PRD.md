@@ -294,6 +294,13 @@ Comprehensive list including:
   - ✅ Google Places API - Working with real venue data (20 venues, photos, ratings)
   - ✅ Stripe Payments - LIVE mode (cs_live_ sessions, real price IDs)
   - ✅ Google Play Billing - REMOVED from backend and frontend
+- ✅ **Strict GPS Enforcement** (April 2026):
+  - ✅ All discovery/matching uses ONLY live Google GPS coordinates (lat/lng)
+  - ✅ No region/country fallbacks - manual location selection completely ignored
+  - ✅ Backend returns 400 "Location required. Please enable GPS to see nearby users." when user has no coordinates
+  - ✅ Frontend shows "Location Required" prompt with "Enable Location" button when geolocation denied/unavailable
+  - ✅ `/api/location/update` endpoint to save GPS coordinates
+  - ✅ Privacy message: "Your exact location is used only for distance matching and is never shared publicly."
 
 ### Bug Fixes Applied
 - ✅ Check-in persistence (root cause: FastAPI route ordering in server.py)
@@ -387,4 +394,4 @@ Comprehensive list including:
 - REACT_APP_BACKEND_URL
 
 ---
-*Last Updated: April 2026*
+*Last Updated: April 6, 2026*
