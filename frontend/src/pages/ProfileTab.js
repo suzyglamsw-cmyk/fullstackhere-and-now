@@ -109,9 +109,6 @@ const Profile = () => {
     open_to_all: false,
   });
 
-  // Track if show_as is being changed (to trigger reset warning)
-  const [showAsChanged, setShowAsChanged] = useState(false);
-
   useEffect(() => {
     if (user) {
       setFormData({
@@ -131,7 +128,6 @@ const Profile = () => {
         rainbow: user.rainbow || false,
         open_to_all: user.open_to_all || false,
       });
-      setShowAsChanged(false);
       // Fetch privacy settings
       fetchPrivacySettings();
     }
@@ -264,18 +260,6 @@ const Profile = () => {
       return;
     }
 
-    // If show_as changed, require re-selection of seeking and intent
-    if (showAsChanged) {
-      if (!formData.seeking || formData.seeking.length === 0) {
-        toast.error("Please select who you're open to meeting after changing your gender.");
-        return;
-      }
-      if (!formData.intent) {
-        toast.error("Please select your intent after changing your gender.");
-        return;
-      }
-    }
-
     setSaving(true);
     try {
       // Save non-photo profile fields only
@@ -296,7 +280,6 @@ const Profile = () => {
       });
       
       updateUser(response.data);
-      setShowAsChanged(false);
       toast.success("Profile saved!");
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to save profile"));
@@ -1235,88 +1218,30 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Gender Change Warning - shown at top when gender changed */}
-            {showAsChanged && (
-              <div className="p-4 rounded-xl bg-amber-500/15 border border-amber-500/30">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-amber-400 text-sm font-bold">!</span>
-                  </div>
-                  <div>
-                    <p className="text-amber-200 text-sm font-medium">Gender changed</p>
-                    <p className="text-amber-300/70 text-xs mt-1">Please re-select who you're looking to meet and your intent below before saving.</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Show As (Gender Appearance) - Compact */}
-            <div className="space-y-2.5">
+            {/* Gender Display (Read-only plain text - set during signup) */}
+            <div className="space-y-1">
               <Label className="text-purple-200/70 text-sm">I appear as</Label>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  data-testid="show-as-male-btn"
-                  onClick={() => {
-                    const oldShowAs = formData.show_as;
-                    if (oldShowAs && oldShowAs !== "male") {
-                      setFormData({ ...formData, show_as: "male", seeking: [], intent: "" });
-                      setShowAsChanged(true);
-                      toast.info("Gender changed. Please re-select your preferences.");
-                    } else {
-                      setFormData({ ...formData, show_as: "male" });
-                    }
-                  }}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                    formData.show_as === "male"
-                      ? "border-blue-400 bg-blue-500/20"
-                      : "border-white/10 bg-white/5 hover:border-white/20"
-                  }`}
-                >
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
-                    formData.show_as === "male" ? "bg-blue-500/30 text-blue-300" : "bg-white/10 text-slate-400"
-                  }`}>
-                    M
-                  </div>
-                  <span className={`text-sm font-medium ${formData.show_as === "male" ? "text-blue-200" : "text-slate-300"}`}>
-                    Male
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  data-testid="show-as-female-btn"
-                  onClick={() => {
-                    const oldShowAs = formData.show_as;
-                    if (oldShowAs && oldShowAs !== "female") {
-                      setFormData({ ...formData, show_as: "female", seeking: [], intent: "" });
-                      setShowAsChanged(true);
-                      toast.info("Gender changed. Please re-select your preferences.");
-                    } else {
-                      setFormData({ ...formData, show_as: "female" });
-                    }
-                  }}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                    formData.show_as === "female"
-                      ? "border-pink-400 bg-pink-500/20"
-                      : "border-white/10 bg-white/5 hover:border-white/20"
-                  }`}
-                >
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
-                    formData.show_as === "female" ? "bg-pink-500/30 text-pink-300" : "bg-white/10 text-slate-400"
-                  }`}>
-                    F
-                  </div>
-                  <span className={`text-sm font-medium ${formData.show_as === "female" ? "text-pink-200" : "text-slate-300"}`}>
-                    Female
-                  </span>
-                </button>
-              </div>
+              <p className={`text-base font-medium ${
+                formData.show_as === "male" 
+                  ? "text-blue-300" 
+                  : formData.show_as === "female"
+                  ? "text-pink-300"
+                  : "text-slate-400"
+              }`}>
+                {formData.show_as === "male" ? "Male" : formData.show_as === "female" ? "Female" : "Not set"}
+              </p>
+              <p className="text-xs text-purple-300/60">
+                To update your gender, name or date of birth, please email{' '}
+                <a href="mailto:hereandnow.social.uk@gmail.com" className="text-purple-400 hover:text-purple-300 underline">
+                  hereandnow.social.uk@gmail.com
+                </a>
+              </p>
             </div>
 
             {/* Seeking (Multi-select) - Compact */}
             <div className="space-y-2.5">
-              <Label className={`text-sm ${showAsChanged ? 'text-amber-300' : 'text-purple-200/70'}`}>
-                I'm looking to meet {showAsChanged && <span className="text-amber-400">*</span>}
+              <Label className="text-sm text-purple-200/70">
+                I'm looking to meet
               </Label>
               <p className="text-xs pl-1 text-purple-300/70">Select one <span className="underline">or</span> <span className="font-bold">both</span></p>
               <div className="flex gap-3">
@@ -1333,7 +1258,7 @@ const Profile = () => {
                   className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
                     (formData.seeking || []).includes("male")
                       ? "border-blue-400 bg-blue-500/20"
-                      : showAsChanged ? "border-amber-500/30 bg-white/5" : "border-white/10 bg-white/5 hover:border-white/20"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
                   }`}
                 >
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -1358,7 +1283,7 @@ const Profile = () => {
                   className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
                     (formData.seeking || []).includes("female")
                       ? "border-pink-400 bg-pink-500/20"
-                      : showAsChanged ? "border-amber-500/30 bg-white/5" : "border-white/10 bg-white/5 hover:border-white/20"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
                   }`}
                 >
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -1463,8 +1388,8 @@ const Profile = () => {
 
             {/* Intent - Now directly under toggles */}
             <div className="space-y-2">
-              <Label className={`text-sm ${showAsChanged ? 'text-amber-300' : 'text-purple-200/70'}`}>
-                What are you here for? {showAsChanged && <span className="text-amber-400">*</span>}
+              <Label className="text-sm text-purple-200/70">
+                What are you here for?
               </Label>
               <div className="relative">
                 <select
@@ -1473,7 +1398,7 @@ const Profile = () => {
                   className="w-full h-11 px-4 pr-10 rounded-xl text-white text-sm appearance-none cursor-pointer"
                   style={{ 
                     background: 'rgba(139, 92, 246, 0.08)',
-                    border: showAsChanged && !formData.intent ? '2px solid rgba(251, 191, 36, 0.5)' : '2px solid rgba(168, 85, 247, 0.3)',
+                    border: '2px solid rgba(168, 85, 247, 0.3)',
                   }}
                   data-testid="intent-select"
                 >
