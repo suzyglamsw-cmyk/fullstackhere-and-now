@@ -846,6 +846,14 @@ const Profile = () => {
                 {user?.age ? `${user.age} years old` : "Age not set"}
               </p>
             </div>
+            {/* Account & Tokens link */}
+            <button
+              onClick={() => navigate("/settings")}
+              className="text-xs text-purple-400/70 hover:text-purple-300 transition-colors"
+              data-testid="account-tokens-link"
+            >
+              Account & Tokens
+            </button>
           </div>
 
           {/* Preview Button */}
