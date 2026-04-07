@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getErrorMessage } from "../utils/errorUtils";
 import BlurredImage from "../components/BlurredImage";
+import { onUserBlocked } from "../utils/blockEvents";
 
 const ICEBREAKER_MESSAGES = [
   { id: 0, name: "Hello", icon: "👋" },
@@ -97,6 +98,30 @@ const WhosHere = () => {
   useEffect(() => {
     fetchPeople();
   }, [lastActiveFilter]);
+
+  // Listen for block events and remove blocked users from the Here Now list
+  useEffect(() => {
+    const cleanup = onUserBlocked((blockedUserId) => {
+      // Immediately remove blocked user from people list
+      setPeople(prev => prev.filter(p => p.id !== blockedUserId));
+      
+      // Clear any interaction state for this user
+      setGlancing(prev => prev === blockedUserId ? null : prev);
+      setSelectedPerson(prev => {
+        if (prev?.id === blockedUserId) {
+          setShowIcebreakerModal(false);
+          setSendingIcebreaker(false);
+          setShowReportModal(false);
+          return null;
+        }
+        return prev;
+      });
+      
+      // Refresh from server to ensure complete sync
+      fetchPeople();
+    });
+    return cleanup;
+  }, []);
 
   const connectWebSocket = () => {
     const wsUrl = process.env.REACT_APP_BACKEND_URL.replace("https://", "wss://").replace("http://", "ws://");
