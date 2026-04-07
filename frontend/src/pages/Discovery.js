@@ -27,6 +27,7 @@ import {
   User,
   MapPinOff,
   RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 import {
   Dialog,
@@ -277,10 +278,13 @@ const Discovery = ({ defaultMode = null }) => {
     }
   };
 
-  const handleGlance = async (userId) => {
+  const handleGlance = async (userId, venueId) => {
     setGlancing(userId);
     try {
-      await axios.post(`${API}/glances`, { to_user_id: userId });
+      await axios.post(`${API}/glance`, { 
+        to_user_id: userId, 
+        venue_id: venueId || currentVenue?.id || "not-here"
+      });
       toast.success("Glance sent!");
       fetchPeople();
     } catch (error) {
@@ -300,9 +304,10 @@ const Discovery = ({ defaultMode = null }) => {
     if (!selectedPerson) return;
     setSendingIcebreaker(true);
     try {
-      await axios.post(`${API}/icebreakers/send`, {
+      await axios.post(`${API}/icebreaker`, {
         to_user_id: selectedPerson.id,
-        message_index: messageIndex
+        venue_id: currentVenue?.id || "not-here",
+        message_type: messageIndex
       });
       toast.success("Icebreaker sent!");
       setShowIcebreakerModal(false);
@@ -599,7 +604,8 @@ const Discovery = ({ defaultMode = null }) => {
                     onGlance={handleGlance}
                     onIcebreaker={handleOpenIcebreaker}
                     glancing={glancing}
-                    isVenueContext={true}  // This is venue context - show silhouette if enabled
+                    isVenueContext={true}
+                    venueId={currentVenue?.id}
                   />
                 ))}
               </div>
@@ -732,7 +738,8 @@ const Discovery = ({ defaultMode = null }) => {
                   onGlance={handleGlance}
                   onIcebreaker={handleOpenIcebreaker}
                   glancing={glancing}
-                  isVenueContext={false}  // NOT venue context - never show silhouette
+                  isVenueContext={false}
+                  venueId="not-here"
                 />
               ))}
             </div>
@@ -758,7 +765,7 @@ const Discovery = ({ defaultMode = null }) => {
 // ============================================================================
 // Person Card Component
 // ============================================================================
-const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }) => {
+const PersonCard = ({ person, onGlance, onIcebreaker, onChatRequest, glancing, isVenueContext, venueId }) => {
   const navigate = useNavigate();
   
   // Check if this is the user's own card
@@ -965,77 +972,90 @@ const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }
         </div>
       </div>
       
-      {/* Actions */}
-      <div className="p-3 flex gap-2">
-        {/* Pre-reveal state: Show Glance and Icebreaker buttons (both can trigger reveal) */}
+      {/* Actions - Icon-only thumbs */}
+      <div className="p-3 flex gap-2 justify-center">
+        {/* Pre-reveal state: Show Glance, Icebreaker, and Chat Request icons */}
         {!person.is_revealed ? (
           <>
-            {/* Glance Button - Can trigger reveal via mutual glance */}
+            {/* Glance Button (Eye icon) */}
             <Button
-              size="sm"
+              data-testid={`glance-btn-${person.id}`}
+              size="icon"
               variant="ghost"
-              className={`flex-1 ${
+              className={`w-10 h-10 rounded-full ${
                 person.i_glanced_at
                   ? "bg-pink-500/20 text-pink-400"
-                  : "bg-white/5 text-slate-300 hover:bg-white/10"
+                  : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
               }`}
               onClick={(e) => {
                 e.stopPropagation();
-                onGlance(person.id);
+                onGlance(person.id, venueId);
               }}
               disabled={glancing === person.id || person.i_glanced_at}
+              title={person.i_glanced_at ? "Glanced" : "Send a glance"}
             >
               {glancing === person.id ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <>
-                  <Eye className="w-4 h-4 mr-1" />
-                  {person.i_glanced_at ? "Glanced" : "Glance"}
-                </>
+                <Eye className="w-5 h-5" />
               )}
             </Button>
             
-            {/* Icebreaker Button - Can trigger reveal via response */}
-            {person.icebreaker_sent ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="flex-1 bg-amber-500/20 text-amber-400 cursor-default"
-                disabled
-              >
-                <Snowflake className="w-4 h-4 mr-1" />
-                Sent
-              </Button>
-            ) : person.icebreaker_received ? (
-              <Button
-                size="sm"
-                className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 text-white animate-pulse"
-                onClick={(e) => {
-                  e.stopPropagation();
+            {/* Icebreaker Button (Snowflake icon) */}
+            <Button
+              data-testid={`icebreaker-btn-${person.id}`}
+              size="icon"
+              variant="ghost"
+              className={`w-10 h-10 rounded-full ${
+                person.icebreaker_sent
+                  ? "bg-amber-500/20 text-amber-400"
+                  : person.icebreaker_received
+                    ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white animate-pulse"
+                    : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (person.icebreaker_received) {
                   navigate(`/profile/${person.id}`);
-                }}
-              >
-                <Snowflake className="w-4 h-4 mr-1" />
-                Reply
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="flex-1 bg-white/5 text-slate-300 hover:bg-white/10"
-                onClick={(e) => {
-                  e.stopPropagation();
+                } else if (!person.icebreaker_sent) {
                   onIcebreaker(person);
-                }}
-              >
-                <Snowflake className="w-4 h-4 mr-1" />
-                Ice
-              </Button>
-            )}
+                }
+              }}
+              disabled={person.icebreaker_sent}
+              title={
+                person.icebreaker_sent 
+                  ? "Icebreaker sent" 
+                  : person.icebreaker_received 
+                    ? "Reply to icebreaker" 
+                    : "Send an icebreaker"
+              }
+            >
+              <Snowflake className="w-5 h-5" />
+            </Button>
+            
+            {/* Chat Request Button (MessageSquare icon) */}
+            <Button
+              data-testid={`chat-request-btn-${person.id}`}
+              size="icon"
+              variant="ghost"
+              className="w-10 h-10 rounded-full bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onChatRequest) {
+                  onChatRequest(person);
+                } else {
+                  navigate(`/profile/${person.id}`);
+                }
+              }}
+              title="Send a chat request"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </Button>
           </>
         ) : person.is_connected ? (
           /* Post-reveal AND connected: Show Message button */
           <Button
+            data-testid={`message-btn-${person.id}`}
             size="sm"
             className="flex-1 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
             onClick={(e) => {
@@ -1048,6 +1068,7 @@ const PersonCard = ({ person, onGlance, onIcebreaker, glancing, isVenueContext }
         ) : (
           /* Post-reveal but NOT connected yet: Show View Profile */
           <Button
+            data-testid={`view-profile-btn-${person.id}`}
             size="sm"
             className="flex-1 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30"
             onClick={(e) => {

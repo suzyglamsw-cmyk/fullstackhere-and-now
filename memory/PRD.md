@@ -423,6 +423,15 @@ Comprehensive list including:
 - **Fix**: Updated `DELETE /api/glances/{glance_id}` to allow both sender AND recipient to delete
 - **File Changed**: `/app/backend/routes/connections.py` (lines 178-190)
 
+### Discovery Thumbs Regression Fix (April 6, 2026)
+- **Issue**: Action icons (glance, icebreaker, chat request) were broken in Discovery - showing text buttons, wrong API endpoints
+- **Root Cause**: Frontend calling wrong endpoints (`/glances` instead of `/glance`, `/icebreakers/send` instead of `/icebreaker`)
+- **Fix**: 
+  - Fixed API endpoints: `POST /api/glance`, `POST /api/icebreaker`
+  - Restored icon-only buttons: Eye (glance), Snowflake (icebreaker), MessageSquare (chat request)
+  - All three icons displayed in a centered row
+- **File Changed**: `/app/frontend/src/pages/Discovery.js`
+
 ## Environment Variables
 
 ### Backend (.env)
@@ -436,4 +445,4 @@ Comprehensive list including:
 - REACT_APP_BACKEND_URL
 
 ---
-*Last Updated: April 6, 2026 - Glance Deletion Bug Fix*
+*Last Updated: April 6, 2026 - Discovery Thumbs Regression Fix*
