@@ -733,7 +733,7 @@ const Connections = () => {
                           <h4 className="font-semibold text-white truncate">{ib.display_name}</h4>
                           <p className="text-slate-400 text-sm truncate">"{ib.message || ICEBREAKER_MESSAGES[ib.message_type || 0]}"</p>
                           <p className="text-slate-500 text-xs mt-1">
-                            {ib.status === "pending" ? "❄️ Sent you an icebreaker" : ib.status === "accepted" ? "✅ Accepted" : "Response recorded"} • {formatDate(ib.created_at)}
+                            {ib.status === "pending" ? "❄️ Sent you an icebreaker" : ib.status === "accepted" ? "✅ Accepted" : ib.status === "declined" ? "❌ Declined" : "Response recorded"} • {formatDate(ib.created_at)}
                           </p>
                         </div>
                         {ib.status === "pending" ? (
@@ -744,6 +744,16 @@ const Connections = () => {
                             className="rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white"
                           >
                             Respond
+                          </Button>
+                        ) : ib.status === "accepted" ? (
+                          <Button
+                            data-testid={`message-icebreaker-${ib.id}`}
+                            onClick={() => navigate(`/chat/${ib.user_id}`)}
+                            size="sm"
+                            className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-1" />
+                            Message
                           </Button>
                         ) : (
                           <Button
@@ -1224,16 +1234,6 @@ const Connections = () => {
                 <Users className="w-10 h-10 text-slate-600" />
               </div>
               <h2 className="text-xl font-semibold text-white mb-2">No mutual matches yet</h2>
-              <p className="text-slate-400 mb-6">
-                Mutual matches appear when you have a mutual glance, accepted icebreaker, or accepted chat request.
-              </p>
-              <Button
-                data-testid="find-venues-btn"
-                onClick={() => navigate("/venues")}
-                className="rounded-full bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-semibold hover:opacity-90"
-              >
-                Find Venues
-              </Button>
             </div>
           ) : (
             <div className="space-y-4" data-testid="connections-list">
@@ -1443,7 +1443,16 @@ const Connections = () => {
                 className="w-full h-14 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-base"
               >
                 <Check className="w-5 h-5 mr-2" />
-                Respond
+                Accept
+              </Button>
+              <Button
+                data-testid="decline-icebreaker-btn"
+                onClick={() => handleIcebreakerAction(actionSheet.id, "decline")}
+                variant="ghost"
+                className="w-full h-12 rounded-xl text-slate-300 hover:bg-white/5"
+              >
+                <X className="w-5 h-5 mr-2" />
+                Decline
               </Button>
               <Button
                 data-testid="block-user-btn"

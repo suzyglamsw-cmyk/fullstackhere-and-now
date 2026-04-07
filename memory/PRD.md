@@ -557,5 +557,19 @@ Comprehensive list including:
 - Fallback order: `thumbnail_url` → `profile_photo_url` → placeholder
 - Consistent with Matches and Glances fallback logic
 
+### Icebreaker UI Improvements (April 7, 2026)
+- Accepted icebreakers show "Message" button → opens chat
+- Action sheet options: Accept, Decline, Block
+- Status shows: "✅ Accepted", "❌ Declined"
+
+### Discovery Badge Layout Fix (April 7, 2026)
+- Gender, rainbow, open-to-all badges have `z-10` for visibility
+- BlurredImage fallback initials moved to bottom, smaller size
+- Badges remain visible on all avatar states
+
+### Mutual Matches Empty State (April 7, 2026)
+- Removed "Find Venues" button
+- Shows "No mutual matches yet" neutral message
+
 ---
-*Last Updated: April 7, 2026 - Safety Halo Removal & Messages Avatar Fix*
+*Last Updated: April 7, 2026 - Icebreaker UI & Discovery Badge Fixes*

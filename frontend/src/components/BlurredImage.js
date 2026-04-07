@@ -81,10 +81,10 @@ const BlurredImage = ({
   if (!src || error) {
     return (
       <div 
-        className={`w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center ${className}`}
+        className={`w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-end justify-center pb-2 ${className}`}
         {...props}
       >
-        <span className="text-4xl text-slate-400">
+        <span className="text-xl text-slate-500/70 font-medium">
           {fallbackInitial}
         </span>
       </div>
