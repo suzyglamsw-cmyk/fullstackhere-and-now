@@ -490,61 +490,173 @@ async def delete_icebreaker(icebreaker_id: str, current_user: dict = Depends(get
 
 @router.get("/connections")
 async def get_connections(current_user: dict = Depends(get_current_user)):
-    """Get all connections for current user"""
-    connections = await db.connections.find({
+    """
+    Get all mutual connections for current user including:
+    - Explicit connections from connections collection
+    - Mutual glances (both users glanced at each other)
+    - Accepted icebreakers
+    - Accepted chat requests
+    - Mutual messagers (users who've exchanged messages)
+    """
+    all_connections = []
+    seen_users = set()
+    
+    # 1. Get explicit connections from the connections collection
+    explicit_connections = await db.connections.find({
         "$or": [
             {"user1_id": current_user["id"]},
             {"user2_id": current_user["id"]}
         ]
     }, {"_id": 0}).to_list(100)
     
-    result = []
-    for conn in connections:
+    for conn in explicit_connections:
         other_id = conn["user2_id"] if conn["user1_id"] == current_user["id"] else conn["user1_id"]
-        other_user = await db.users.find_one({"id": other_id}, {"_id": 0, "password": 0})
+        if other_id in seen_users:
+            continue
+        seen_users.add(other_id)
         
+        other_user = await db.users.find_one({"id": other_id}, {"_id": 0, "password": 0})
         if not other_user:
             continue
         
-        # Get venue name
         venue = await db.venues.find_one({"id": conn.get("venue_id", "")}, {"_id": 0})
-        venue_name = venue.get("name", "Unknown") if venue else "Unknown"
-        
-        # Get last message
-        last_msg = await db.messages.find_one(
-            {"$or": [
-                {"from_user_id": current_user["id"], "to_user_id": other_id},
-                {"from_user_id": other_id, "to_user_id": current_user["id"]}
-            ]},
-            {"_id": 0},
-            sort=[("created_at", -1)]
-        )
-        
-        # Count unread
-        unread_count = await db.messages.count_documents({
-            "from_user_id": other_id,
-            "to_user_id": current_user["id"],
-            "is_read": False
-        })
-        
-        result.append({
+        all_connections.append({
             "id": conn["id"],
             "user_id": other_id,
-            "display_name": other_user.get("display_name", "Unknown"),
+            "display_name": other_user.get("display_name", "Someone"),
             "avatar_url": other_user.get("avatar_url", ""),
+            "thumbnail_url": other_user.get("thumbnail_url", ""),
             "bio": other_user.get("bio", ""),
             "connected_at": conn.get("connected_at", ""),
-            "venue_name": venue_name,
-            "last_message": last_msg.get("content", "") if last_msg else None,
-            "last_message_at": last_msg.get("created_at") if last_msg else None,
-            "unread_count": unread_count,
-            "is_premium": other_user.get("is_premium", False)
+            "venue_name": venue.get("name", "Nearby") if venue else "Nearby",
+            "connection_type": conn.get("type", "connection")
         })
     
-    # Sort by last message time
-    result.sort(key=lambda x: x.get("last_message_at") or x.get("connected_at", ""), reverse=True)
+    # 2. Get mutual glances (both users glanced at each other)
+    my_glances = await db.glances.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(200)
+    glanced_at_users = {g["to_user_id"] for g in my_glances}
     
-    return result
+    mutual_glances = await db.glances.find({
+        "from_user_id": {"$in": list(glanced_at_users)},
+        "to_user_id": current_user["id"]
+    }, {"_id": 0}).to_list(200)
+    
+    for glance in mutual_glances:
+        from_user_id = glance["from_user_id"]
+        if from_user_id in seen_users:
+            continue
+        seen_users.add(from_user_id)
+        
+        user = await db.users.find_one({"id": from_user_id}, {"_id": 0, "password": 0})
+        if user:
+            venue = await db.venues.find_one({"id": glance.get("venue_id", "")}, {"_id": 0})
+            all_connections.append({
+                "id": f"mutual-{from_user_id}",
+                "user_id": user.get("id"),
+                "display_name": user.get("display_name", "Someone"),
+                "avatar_url": user.get("avatar_url", ""),
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                "bio": user.get("bio", ""),
+                "connected_at": glance["created_at"],
+                "venue_name": venue.get("name", "Nearby") if venue else "Nearby",
+                "connection_type": "mutual_glance"
+            })
+    
+    # 3. Get accepted icebreakers
+    accepted_icebreakers = await db.icebreakers.find({
+        "$or": [
+            {"from_user_id": current_user["id"], "status": "accepted"},
+            {"to_user_id": current_user["id"], "status": "accepted"}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    for ib in accepted_icebreakers:
+        other_user_id = ib["to_user_id"] if ib["from_user_id"] == current_user["id"] else ib["from_user_id"]
+        if other_user_id in seen_users:
+            continue
+        seen_users.add(other_user_id)
+        
+        user = await db.users.find_one({"id": other_user_id}, {"_id": 0, "password": 0})
+        if user:
+            venue = await db.venues.find_one({"id": ib.get("venue_id", "")}, {"_id": 0})
+            all_connections.append({
+                "id": f"icebreaker-{ib['id']}",
+                "user_id": user.get("id"),
+                "display_name": user.get("display_name", "Someone"),
+                "avatar_url": user.get("avatar_url", ""),
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                "bio": user.get("bio", ""),
+                "connected_at": ib.get("responded_at", ib.get("created_at")),
+                "venue_name": venue.get("name", "Via Icebreaker") if venue else "Via Icebreaker",
+                "connection_type": "icebreaker_accepted"
+            })
+    
+    # 4. Get accepted chat requests
+    accepted_chat_requests = await db.chat_requests.find({
+        "$or": [
+            {"from_user_id": current_user["id"], "status": "accepted"},
+            {"to_user_id": current_user["id"], "status": "accepted"}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    for req in accepted_chat_requests:
+        other_user_id = req["to_user_id"] if req["from_user_id"] == current_user["id"] else req["from_user_id"]
+        if other_user_id in seen_users:
+            continue
+        seen_users.add(other_user_id)
+        
+        user = await db.users.find_one({"id": other_user_id}, {"_id": 0, "password": 0})
+        if user:
+            venue = await db.venues.find_one({"id": req.get("venue_id", "")}, {"_id": 0})
+            all_connections.append({
+                "id": f"chat-request-{req['id']}",
+                "user_id": user.get("id"),
+                "display_name": user.get("display_name", "Someone"),
+                "avatar_url": user.get("avatar_url", ""),
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                "bio": user.get("bio", ""),
+                "connected_at": req.get("responded_at", req.get("created_at")),
+                "venue_name": venue.get("name", "Via Chat Request") if venue else "Via Chat Request",
+                "connection_type": "chat_request_accepted"
+            })
+    
+    # 5. Get mutual messagers (both sent AND received messages)
+    my_sent_messages = await db.messages.distinct("to_user_id", {"from_user_id": current_user["id"]})
+    my_received_messages = await db.messages.distinct("from_user_id", {"to_user_id": current_user["id"]})
+    mutual_messagers = set(my_sent_messages) & set(my_received_messages)
+    
+    for other_id in mutual_messagers:
+        if other_id in seen_users:
+            continue
+        seen_users.add(other_id)
+        
+        user = await db.users.find_one({"id": other_id}, {"_id": 0, "password": 0})
+        if user:
+            # Find latest message for timestamp
+            latest_msg = await db.messages.find_one(
+                {"$or": [
+                    {"from_user_id": current_user["id"], "to_user_id": other_id},
+                    {"from_user_id": other_id, "to_user_id": current_user["id"]}
+                ]},
+                {"_id": 0},
+                sort=[("created_at", -1)]
+            )
+            all_connections.append({
+                "id": f"mutual-msg-{other_id}",
+                "user_id": user.get("id"),
+                "display_name": user.get("display_name", "Someone"),
+                "avatar_url": user.get("avatar_url", ""),
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                "bio": user.get("bio", ""),
+                "connected_at": latest_msg.get("created_at") if latest_msg else datetime.now(timezone.utc).isoformat(),
+                "venue_name": "Via Messages",
+                "connection_type": "mutual_messaging"
+            })
+    
+    # Sort by most recent connection
+    all_connections.sort(key=lambda x: x.get("connected_at", ""), reverse=True)
+    
+    return all_connections
 
 
 @router.delete("/connections/{user_id}/clear")
