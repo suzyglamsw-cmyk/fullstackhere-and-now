@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth, API } from "@/App";
@@ -9,6 +9,7 @@ import PageHeader from "../components/PageHeader";
 import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflake, MessageSquare, Lock, ShieldOff, AlertTriangle } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
 import BlurredImage from "../components/BlurredImage";
+import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +44,9 @@ const UserProfile = () => {
   const [selectedIcebreaker, setSelectedIcebreaker] = useState(null);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  
+  // Global ref for confirmation hints (only one visible at a time)
+  const confirmHintRef = useConfirmHintGlobal();
 
   useEffect(() => {
     fetchProfile();
@@ -354,37 +358,49 @@ const UserProfile = () => {
               <div className="grid grid-cols-3 gap-2">
                 {/* Glance Button */}
                 {profile.can_glance_back ? (
-                  <Button
-                    data-testid="glance-back-btn"
-                    onClick={handleGlance}
+                  <ConfirmHint
+                    hint="Send a glance?"
+                    onConfirm={handleGlance}
                     disabled={glancing}
-                    className="rounded-xl bg-gradient-to-r from-pink-500 to-indigo-500 text-white font-medium hover:opacity-90 h-12"
+                    globalPendingRef={confirmHintRef}
                   >
-                    {glancing ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Eye className="w-4 h-4 mr-1" />
-                        <span className="text-xs">Glance Back</span>
-                      </>
-                    )}
-                  </Button>
+                    <Button
+                      data-testid="glance-back-btn"
+                      disabled={glancing}
+                      className="rounded-xl bg-gradient-to-r from-pink-500 to-indigo-500 text-white font-medium hover:opacity-90 h-12"
+                    >
+                      {glancing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Eye className="w-4 h-4 mr-1" />
+                          <span className="text-xs">Glance Back</span>
+                        </>
+                      )}
+                    </Button>
+                  </ConfirmHint>
                 ) : !profile.i_glanced_at_them ? (
-                  <Button
-                    data-testid="glance-btn"
-                    onClick={handleGlance}
+                  <ConfirmHint
+                    hint="Send a glance?"
+                    onConfirm={handleGlance}
                     disabled={glancing}
-                    className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:opacity-90 h-12"
+                    globalPendingRef={confirmHintRef}
                   >
-                    {glancing ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Eye className="w-4 h-4 mr-1" />
-                        <span className="text-xs">Glance</span>
-                      </>
-                    )}
-                  </Button>
+                    <Button
+                      data-testid="glance-btn"
+                      disabled={glancing}
+                      className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:opacity-90 h-12"
+                    >
+                      {glancing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Eye className="w-4 h-4 mr-1" />
+                          <span className="text-xs">Glance</span>
+                        </>
+                      )}
+                    </Button>
+                  </ConfirmHint>
                 ) : (
                   <Button
                     disabled
@@ -405,14 +421,19 @@ const UserProfile = () => {
                     <span className="text-xs">Sent</span>
                   </Button>
                 ) : (
-                  <Button
-                    data-testid="icebreaker-btn"
-                    onClick={() => setShowIcebreakerModal(true)}
-                    className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium hover:opacity-90 h-12"
+                  <ConfirmHint
+                    hint="Send an icebreaker?"
+                    onConfirm={() => setShowIcebreakerModal(true)}
+                    globalPendingRef={confirmHintRef}
                   >
-                    <Snowflake className="w-4 h-4 mr-1" />
-                    <span className="text-xs">Icebreaker</span>
-                  </Button>
+                    <Button
+                      data-testid="icebreaker-btn"
+                      className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium hover:opacity-90 h-12"
+                    >
+                      <Snowflake className="w-4 h-4 mr-1" />
+                      <span className="text-xs">Icebreaker</span>
+                    </Button>
+                  </ConfirmHint>
                 )}
 
                 {/* Chat Request Button */}
@@ -425,14 +446,19 @@ const UserProfile = () => {
                     <span className="text-xs">Requested</span>
                   </Button>
                 ) : (
-                  <Button
-                    data-testid="chat-request-btn"
-                    onClick={() => setShowChatRequestModal(true)}
-                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:opacity-90 h-12"
+                  <ConfirmHint
+                    hint="Send a chat request?"
+                    onConfirm={() => setShowChatRequestModal(true)}
+                    globalPendingRef={confirmHintRef}
                   >
-                    <MessageSquare className="w-4 h-4 mr-1" />
-                    <span className="text-xs">Chat Request</span>
-                  </Button>
+                    <Button
+                      data-testid="chat-request-btn"
+                      className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:opacity-90 h-12"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-1" />
+                      <span className="text-xs">Chat Request</span>
+                    </Button>
+                  </ConfirmHint>
                 )}
               </div>
 
@@ -480,28 +506,41 @@ const UserProfile = () => {
                     Requested
                   </Button>
                 ) : profile.friend_request_received ? (
-                  <Button
-                    data-testid="accept-friend-btn"
-                    onClick={handleAcceptFriendRequest}
-                    className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white h-12"
+                  <ConfirmHint
+                    hint="Add as a friend?"
+                    onConfirm={handleAcceptFriendRequest}
+                    globalPendingRef={confirmHintRef}
+                    className="flex-1"
                   >
-                    <Heart className="w-4 h-4 mr-2" />
-                    Accept
-                  </Button>
+                    <Button
+                      data-testid="accept-friend-btn"
+                      className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white h-12"
+                    >
+                      <Heart className="w-4 h-4 mr-2" />
+                      Accept
+                    </Button>
+                  </ConfirmHint>
                 ) : profile.can_add_friend ? (
-                  <Button
-                    data-testid="add-friend-btn"
-                    onClick={handleAddFriend}
+                  <ConfirmHint
+                    hint="Send friend request?"
+                    onConfirm={handleAddFriend}
                     disabled={addingFriend}
-                    className="flex-1 rounded-xl bg-pink-500 hover:bg-pink-600 text-white h-12"
+                    globalPendingRef={confirmHintRef}
+                    className="flex-1"
                   >
-                    {addingFriend ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <UserPlus className="w-4 h-4 mr-2" />
-                    )}
-                    Add Friend
-                  </Button>
+                    <Button
+                      data-testid="add-friend-btn"
+                      disabled={addingFriend}
+                      className="w-full rounded-xl bg-pink-500 hover:bg-pink-600 text-white h-12"
+                    >
+                      {addingFriend ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <UserPlus className="w-4 h-4 mr-2" />
+                      )}
+                      Add Friend
+                    </Button>
+                  </ConfirmHint>
                 ) : (
                   <Button
                     data-testid="add-friend-locked-btn"

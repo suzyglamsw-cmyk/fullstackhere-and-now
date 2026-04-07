@@ -8,6 +8,7 @@ import Layout from "../components/Layout";
 import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Snowflake, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2, Ban, UserMinus, MoreVertical, Wine, Archive } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
 import BlurredImage from "../components/BlurredImage";
+import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 
 const ICEBREAKER_MESSAGES = [
   "Hello",
@@ -33,6 +34,9 @@ const Connections = () => {
   const [chatActionSheet, setChatActionSheet] = useState(null); // For chat request actions
   const [clearConfirmUser, setClearConfirmUser] = useState(null); // For clear from matches confirmation
   const [tab, setTab] = useState(searchParams.get("tab") || "messages"); // "messages" | "glances" | "icebreakers" | "chats" | "requests" | "friends" | "connections"
+  
+  // Global ref for confirmation hints (only one visible at a time)
+  const confirmHintRef = useConfirmHintGlobal();
 
   useEffect(() => {
     fetchAllData();
@@ -1014,14 +1018,19 @@ const Connections = () => {
                           </p>
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            data-testid={`accept-${request.id}`}
-                            onClick={() => handleAcceptRequest(request.id)}
-                            size="sm"
-                            className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
+                          <ConfirmHint
+                            hint="Add as a friend?"
+                            onConfirm={() => handleAcceptRequest(request.id)}
+                            globalPendingRef={confirmHintRef}
                           >
-                            <Check className="w-4 h-4" />
-                          </Button>
+                            <Button
+                              data-testid={`accept-${request.id}`}
+                              size="sm"
+                              className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                          </ConfirmHint>
                           <Button
                             data-testid={`delete-incoming-request-${request.id}`}
                             onClick={() => handleDeleteFriendRequest(request.id)}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth, API } from "@/App";
@@ -7,6 +7,7 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import BlurredImage from "../components/BlurredImage";
 import { getErrorMessage } from "../utils/errorUtils";
+import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 import {
   Eye,
   Snowflake,
@@ -89,6 +90,9 @@ const Discovery = ({ defaultMode = null }) => {
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [sendingIcebreaker, setSendingIcebreaker] = useState(false);
   const [sendingChatRequest, setSendingChatRequest] = useState(null);
+  
+  // Global ref for confirmation hints (only one visible at a time)
+  const confirmHintRef = useConfirmHintGlobal();
 
   // Update mode when route changes
   useEffect(() => {
@@ -627,6 +631,7 @@ const Discovery = ({ defaultMode = null }) => {
                     sendingChatRequest={sendingChatRequest}
                     isVenueContext={true}
                     venueId={venue?.id}
+                    globalPendingRef={confirmHintRef}
                   />
                 ))}
               </div>
@@ -763,6 +768,7 @@ const Discovery = ({ defaultMode = null }) => {
                   sendingChatRequest={sendingChatRequest}
                   isVenueContext={false}
                   venueId="not-here"
+                  globalPendingRef={confirmHintRef}
                 />
               ))}
             </div>
@@ -788,7 +794,7 @@ const Discovery = ({ defaultMode = null }) => {
 // ============================================================================
 // Person Card Component
 // ============================================================================
-const PersonCard = ({ person, onGlance, onIcebreaker, onChatRequest, glancing, sendingChatRequest, isVenueContext, venueId }) => {
+const PersonCard = ({ person, onGlance, onIcebreaker, onChatRequest, glancing, sendingChatRequest, isVenueContext, venueId, globalPendingRef }) => {
   const navigate = useNavigate();
   
   // Check if this is the user's own card
@@ -1000,87 +1006,121 @@ const PersonCard = ({ person, onGlance, onIcebreaker, onChatRequest, glancing, s
         {/* Pre-reveal state: Show Glance, Icebreaker, and Chat Request icons */}
         {!person.is_revealed ? (
           <>
-            {/* Glance Button (Eye icon) */}
-            <Button
-              data-testid={`glance-btn-${person.id}`}
-              size="icon"
-              variant="ghost"
-              className={`w-10 h-10 rounded-full ${
-                person.i_glanced_at
-                  ? "bg-pink-500/20 text-pink-400"
-                  : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onGlance(person.id, venueId);
-              }}
-              disabled={glancing === person.id || person.i_glanced_at}
-              title={person.i_glanced_at ? "Glanced" : "Send a glance"}
-            >
-              {glancing === person.id ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
+            {/* Glance Button (Eye icon) - with confirmation hint */}
+            {person.i_glanced_at ? (
+              <Button
+                data-testid={`glance-btn-${person.id}`}
+                size="icon"
+                variant="ghost"
+                className="w-10 h-10 rounded-full bg-pink-500/20 text-pink-400"
+                disabled
+                title="Glanced"
+              >
                 <Eye className="w-5 h-5" />
-              )}
-            </Button>
+              </Button>
+            ) : (
+              <ConfirmHint
+                hint="Send a glance?"
+                onConfirm={() => onGlance(person.id, venueId)}
+                disabled={glancing === person.id}
+                globalPendingRef={globalPendingRef}
+              >
+                <Button
+                  data-testid={`glance-btn-${person.id}`}
+                  size="icon"
+                  variant="ghost"
+                  className="w-10 h-10 rounded-full bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                  disabled={glancing === person.id}
+                  title="Send a glance"
+                >
+                  {glancing === person.id ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </Button>
+              </ConfirmHint>
+            )}
             
-            {/* Icebreaker Button (Snowflake icon) */}
-            <Button
-              data-testid={`icebreaker-btn-${person.id}`}
-              size="icon"
-              variant="ghost"
-              className={`w-10 h-10 rounded-full ${
-                person.icebreaker_sent
-                  ? "bg-amber-500/20 text-amber-400"
-                  : person.icebreaker_received
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white animate-pulse"
-                    : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (person.icebreaker_received) {
+            {/* Icebreaker Button (Snowflake icon) - with confirmation hint */}
+            {person.icebreaker_sent ? (
+              <Button
+                data-testid={`icebreaker-btn-${person.id}`}
+                size="icon"
+                variant="ghost"
+                className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400"
+                disabled
+                title="Icebreaker sent"
+              >
+                <Snowflake className="w-5 h-5" />
+              </Button>
+            ) : person.icebreaker_received ? (
+              <Button
+                data-testid={`icebreaker-btn-${person.id}`}
+                size="icon"
+                variant="ghost"
+                className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white animate-pulse"
+                onClick={(e) => {
+                  e.stopPropagation();
                   navigate(`/profile/${person.id}`);
-                } else if (!person.icebreaker_sent) {
-                  onIcebreaker(person);
-                }
-              }}
-              disabled={person.icebreaker_sent}
-              title={
-                person.icebreaker_sent 
-                  ? "Icebreaker sent" 
-                  : person.icebreaker_received 
-                    ? "Reply to icebreaker" 
-                    : "Send an icebreaker"
-              }
-            >
-              <Snowflake className="w-5 h-5" />
-            </Button>
+                }}
+                title="Reply to icebreaker"
+              >
+                <Snowflake className="w-5 h-5" />
+              </Button>
+            ) : (
+              <ConfirmHint
+                hint="Send an icebreaker?"
+                onConfirm={() => onIcebreaker(person)}
+                globalPendingRef={globalPendingRef}
+              >
+                <Button
+                  data-testid={`icebreaker-btn-${person.id}`}
+                  size="icon"
+                  variant="ghost"
+                  className="w-10 h-10 rounded-full bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                  title="Send an icebreaker"
+                >
+                  <Snowflake className="w-5 h-5" />
+                </Button>
+              </ConfirmHint>
+            )}
             
-            {/* Chat Request Button (MessageSquare icon) */}
-            <Button
-              data-testid={`chat-request-btn-${person.id}`}
-              size="icon"
-              variant="ghost"
-              className={`w-10 h-10 rounded-full ${
-                person.chat_request_sent
-                  ? "bg-purple-500/20 text-purple-400"
-                  : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!person.chat_request_sent && onChatRequest) {
-                  onChatRequest(person);
-                }
-              }}
-              disabled={sendingChatRequest === person.id || person.chat_request_sent}
-              title={person.chat_request_sent ? "Chat request sent" : "Send a chat request"}
-            >
-              {sendingChatRequest === person.id ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
+            {/* Chat Request Button (MessageSquare icon) - with confirmation hint */}
+            {person.chat_request_sent ? (
+              <Button
+                data-testid={`chat-request-btn-${person.id}`}
+                size="icon"
+                variant="ghost"
+                className="w-10 h-10 rounded-full bg-purple-500/20 text-purple-400"
+                disabled
+                title="Chat request sent"
+              >
                 <MessageSquare className="w-5 h-5" />
-              )}
-            </Button>
+              </Button>
+            ) : (
+              <ConfirmHint
+                hint="Send a chat request?"
+                onConfirm={() => onChatRequest && onChatRequest(person)}
+                disabled={sendingChatRequest === person.id}
+                globalPendingRef={globalPendingRef}
+              >
+                <Button
+                  data-testid={`chat-request-btn-${person.id}`}
+                  size="icon"
+                  variant="ghost"
+                  className="w-10 h-10 rounded-full bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                  disabled={sendingChatRequest === person.id}
+                  title="Send a chat request"
+                >
+                  {sendingChatRequest === person.id ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <MessageSquare className="w-5 h-5" />
+                  )}
+                </Button>
+              </ConfirmHint>
+            )}
           </>
         ) : person.is_connected ? (
           /* Post-reveal AND connected: Show Message button */

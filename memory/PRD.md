@@ -449,6 +449,22 @@ Comprehensive list including:
 - **File Changed**: `/app/frontend/src/pages/Discovery.js`
 - **Verified**: Chat requests stored in `db.chat_requests` with `request_type: "chat"`, displayed in Matches → Chat Requests
 
+### Two-Tap Confirmation Hints (April 7, 2026)
+- **Feature**: Added always-on confirmation hints for high-impact actions to prevent accidental taps
+- **Actions with hints**: Glance, Icebreaker, Chat Request, Friend Request, Add Friend
+- **Behavior**: 
+  - First tap shows tooltip hint above button (no action)
+  - Second tap within 3 seconds performs action
+  - Clicking elsewhere or scrolling cancels pending action
+  - Auto-dismiss after 3 seconds
+- **Style**: Black/white tooltip, rounded edges, subtle shadow, button highlight ring
+- **Microcopy**: "Send a glance?", "Send an icebreaker?", "Send a chat request?", "Send friend request?", "Add as a friend?"
+- **Files Changed**:
+  - Created `/app/frontend/src/components/ConfirmHint.js`
+  - Updated `/app/frontend/src/pages/Discovery.js`
+  - Updated `/app/frontend/src/pages/UserProfile.js`
+  - Updated `/app/frontend/src/pages/Connections.js`
+
 ## Environment Variables
 
 ### Backend (.env)
@@ -462,4 +478,4 @@ Comprehensive list including:
 - REACT_APP_BACKEND_URL
 
 ---
-*Last Updated: April 7, 2026 - Chat Request Thumbs Fix*
+*Last Updated: April 7, 2026 - Two-Tap Confirmation Hints*
