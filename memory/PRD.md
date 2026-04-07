@@ -477,5 +477,14 @@ Comprehensive list including:
 ### Frontend (.env)
 - REACT_APP_BACKEND_URL
 
+### Block Event Subscription System (April 7, 2026)
+- **Global Event Architecture**: Custom DOM events via `blockEvents.js` for instant UI sync
+- **Components subscribed to block events**:
+  - `Discovery.js` - Filters blocked users from people and proximityEchoes
+  - `WhosHere.js` - Filters blocked users from Here Now venue list  
+  - `Connections.js` - Filters blocked users from matches/connections
+  - `UserProfile.js` - Dispatches block events when user is blocked
+- **Behavior**: Blocked users instantly disappear from all discovery surfaces without page reload
+
 ---
-*Last Updated: April 7, 2026 - Two-Tap Confirmation Hints*
+*Last Updated: April 7, 2026 - Block Event Subscription System*
