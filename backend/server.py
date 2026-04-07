@@ -761,8 +761,6 @@ class WhoIsHereUser(BaseModel):
     celebrity_crush: Optional[str] = ""
     shy_indicator: bool = False
     voice_intro_url: Optional[str] = ""  # Only shown after reveal
-    # Safety Halo (shown after reveal)
-    has_safety_halo: bool = False
     distance_miles: Optional[float] = None  # For Not Here mode
     is_self: bool = False  # Flag to identify current user in feed
     # Icebreaker states for reveal logic
@@ -774,12 +772,6 @@ class WhoIsHereUser(BaseModel):
     rainbow: bool = False  # LGBTQ+ visibility flag
     open_to_all: bool = False  # Open to everyone (overrides rainbow separation)
     intent: Optional[str] = ""  # "dating", "friends", "open_to_both"
-
-def calculate_safety_halo(user_data: dict) -> bool:
-    """Calculate if user qualifies for Safety Halo badge"""
-    reports = user_data.get("reports_count", 0)
-    blocks = user_data.get("blocks_received_count", 0)
-    return reports == 0 and blocks == 0
 
 def calculate_distance_miles(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate distance between two coordinates in miles using Haversine formula"""
@@ -3951,7 +3943,6 @@ async def get_people_at_venue(
             "shy_indicator": user.get("shy_indicator", False),
             # Only shown after reveal
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
-            "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
         })
     
     # Sort: Premium users first, then by checked_in_at (most recent first)
@@ -4134,7 +4125,6 @@ async def get_people_not_here(
             "celebrity_crush": user.get("celebrity_crush", ""),
             "shy_indicator": user.get("shy_indicator", False),
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
-            "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
             "distance_miles": round(distance, 1),
             "is_self": is_self,  # Flag to identify current user in feed
         }
@@ -4284,7 +4274,6 @@ async def get_people_here(
             "celebrity_crush": user.get("celebrity_crush", ""),
             "shy_indicator": user.get("shy_indicator", False),
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
-            "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
             "distance_miles": round(distance, 1),
             "presence_status": "here"
         })
@@ -5337,11 +5326,25 @@ async def get_message_threads(current_user: dict = Depends(get_current_user)):
         
         if user:
             last_msg = thread_data["last_message"]
+            # Get profile photo URL - use first photo if available, otherwise avatar_url
+            photos = user.get("photos", [])
+            first_photo = photos[0] if photos and photos[0] else None
+            profile_photo_url = ""
+            if first_photo:
+                profile_photo_url = f"/api/photos/serve/{first_photo}"
+            elif user.get("avatar_url"):
+                avatar = user.get("avatar_url", "")
+                if avatar and not avatar.startswith("http"):
+                    profile_photo_url = f"/api/photos/serve/{avatar}"
+                else:
+                    profile_photo_url = avatar
+            
             result.append({
                 "user_id": user.get("id"),
                 "display_name": user.get("display_name", "Someone"),
                 "avatar_url": user.get("avatar_url", ""),
                 "thumbnail_url": user.get("thumbnail_url", ""),
+                "profile_photo_url": profile_photo_url,
                 "last_message": last_msg.get("content", "")[:50],
                 "last_message_at": last_msg.get("created_at"),
                 "unread_count": thread_data["unread_count"],

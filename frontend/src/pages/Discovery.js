@@ -18,7 +18,6 @@ import {
   Users,
   Crown,
   Bell,
-  Shield,
   Mic,
   Heart,
   Radio,
@@ -997,13 +996,6 @@ const PersonCard = ({ person, onGlance, onIcebreaker, onChatRequest, glancing, s
             </div>
           )}
         </div>
-        
-        {/* Safety Halo */}
-        {person.has_safety_halo && person.is_revealed && (
-          <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-emerald-500/90 flex items-center gap-1">
-            <Shield className="w-3 h-3 text-white" />
-          </div>
-        )}
         
         {/* Mutual Match Badge - shows when both revealed and connected */}
         {person.is_revealed && person.is_connected && (

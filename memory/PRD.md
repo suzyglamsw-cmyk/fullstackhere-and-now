@@ -546,5 +546,16 @@ Comprehensive list including:
 - Both fields must be completed before profile can be saved
 - Applies to all users including existing accounts
 
+### Safety Halo Removal (April 7, 2026)
+- Completely removed Safety Halo feature from the codebase
+- Removed `has_safety_halo` field from all API responses
+- Removed `calculate_safety_halo()` function
+- Removed Shield badge from Discovery.js
+
+### Messages List Avatar Fix (April 7, 2026)
+- Added `profile_photo_url` to message threads API response
+- Fallback order: `thumbnail_url` → `profile_photo_url` → placeholder
+- Consistent with Matches and Glances fallback logic
+
 ---
-*Last Updated: April 7, 2026 - Mutual Match Logic & Profile Required Fields*
+*Last Updated: April 7, 2026 - Safety Halo Removal & Messages Avatar Fix*

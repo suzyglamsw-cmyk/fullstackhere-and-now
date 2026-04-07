@@ -503,7 +503,7 @@ const Connections = () => {
                   >
                     <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
                       <img
-                        src={thread.thumbnail_url || thread.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
+                        src={thread.thumbnail_url || thread.profile_photo_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
                         alt={thread.display_name}
                         className="w-full h-full object-cover"
                       />

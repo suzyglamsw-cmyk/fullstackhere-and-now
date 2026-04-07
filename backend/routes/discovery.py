@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 from .dependencies import (
     db, get_current_user, IS_TEST_BUILD,
     WhoIsHereUser,
-    calculate_distance_miles, calculate_safety_halo,
+    calculate_distance_miles,
     is_checkin_valid, get_first_name, check_dating_compatibility,
     check_visibility_match, get_photo_url
 )
@@ -234,7 +234,6 @@ async def get_people_not_here(
             "celebrity_crush": user.get("celebrity_crush", ""),
             "shy_indicator": user.get("shy_indicator", False),
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
-            "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
             "distance_miles": round(distance, 1),
             "show_as": user.get("show_as", ""),
             "rainbow": user.get("rainbow", False),
@@ -350,7 +349,6 @@ async def get_people_here(
             "celebrity_crush": "",
             "shy_indicator": current_user.get("shy_indicator", False),
             "voice_intro_url": "",
-            "has_safety_halo": False,
             "distance_miles": 0,
             "hide_photo_in_venues": current_user.get("hide_photo_in_venues", False),
             "is_self": True,  # Mark as self card
@@ -508,7 +506,6 @@ async def get_people_here(
             "celebrity_crush": user.get("celebrity_crush", ""),
             "shy_indicator": user.get("shy_indicator", False),
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
-            "has_safety_halo": calculate_safety_halo(user) if is_revealed else False,
             "distance_miles": round(distance, 1),
             "venue_name": venue_name if is_revealed else None,
             "show_as": user.get("show_as", ""),

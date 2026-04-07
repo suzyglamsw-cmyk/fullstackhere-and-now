@@ -13,7 +13,7 @@ from .dependencies import (
     FREE_DAILY_ICEBREAKERS, PREMIUM_DAILY_ICEBREAKERS,
     GlanceCreate, IcebreakerCreate, IcebreakerResponse, IcebreakerActionRequest,
     ConnectionResponse, MessageCreate, MessageResponse, MarkMessagesRead,
-    calculate_safety_halo, get_first_name, check_chat_unlocked,
+    get_first_name, check_chat_unlocked,
     ICEBREAKER_MESSAGES
 )
 

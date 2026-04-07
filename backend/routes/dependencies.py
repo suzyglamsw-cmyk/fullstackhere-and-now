@@ -592,13 +592,6 @@ def is_checkin_valid(checkin: dict) -> bool:
         return False
 
 
-def calculate_safety_halo(user_data: dict) -> bool:
-    """Calculate if user qualifies for Safety Halo badge"""
-    reports = user_data.get("reports_received", 0)
-    blocks = user_data.get("blocks_received", 0)
-    return reports == 0 and blocks < 2
-
-
 def calculate_distance_miles(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate distance between two coordinates in miles"""
     from math import cos, radians
@@ -739,7 +732,6 @@ class WhoIsHereUser(BaseModel):
     celebrity_crush: Optional[str] = ""
     shy_indicator: bool = False
     voice_intro_url: Optional[str] = ""
-    has_safety_halo: bool = False
     distance_miles: Optional[float] = None
     hide_photo_in_venues: bool = False  # Show silhouette instead of blurred photo in venue lists
     is_self: bool = False  # True if this is the current user's own card
@@ -833,12 +825,6 @@ ICEBREAKER_MESSAGES = [
     "Fancy a chat?",
     "Can I buy you a drink?"
 ]
-
-def calculate_safety_halo(user_data: dict) -> bool:
-    """Calculate if user qualifies for Safety Halo badge"""
-    reports = user_data.get("reports_count", 0)
-    blocks = user_data.get("blocks_received_count", 0)
-    return reports == 0 and blocks == 0
 
 def calculate_distance_miles(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate distance between two coordinates in miles using Haversine formula"""
