@@ -107,6 +107,13 @@ const Discovery = ({ defaultMode = null }) => {
   // Listen for block events and remove blocked users from all lists
   useEffect(() => {
     const cleanup = onUserBlocked((blockedUserId) => {
+      // Update local user's blocked_users list to ensure filter works
+      if (user && !user.blocked_users?.includes(blockedUserId)) {
+        updateUser({
+          blocked_users: [...(user.blocked_users || []), blockedUserId]
+        });
+      }
+      
       // Immediately remove blocked user from people list (covers both Here and Not Here)
       setPeople(prev => prev.filter(p => p.id !== blockedUserId));
       
@@ -131,7 +138,7 @@ const Discovery = ({ defaultMode = null }) => {
       }
     });
     return cleanup;
-  }, []);
+  }, [user, updateUser]);
 
   // REQUEST AND UPDATE GPS LOCATION - Strict enforcement
   const requestAndUpdateLocation = useCallback(async () => {
@@ -305,7 +312,18 @@ const Discovery = ({ defaultMode = null }) => {
         : `${API}/discovery/not-here?radius=${radius}`;
       
       const response = await axios.get(endpoint);
-      setPeople(response.data || []);
+      let fetchedPeople = response.data || [];
+      
+      // Frontend defense: filter out blocked users (in case backend hasn't synced yet)
+      const blockedUsers = user?.blocked_users || [];
+      const blockedByUsers = user?.blocked_by_users || [];
+      if (blockedUsers.length > 0 || blockedByUsers.length > 0) {
+        fetchedPeople = fetchedPeople.filter(p => 
+          !blockedUsers.includes(p.id) && !blockedByUsers.includes(p.id)
+        );
+      }
+      
+      setPeople(fetchedPeople);
     } catch (error) {
       if (error.response?.status !== 403) {
         console.error("Failed to fetch people:", error);

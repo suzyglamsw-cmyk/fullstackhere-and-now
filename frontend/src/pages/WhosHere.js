@@ -66,7 +66,7 @@ const SilhouetteAvatar = ({ className = "" }) => (
 const WhosHere = () => {
   const { venueId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [venue, setVenue] = useState(null);
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,6 +102,13 @@ const WhosHere = () => {
   // Listen for block events and remove blocked users from the Here Now list
   useEffect(() => {
     const cleanup = onUserBlocked((blockedUserId) => {
+      // Update local user's blocked_users list to ensure filter works
+      if (user && !user.blocked_users?.includes(blockedUserId)) {
+        updateUser({
+          blocked_users: [...(user.blocked_users || []), blockedUserId]
+        });
+      }
+      
       // Immediately remove blocked user from people list
       setPeople(prev => prev.filter(p => p.id !== blockedUserId));
       
@@ -121,7 +128,7 @@ const WhosHere = () => {
       fetchPeople();
     });
     return cleanup;
-  }, []);
+  }, [user, updateUser]);
 
   const connectWebSocket = () => {
     const wsUrl = process.env.REACT_APP_BACKEND_URL.replace("https://", "wss://").replace("http://", "ws://");
@@ -208,7 +215,18 @@ const WhosHere = () => {
     try {
       const params = lastActiveFilter ? `?last_active_filter=${lastActiveFilter}` : '';
       const response = await axios.get(`${API}/venues/${venueId}/people${params}`);
-      setPeople(response.data);
+      let fetchedPeople = response.data || [];
+      
+      // Frontend defense: filter out blocked users (in case backend hasn't synced yet)
+      const blockedUsers = user?.blocked_users || [];
+      const blockedByUsers = user?.blocked_by_users || [];
+      if (blockedUsers.length > 0 || blockedByUsers.length > 0) {
+        fetchedPeople = fetchedPeople.filter(p => 
+          !blockedUsers.includes(p.id) && !blockedByUsers.includes(p.id)
+        );
+      }
+      
+      setPeople(fetchedPeople);
     } catch (error) {
       toast.error("Failed to load people");
     } finally {

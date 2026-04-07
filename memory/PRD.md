@@ -486,5 +486,14 @@ Comprehensive list including:
   - `UserProfile.js` - Dispatches block events when user is blocked
 - **Behavior**: Blocked users instantly disappear from all discovery surfaces without page reload
 
+### Block Filtering Fix (April 7, 2026)
+- **Root cause**: `check_visibility_match()` didn't check blocked user status
+- **Backend fix**: Added blocked user check at start of `check_visibility_match()` in `dependencies.py`
+  - Filters users in current user's `blocked_users` array
+  - Filters users in current user's `blocked_by_users` array (bilateral blocking)
+- **Frontend defense**: Added client-side filtering in `fetchPeople()` for both Discovery.js and WhosHere.js
+  - Filters blocked users immediately after fetch, before setting state
+  - Updates local `user.blocked_users` state when block event fires
+
 ---
 *Last Updated: April 7, 2026 - Block Event Subscription System*

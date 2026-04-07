@@ -826,19 +826,31 @@ def get_venue_checkin_radius(venue_type: str) -> int:
 def check_visibility_match(current_user: dict, other_user: dict) -> bool:
     """
     Check if other_user should be visible to current_user based on:
-    1. Gender matching (seeking preferences) - bidirectional
-    2. Visibility boundary rules (rainbow + openToAll)
+    1. Block status - blocked users are never visible
+    2. Gender matching (seeking preferences) - bidirectional
+    3. Visibility boundary rules (rainbow + openToAll)
     
     Returns True if other_user should be visible to current_user.
     
     Visibility rules:
     - User A sees User B only if:
-      a) A's seeking includes B's show_as AND B's seeking includes A's show_as
-      b) Visibility boundary rules:
+      a) Neither has blocked the other
+      b) A's seeking includes B's show_as AND B's seeking includes A's show_as
+      c) Visibility boundary rules:
          - If openToAll=true (either user): Full visibility (overrides rainbow separation)
          - If rainbow=false AND openToAll=false: ONLY see rainbow=false AND openToAll=false
          - If rainbow=true AND openToAll=false: ONLY see rainbow=true AND openToAll=false
     """
+    # 0. Block check - FIRST priority
+    # If current user has blocked other user, hide them
+    current_blocked = current_user.get("blocked_users", []) or []
+    if other_user.get("id") in current_blocked:
+        return False
+    
+    # If other user has blocked current user, hide them
+    current_blocked_by = current_user.get("blocked_by_users", []) or []
+    if other_user.get("id") in current_blocked_by:
+        return False
     # Get current user's seeking preferences and show_as
     current_seeking = current_user.get("seeking", [])
     if isinstance(current_seeking, str):
