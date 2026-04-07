@@ -495,5 +495,20 @@ Comprehensive list including:
   - Filters blocked users immediately after fetch, before setting state
   - Updates local `user.blocked_users` state when block event fires
 
+### Daily Allowance & Token Fallback Logic (April 7, 2026)
+- **Priority order**: Daily free allowance → Token balance (fallback)
+- **Icebreakers & Chat Requests share the same daily pool**:
+  - Standard users: 1 free/day
+  - Premium users: 5 free/day
+  - Resets at 5am local time
+- **Glances**:
+  - Standard users: 5 free/day  
+  - Premium users: 20 free/day
+  - Resets at 5am local time
+- **Token fallback**: When daily allowance exhausted, tokens are consumed automatically
+- **API response**: All action endpoints return `used_token: true/false` to indicate payment method
+- **New endpoint**: `GET /api/icebreakers/remaining` returns daily allowance status
+- **Fresh data**: All endpoints fetch fresh user data from DB (not cached JWT)
+
 ---
-*Last Updated: April 7, 2026 - Block Event Subscription System*
+*Last Updated: April 7, 2026 - Daily Allowance & Token Fallback Logic*

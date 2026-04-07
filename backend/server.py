@@ -55,9 +55,12 @@ AUTO_CHECKOUT_MINUTES = 120  # 2 hours - checkins expire after this time of inac
 
 # Premium/Token Config
 FREE_DAILY_GLANCES = 5
-FREE_DAILY_TOKENS = 1
+FREE_DAILY_ICEBREAKERS = 1
 PREMIUM_DAILY_GLANCES = 20
-PREMIUM_DAILY_TOKENS = 5
+PREMIUM_DAILY_ICEBREAKERS = 5
+# Legacy aliases for backward compatibility
+FREE_DAILY_TOKENS = FREE_DAILY_ICEBREAKERS
+PREMIUM_DAILY_TOKENS = PREMIUM_DAILY_ICEBREAKERS
 FREE_TOKEN_EXPIRY_HOURS = 24
 
 # Unlimited glances in test mode
@@ -1629,7 +1632,8 @@ async def reset_password(data: PasswordResetConfirm):
 
 @api_router.post("/chat-request")
 async def send_chat_request(data: ChatRequestCreate, current_user: dict = Depends(get_current_user)):
-    """Send a drink offer or chat request (costs 1 token)"""
+    """Send a drink offer or chat request. Uses daily icebreaker allowance first, then tokens as fallback."""
+    now = datetime.now(timezone.utc)
     
     # Check blocks (bilateral - both directions)
     target_user = await db.users.find_one({"id": data.to_user_id}, {"_id": 0})
@@ -1646,23 +1650,70 @@ async def send_chat_request(data: ChatRequestCreate, current_user: dict = Depend
     if data.to_user_id in current_user.get("blocked_by_users", []):
         raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
-    # Check token balance
-    free_tokens = current_user.get("free_tokens", [])
-    paid_balance = current_user.get("token_balance", 0)
+    # ========================================================================
+    # DAILY ICEBREAKER ALLOWANCE CHECK (with token fallback)
+    # Chat requests share the same daily allowance as icebreakers
+    # ========================================================================
+    bypass_limits = IS_TEST_BUILD or current_user.get("bypass_glance_limits", False)
     
-    # Filter expired free tokens
-    now = datetime.now(timezone.utc)
-    valid_free = [t for t in free_tokens if datetime.fromisoformat(t["expires_at"].replace('Z', '+00:00')) > now]
+    # Re-fetch user from database to get fresh daily usage counters
+    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    if not fresh_user:
+        raise HTTPException(status_code=401, detail="User not found")
     
-    if len(valid_free) == 0 and paid_balance == 0:
-        raise HTTPException(status_code=402, detail="You need tokens.")
+    is_premium = fresh_user.get("is_premium", False)
+    daily_limit = PREMIUM_DAILY_ICEBREAKERS if is_premium else FREE_DAILY_ICEBREAKERS
     
-    # Deduct token (free first)
-    if len(valid_free) > 0:
-        valid_free.pop(0)
-        await db.users.update_one({"id": current_user["id"]}, {"$set": {"free_tokens": valid_free}})
+    # Check if daily icebreaker counter needs reset (resets at 5am local)
+    icebreakers_reset_at = fresh_user.get("icebreakers_reset_at")
+    daily_used = fresh_user.get("daily_icebreakers_used", 0)
+    
+    if icebreakers_reset_at:
+        reset_time = datetime.fromisoformat(icebreakers_reset_at.replace("Z", "+00:00"))
+        if now >= reset_time:
+            daily_used = 0
+            next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
+            if now.hour >= 5:
+                next_reset = next_reset + timedelta(days=1)
+            await db.users.update_one(
+                {"id": current_user["id"]},
+                {"$set": {"daily_icebreakers_used": 0, "icebreakers_reset_at": next_reset.isoformat()}}
+            )
     else:
-        await db.users.update_one({"id": current_user["id"]}, {"$inc": {"token_balance": -1}})
+        # Initialize reset time for users who don't have one yet
+        next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
+        if now.hour >= 5:
+            next_reset = next_reset + timedelta(days=1)
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$set": {"icebreakers_reset_at": next_reset.isoformat()}}
+        )
+    
+    token_balance = fresh_user.get("token_balance", 0)
+    use_token = False
+    
+    # Priority: Use daily allowance first, then tokens as fallback
+    if daily_used < daily_limit:
+        # Still have daily icebreakers available
+        pass
+    elif token_balance > 0:
+        # Out of daily icebreakers, use token
+        use_token = True
+    elif not bypass_limits:
+        # No daily icebreakers AND no tokens
+        raise HTTPException(status_code=429, detail="no_icebreakers_remaining")
+    
+    # Track usage
+    if use_token:
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$inc": {"token_balance": -1}}
+        )
+    else:
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$inc": {"daily_icebreakers_used": 1}}
+        )
     
     request_id = str(uuid.uuid4())
     chat_request = {
@@ -1672,7 +1723,8 @@ async def send_chat_request(data: ChatRequestCreate, current_user: dict = Depend
         "venue_id": data.venue_id,
         "request_type": data.request_type,
         "status": "pending",
-        "created_at": now.isoformat()
+        "created_at": now.isoformat(),
+        "used_token": use_token  # Track if token was used
     }
     await db.chat_requests.insert_one(chat_request)
     
@@ -1683,14 +1735,14 @@ async def send_chat_request(data: ChatRequestCreate, current_user: dict = Depend
             "message": f"{current_user['display_name']} offered you a drink.",
             "from_user": {"id": current_user["id"], "display_name": current_user["display_name"]}
         })
-        return {"message": "Drink sent.", "request_id": request_id}
+        return {"message": "Drink sent.", "request_id": request_id, "used_token": use_token}
     else:
         await manager.send_to_user(data.to_user_id, {
             "type": "chat_request",
             "message": f"{current_user['display_name']} wants to chat sometime.",
             "from_user": {"id": current_user["id"], "display_name": current_user["display_name"]}
         })
-        return {"message": "Request sent.", "request_id": request_id}
+        return {"message": "Request sent.", "request_id": request_id, "used_token": use_token}
 
 @api_router.get("/chat-requests/inbox")
 async def get_chat_requests_inbox(current_user: dict = Depends(get_current_user)):

@@ -10,6 +10,7 @@ import uuid
 from .dependencies import (
     db, get_current_user, IS_TEST_BUILD,
     FREE_DAILY_GLANCES, PREMIUM_DAILY_GLANCES,
+    FREE_DAILY_ICEBREAKERS, PREMIUM_DAILY_ICEBREAKERS,
     GlanceCreate, IcebreakerCreate, IcebreakerResponse, IcebreakerActionRequest,
     ConnectionResponse, MessageCreate, MessageResponse, MarkMessagesRead,
     calculate_safety_halo, get_first_name, check_chat_unlocked,
@@ -30,17 +31,22 @@ async def send_push_notification(user_id: str, title: str, body: str, data: dict
 
 @router.post("/glance")
 async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_current_user)):
-    """Send a glance to another user at a venue"""
+    """Send a glance to another user at a venue. Uses daily allowance first, then tokens as fallback."""
     now = datetime.now(timezone.utc)
     
     # Check daily glance limit
     bypass_limits = IS_TEST_BUILD or current_user.get("bypass_glance_limits", False)
     
-    is_premium = current_user.get("is_premium", False)
+    # Re-fetch user from database to get fresh daily usage counters
+    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    if not fresh_user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    is_premium = fresh_user.get("is_premium", False)
     daily_limit = PREMIUM_DAILY_GLANCES if is_premium else FREE_DAILY_GLANCES
     
-    glances_reset_at = current_user.get("glances_reset_at")
-    daily_used = current_user.get("daily_glances_used", 0)
+    glances_reset_at = fresh_user.get("glances_reset_at")
+    daily_used = fresh_user.get("daily_glances_used", 0)
     
     if glances_reset_at:
         reset_time = datetime.fromisoformat(glances_reset_at.replace("Z", "+00:00"))
@@ -54,7 +60,7 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
                 {"$set": {"daily_glances_used": 0, "glances_reset_at": next_reset.isoformat()}}
             )
     
-    token_balance = current_user.get("token_balance", 0)
+    token_balance = fresh_user.get("token_balance", 0)
     use_token = False
     
     if daily_used < daily_limit:
@@ -149,14 +155,20 @@ async def mark_glance_viewed(glance_id: str, current_user: dict = Depends(get_cu
 
 @router.get("/glances/remaining")
 async def get_remaining_glances(current_user: dict = Depends(get_current_user)):
-    """Get remaining daily glances"""
-    is_premium = current_user.get("is_premium", False)
-    daily_limit = PREMIUM_DAILY_GLANCES if is_premium else FREE_DAILY_GLANCES
-    daily_used = current_user.get("daily_glances_used", 0)
-    token_balance = current_user.get("token_balance", 0)
-    
+    """Get remaining daily glances and token balance for fallback"""
     now = datetime.now(timezone.utc)
-    glances_reset_at = current_user.get("glances_reset_at")
+    
+    # Re-fetch user from database to get fresh daily usage counters
+    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    if not fresh_user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    is_premium = fresh_user.get("is_premium", False)
+    daily_limit = PREMIUM_DAILY_GLANCES if is_premium else FREE_DAILY_GLANCES
+    daily_used = fresh_user.get("daily_glances_used", 0)
+    token_balance = fresh_user.get("token_balance", 0)
+    
+    glances_reset_at = fresh_user.get("glances_reset_at")
     
     if glances_reset_at:
         reset_time = datetime.fromisoformat(glances_reset_at.replace("Z", "+00:00"))
@@ -197,7 +209,7 @@ async def delete_glance(glance_id: str, current_user: dict = Depends(get_current
 
 @router.post("/icebreaker")
 async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(get_current_user)):
-    """Send an icebreaker to another user"""
+    """Send an icebreaker to another user. Uses daily allowance first, then tokens as fallback."""
     now = datetime.now(timezone.utc)
     
     target_user = await db.users.find_one({"id": data.to_user_id}, {"_id": 0})
@@ -238,6 +250,70 @@ async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(g
     if data.message_type < 0 or data.message_type >= len(ICEBREAKER_MESSAGES):
         raise HTTPException(status_code=400, detail="Invalid message type")
     
+    # ========================================================================
+    # DAILY ICEBREAKER ALLOWANCE CHECK (with token fallback)
+    # ========================================================================
+    bypass_limits = IS_TEST_BUILD or current_user.get("bypass_glance_limits", False)
+    
+    # Re-fetch user from database to get fresh daily usage counters
+    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    if not fresh_user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    is_premium = fresh_user.get("is_premium", False)
+    daily_limit = PREMIUM_DAILY_ICEBREAKERS if is_premium else FREE_DAILY_ICEBREAKERS
+    
+    # Check if daily icebreaker counter needs reset (resets at 5am local)
+    icebreakers_reset_at = fresh_user.get("icebreakers_reset_at")
+    daily_used = fresh_user.get("daily_icebreakers_used", 0)
+    
+    if icebreakers_reset_at:
+        reset_time = datetime.fromisoformat(icebreakers_reset_at.replace("Z", "+00:00"))
+        if now >= reset_time:
+            daily_used = 0
+            next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
+            if now.hour >= 5:
+                next_reset = next_reset + timedelta(days=1)
+            await db.users.update_one(
+                {"id": current_user["id"]},
+                {"$set": {"daily_icebreakers_used": 0, "icebreakers_reset_at": next_reset.isoformat()}}
+            )
+    else:
+        # Initialize reset time for users who don't have one yet
+        next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
+        if now.hour >= 5:
+            next_reset = next_reset + timedelta(days=1)
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$set": {"icebreakers_reset_at": next_reset.isoformat()}}
+        )
+    
+    token_balance = fresh_user.get("token_balance", 0)
+    use_token = False
+    
+    # Priority: Use daily allowance first, then tokens as fallback
+    if daily_used < daily_limit:
+        # Still have daily icebreakers available
+        pass
+    elif token_balance > 0:
+        # Out of daily icebreakers, use token
+        use_token = True
+    elif not bypass_limits:
+        # No daily icebreakers AND no tokens
+        raise HTTPException(status_code=429, detail="no_icebreakers_remaining")
+    
+    # Track usage
+    if use_token:
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$inc": {"token_balance": -1}}
+        )
+    else:
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$inc": {"daily_icebreakers_used": 1}}
+        )
+    
     icebreaker_id = str(uuid.uuid4())
     icebreaker = {
         "id": icebreaker_id,
@@ -247,11 +323,46 @@ async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(g
         "message_type": data.message_type,
         "message": ICEBREAKER_MESSAGES[data.message_type],
         "created_at": now.isoformat(),
-        "status": "pending"
+        "status": "pending",
+        "used_token": use_token  # Track if token was used
     }
     await db.icebreakers.insert_one(icebreaker)
     
-    return {"message": "Icebreaker sent!", "icebreaker_id": icebreaker_id}
+    return {"message": "Icebreaker sent!", "icebreaker_id": icebreaker_id, "used_token": use_token}
+
+
+@router.get("/icebreakers/remaining")
+async def get_remaining_icebreakers(current_user: dict = Depends(get_current_user)):
+    """Get remaining daily icebreakers and token balance for fallback"""
+    now = datetime.now(timezone.utc)
+    
+    # Re-fetch user from database to get fresh daily usage counters
+    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    if not fresh_user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    is_premium = fresh_user.get("is_premium", False)
+    daily_limit = PREMIUM_DAILY_ICEBREAKERS if is_premium else FREE_DAILY_ICEBREAKERS
+    daily_used = fresh_user.get("daily_icebreakers_used", 0)
+    token_balance = fresh_user.get("token_balance", 0)
+    
+    icebreakers_reset_at = fresh_user.get("icebreakers_reset_at")
+    
+    if icebreakers_reset_at:
+        reset_time = datetime.fromisoformat(icebreakers_reset_at.replace("Z", "+00:00"))
+        if now >= reset_time:
+            daily_used = 0
+    
+    remaining_free = max(0, daily_limit - daily_used)
+    
+    return {
+        "remaining_free": remaining_free,
+        "daily_limit": daily_limit,
+        "daily_used": daily_used,
+        "token_balance": token_balance,
+        "total_available": remaining_free + token_balance,
+        "is_premium": is_premium
+    }
 
 
 @router.get("/icebreakers/received")
