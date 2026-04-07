@@ -49,7 +49,6 @@ import {
 const MAX_BIO_LENGTH = 500;
 const MAX_PRESENCE_NOTE_LENGTH = 40;
 const MAX_MY_TYPE_LENGTH = 40;
-const MIN_MY_TYPE_LENGTH = 10;
 const MIN_BIO_LENGTH = 10;
 
 // Intent options
@@ -275,17 +274,6 @@ const Profile = () => {
     
     if (formData.bio.trim().length < MIN_BIO_LENGTH) {
       toast.error("Add a short line so people get a sense of your vibe (at least 10 characters).");
-      return;
-    }
-    
-    // Required field: my_type_of_person (Here to...)
-    if (!formData.my_type_of_person || formData.my_type_of_person.trim().length === 0) {
-      toast.error("Please tell us who you click with in the 'Here to...' field.");
-      return;
-    }
-    
-    if (formData.my_type_of_person.trim().length < MIN_MY_TYPE_LENGTH) {
-      toast.error("Tell us a bit more about who you click with (at least 10 characters).");
       return;
     }
 
