@@ -283,7 +283,7 @@ const Discovery = ({ defaultMode = null }) => {
     try {
       await axios.post(`${API}/glance`, { 
         to_user_id: userId, 
-        venue_id: venueId || currentVenue?.id || "not-here"
+        venue_id: venueId || venue?.id || "not-here"
       });
       toast.success("Glance sent!");
       fetchPeople();
@@ -306,7 +306,7 @@ const Discovery = ({ defaultMode = null }) => {
     try {
       await axios.post(`${API}/icebreaker`, {
         to_user_id: selectedPerson.id,
-        venue_id: currentVenue?.id || "not-here",
+        venue_id: venue?.id || "not-here",
         message_type: messageIndex
       });
       toast.success("Icebreaker sent!");
@@ -605,7 +605,7 @@ const Discovery = ({ defaultMode = null }) => {
                     onIcebreaker={handleOpenIcebreaker}
                     glancing={glancing}
                     isVenueContext={true}
-                    venueId={currentVenue?.id}
+                    venueId={venue?.id}
                   />
                 ))}
               </div>

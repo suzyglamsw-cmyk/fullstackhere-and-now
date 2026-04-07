@@ -432,6 +432,12 @@ Comprehensive list including:
   - All three icons displayed in a centered row
 - **File Changed**: `/app/frontend/src/pages/Discovery.js`
 
+### Icebreaker Modal "currentVenue is not defined" Fix (April 7, 2026)
+- **Issue**: Icebreaker modal showed error "currentVenue is not defined" in both Here and Not Here modes
+- **Root Cause**: Code referenced undefined `currentVenue` variable instead of the correct `venue` state variable
+- **Fix**: Changed all `currentVenue` references to `venue` in Discovery.js (3 occurrences)
+- **File Changed**: `/app/frontend/src/pages/Discovery.js` (lines 286, 309, 608)
+
 ## Environment Variables
 
 ### Backend (.env)
@@ -445,4 +451,4 @@ Comprehensive list including:
 - REACT_APP_BACKEND_URL
 
 ---
-*Last Updated: April 6, 2026 - Discovery Thumbs Regression Fix*
+*Last Updated: April 7, 2026 - Icebreaker Modal Fix*
