@@ -77,6 +77,11 @@ const Connections = () => {
       setMutualGlances(prev => prev.filter(m => m.user_id !== blockedUserId));
       setMessageThreads(prev => prev.filter(t => t.other_user_id !== blockedUserId));
       
+      // Clear any open action sheets for the blocked user
+      setActionSheet(prev => (prev?.from_user_id === blockedUserId ? null : prev));
+      setChatActionSheet(prev => (prev?.from_user_id === blockedUserId ? null : prev));
+      setClearConfirmUser(prev => (prev?.id === blockedUserId ? null : prev));
+      
       // Also refresh from server to ensure complete sync
       fetchAllData();
     });

@@ -101,21 +101,37 @@ const Discovery = ({ defaultMode = null }) => {
     setMode(newMode);
   }, [location.pathname]);
 
-  // Listen for block events and remove blocked users from list
+  // Ref to hold the fetchPeople function for use in block event listener
+  const fetchPeopleRef = useRef(null);
+
+  // Listen for block events and remove blocked users from all lists
   useEffect(() => {
     const cleanup = onUserBlocked((blockedUserId) => {
-      // Immediately remove blocked user from people list
+      // Immediately remove blocked user from people list (covers both Here and Not Here)
       setPeople(prev => prev.filter(p => p.id !== blockedUserId));
+      
+      // Remove from proximity echoes if present
+      setProximityEchoes(prev => prev.filter(e => e.user_id !== blockedUserId && e.id !== blockedUserId));
+      
       // Clear any interaction state for this user
-      if (glancing === blockedUserId) setGlancing(null);
-      if (sendingChatRequest === blockedUserId) setSendingChatRequest(null);
-      if (selectedPerson?.id === blockedUserId) {
-        setSelectedPerson(null);
-        setShowIcebreakerModal(false);
+      setGlancing(prev => prev === blockedUserId ? null : prev);
+      setSendingChatRequest(prev => prev === blockedUserId ? null : prev);
+      setSelectedPerson(prev => {
+        if (prev?.id === blockedUserId) {
+          setShowIcebreakerModal(false);
+          setSendingIcebreaker(false);
+          return null;
+        }
+        return prev;
+      });
+      
+      // Force a data refresh to ensure complete sync with backend
+      if (fetchPeopleRef.current) {
+        fetchPeopleRef.current();
       }
     });
     return cleanup;
-  }, [glancing, sendingChatRequest, selectedPerson]);
+  }, []);
 
   // REQUEST AND UPDATE GPS LOCATION - Strict enforcement
   const requestAndUpdateLocation = useCallback(async () => {
@@ -299,6 +315,9 @@ const Discovery = ({ defaultMode = null }) => {
       setLoading(false);
     }
   };
+
+  // Keep ref updated for use in block event listener
+  fetchPeopleRef.current = fetchPeople;
 
   const handleGlance = async (userId, venueId) => {
     setGlancing(userId);
