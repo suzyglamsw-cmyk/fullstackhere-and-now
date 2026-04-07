@@ -438,6 +438,17 @@ Comprehensive list including:
 - **Fix**: Changed all `currentVenue` references to `venue` in Discovery.js (3 occurrences)
 - **File Changed**: `/app/frontend/src/pages/Discovery.js` (lines 286, 309, 608)
 
+### Chat Request Thumbs Missing Fix (April 7, 2026)
+- **Issue**: Chat Request thumb missing in Discovery (Here and Not Here modes), chat requests not appearing in Matches
+- **Root Cause**: `onChatRequest` handler was not implemented or passed to PersonCard component
+- **Fix**: 
+  - Added `handleSendChatRequest` function to Discovery.js
+  - Added `sendingChatRequest` state for loading indicator
+  - Passed `onChatRequest` and `sendingChatRequest` to PersonCard in both Here and Not Here views
+  - Updated Chat Request button to show loading state and "sent" state (purple highlight)
+- **File Changed**: `/app/frontend/src/pages/Discovery.js`
+- **Verified**: Chat requests stored in `db.chat_requests` with `request_type: "chat"`, displayed in Matches → Chat Requests
+
 ## Environment Variables
 
 ### Backend (.env)
@@ -451,4 +462,4 @@ Comprehensive list including:
 - REACT_APP_BACKEND_URL
 
 ---
-*Last Updated: April 7, 2026 - Icebreaker Modal Fix*
+*Last Updated: April 7, 2026 - Chat Request Thumbs Fix*

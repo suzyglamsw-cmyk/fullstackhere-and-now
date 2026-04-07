@@ -88,6 +88,7 @@ const Discovery = ({ defaultMode = null }) => {
   const [showIcebreakerModal, setShowIcebreakerModal] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [sendingIcebreaker, setSendingIcebreaker] = useState(false);
+  const [sendingChatRequest, setSendingChatRequest] = useState(null);
 
   // Update mode when route changes
   useEffect(() => {
@@ -318,6 +319,24 @@ const Discovery = ({ defaultMode = null }) => {
       toast.error(msg);
     } finally {
       setSendingIcebreaker(false);
+    }
+  };
+
+  const handleSendChatRequest = async (person) => {
+    setSendingChatRequest(person.id);
+    try {
+      await axios.post(`${API}/chat-request`, {
+        to_user_id: person.id,
+        venue_id: venue?.id || "not-here",
+        request_type: "chat"
+      });
+      toast.success("Chat request sent!");
+      fetchPeople();
+    } catch (error) {
+      const msg = getErrorMessage(error);
+      toast.error(msg);
+    } finally {
+      setSendingChatRequest(null);
     }
   };
 
@@ -603,7 +622,9 @@ const Discovery = ({ defaultMode = null }) => {
                     person={person}
                     onGlance={handleGlance}
                     onIcebreaker={handleOpenIcebreaker}
+                    onChatRequest={handleSendChatRequest}
                     glancing={glancing}
+                    sendingChatRequest={sendingChatRequest}
                     isVenueContext={true}
                     venueId={venue?.id}
                   />
@@ -737,7 +758,9 @@ const Discovery = ({ defaultMode = null }) => {
                   person={person}
                   onGlance={handleGlance}
                   onIcebreaker={handleOpenIcebreaker}
+                  onChatRequest={handleSendChatRequest}
                   glancing={glancing}
+                  sendingChatRequest={sendingChatRequest}
                   isVenueContext={false}
                   venueId="not-here"
                 />
@@ -765,7 +788,7 @@ const Discovery = ({ defaultMode = null }) => {
 // ============================================================================
 // Person Card Component
 // ============================================================================
-const PersonCard = ({ person, onGlance, onIcebreaker, onChatRequest, glancing, isVenueContext, venueId }) => {
+const PersonCard = ({ person, onGlance, onIcebreaker, onChatRequest, glancing, sendingChatRequest, isVenueContext, venueId }) => {
   const navigate = useNavigate();
   
   // Check if this is the user's own card
@@ -1038,18 +1061,25 @@ const PersonCard = ({ person, onGlance, onIcebreaker, onChatRequest, glancing, i
               data-testid={`chat-request-btn-${person.id}`}
               size="icon"
               variant="ghost"
-              className="w-10 h-10 rounded-full bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+              className={`w-10 h-10 rounded-full ${
+                person.chat_request_sent
+                  ? "bg-purple-500/20 text-purple-400"
+                  : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+              }`}
               onClick={(e) => {
                 e.stopPropagation();
-                if (onChatRequest) {
+                if (!person.chat_request_sent && onChatRequest) {
                   onChatRequest(person);
-                } else {
-                  navigate(`/profile/${person.id}`);
                 }
               }}
-              title="Send a chat request"
+              disabled={sendingChatRequest === person.id || person.chat_request_sent}
+              title={person.chat_request_sent ? "Chat request sent" : "Send a chat request"}
             >
-              <MessageSquare className="w-5 h-5" />
+              {sendingChatRequest === person.id ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <MessageSquare className="w-5 h-5" />
+              )}
             </Button>
           </>
         ) : person.is_connected ? (
