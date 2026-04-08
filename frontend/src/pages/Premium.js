@@ -300,7 +300,7 @@ const Premium = () => {
           )}
           
           <p className="text-slate-500 text-xs text-center mt-4">
-            Paid tokens can be used for glances, icebreakers, or chat requests after your daily allowance is used.
+            Paid tokens can be used for extra glances, icebreakers, or chat requests after your daily allowances are used. Each action costs 1 token.
           </p>
         </div>
 

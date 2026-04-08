@@ -214,7 +214,7 @@ const Tokens = () => {
 
         {/* Info */}
         <div className="mt-8 text-center text-slate-500 text-sm">
-          <p>Paid tokens can be used for glances, icebreakers, or chat requests</p>
+          <p>Paid tokens can be used for extra glances, icebreakers, or chat requests after your daily allowances are used. Each action costs 1 token.</p>
           <p className="mt-1">after your daily free allowance is used.</p>
           <p className="mt-2 text-xs">Daily limits reset at 5am local time</p>
         </div>
