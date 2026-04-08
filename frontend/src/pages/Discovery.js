@@ -18,10 +18,6 @@ import {
   ArrowLeft,
   MapPinOff,
   RefreshCw,
-  Building2,
-  Sparkles,
-  Star,
-  Clock,
 } from "lucide-react";
 import {
   Dialog,
@@ -396,50 +392,50 @@ const Discovery = () => {
             <p className="text-slate-400">How would you like to connect?</p>
           </div>
           
-          <div className="w-full max-w-sm space-y-4">
-            {/* HERE NOW - Navigate to Venues page for Google Places venues */}
-            <Button
+          <div className="w-full max-w-md space-y-4">
+            {/* Here & Now Option */}
+            <button
               data-testid="select-here-now"
               onClick={() => navigate("/venues")}
-              className="w-full h-24 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-2xl flex items-center justify-between px-6 shadow-lg shadow-indigo-500/20"
+              className="w-full p-6 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 hover:border-indigo-400/50 transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
-                  <Building2 className="w-6 h-6" />
+                <div className="w-14 h-14 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                  <MapPin className="w-7 h-7 text-indigo-400" />
                 </div>
-                <div className="text-left">
-                  <p className="font-bold text-lg">Here Now</p>
-                  <p className="text-sm text-white/70">Live venues from Google Places</p>
+                <div className="text-left flex-1">
+                  <h2 className="text-xl font-bold text-white group-hover:text-indigo-300 transition-colors">
+                    Here Now
+                  </h2>
+                  <p className="text-slate-400 text-sm">
+                    Live venues
+                  </p>
                 </div>
+                <ArrowRight className="w-5 h-5 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
               </div>
-              <ArrowRight className="w-5 h-5" />
-            </Button>
+            </button>
             
-            {/* NOT HERE - Show nearby people not at a venue */}
-            <Button
+            {/* Not Here Option */}
+            <button
               data-testid="select-not-here"
               onClick={() => navigate("/discover/not-here")}
-              className="w-full h-24 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 rounded-2xl flex items-center justify-between px-6 shadow-lg shadow-cyan-500/20"
+              className="w-full p-6 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 border border-cyan-500/30 hover:border-cyan-400/50 transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
-                  <Users className="w-6 h-6" />
+                <div className="w-14 h-14 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                  <Users className="w-7 h-7 text-cyan-400" />
                 </div>
-                <div className="text-left">
-                  <p className="font-bold text-lg">Not Here</p>
-                  <p className="text-sm text-white/70">People nearby not at a venue</p>
+                <div className="text-left flex-1">
+                  <h2 className="text-xl font-bold text-white group-hover:text-cyan-300 transition-colors">
+                    Not Here
+                  </h2>
+                  <p className="text-slate-400 text-sm">
+                    People nearby not at a venue
+                  </p>
                 </div>
+                <ArrowRight className="w-5 h-5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
               </div>
-              <ArrowRight className="w-5 h-5" />
-            </Button>
-          </div>
-          
-          {/* Quick stats */}
-          <div className="mt-8 text-center">
-            <p className="text-slate-500 text-sm">
-              <Sparkles className="w-4 h-4 inline mr-1" />
-              Tap a mode to start discovering
-            </p>
+            </button>
           </div>
         </div>
       </Layout>
