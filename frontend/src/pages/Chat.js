@@ -6,6 +6,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import { ArrowLeft, Send, Loader2, Check, CheckCheck, Lock, Unlock, Shield } from "lucide-react";
+import BlurredImage from "../components/BlurredImage";
 
 const Chat = () => {
   const { userId } = useParams();
@@ -192,48 +193,64 @@ const Chat = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col" data-testid="chat-page">
-      {/* Header */}
+      {/* Header - Always visible with user identity */}
       <div className="sticky top-0 z-40 glass border-b border-white/5">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
+        <div className="max-w-2xl mx-auto px-4 py-3">
+          <div className="flex items-center gap-3">
             <Button
               data-testid="back-btn"
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/connections")}
-              className="text-slate-400 hover:text-white hover:bg-white/10"
+              onClick={() => navigate("/matches")}
+              className="text-slate-400 hover:text-white hover:bg-white/10 shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            {otherUser && (
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-800">
-                  {isUnlocked && otherUser.avatar_url ? (
-                    <img
-                      src={otherUser.avatar_url}
-                      alt={otherUser.display_name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-500 text-lg font-semibold">
-                      {otherUser.display_name?.charAt(0) || "?"}
-                    </div>
-                  )}
+            
+            {/* User identity section - clickable to view profile */}
+            {otherUser ? (
+              <div 
+                className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => navigate(`/profile/${userId}`)}
+                data-testid="chat-user-header"
+              >
+                {/* Profile photo */}
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-800 shrink-0 ring-2 ring-white/10">
+                  <BlurredImage
+                    src={otherUser.avatar_url || (otherUser.photos && otherUser.photos[0])}
+                    alt={otherUser.display_name}
+                    isRevealed={isUnlocked}
+                    isThumbnail={true}
+                    fallbackInitial={otherUser.display_name?.charAt(0) || "?"}
+                  />
                 </div>
-                <div>
-                  <h1 className="text-lg font-semibold text-white">{otherUser.display_name}</h1>
-                  {!isUnlocked && (
+                
+                {/* Name and status */}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-base font-semibold text-white truncate">
+                    {otherUser.display_name}
+                  </h1>
+                  {isUnlocked ? (
+                    <span className="text-xs text-emerald-400 flex items-center gap-1">
+                      <Unlock className="w-3 h-3" />
+                      Connected
+                    </span>
+                  ) : (
                     <span className="text-xs text-amber-400 flex items-center gap-1">
-                      <Lock className="w-3 h-3" /> Chat locked
+                      <Lock className="w-3 h-3" />
+                      Chat locked
                     </span>
                   )}
                 </div>
               </div>
-            )}
-            {isUnlocked && (
-              <div className="text-emerald-400 text-xs flex items-center gap-1">
-                <Unlock className="w-3 h-3" />
-                Connected
+            ) : (
+              /* Loading placeholder */
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-10 rounded-full bg-slate-800 animate-pulse shrink-0" />
+                <div className="flex-1">
+                  <div className="h-4 w-24 bg-slate-800 rounded animate-pulse mb-1" />
+                  <div className="h-3 w-16 bg-slate-800 rounded animate-pulse" />
+                </div>
               </div>
             )}
           </div>
