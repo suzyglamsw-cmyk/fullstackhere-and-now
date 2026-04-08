@@ -288,7 +288,7 @@ const Venues = () => {
     } catch (error) {
       // Navigate anyway even if API fails
     }
-    navigate("/discover/select");
+    navigate("/discover");
   };
 
   const getVenueTypeColor = (type) => {

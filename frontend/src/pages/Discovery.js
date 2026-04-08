@@ -11,28 +11,17 @@ import { getErrorMessage } from "../utils/errorUtils";
 import { useConfirmHintGlobal } from "../components/ConfirmHint";
 import { onUserBlocked } from "../utils/blockEvents";
 import {
-  Eye,
-  Snowflake,
   MapPin,
   Loader2,
-  Sparkles,
   Users,
-  Crown,
-  Bell,
-  Heart,
-  Radio,
-  Navigation,
-  Building2,
   ArrowRight,
   ArrowLeft,
-  User,
   MapPinOff,
   RefreshCw,
-  MessageSquare,
-  Filter,
+  Building2,
+  Sparkles,
+  Star,
   Clock,
-  Calendar,
-  SlidersHorizontal,
 } from "lucide-react";
 import {
   Dialog,
@@ -75,30 +64,23 @@ const AGE_PRESETS = [
   { value: "45+", label: "45+", min: 45, max: 99 },
 ];
 
-const Discovery = ({ defaultMode = null }) => {
+const Discovery = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   
-  // Determine mode from route or prop
-  const getInitialMode = () => {
-    if (location.pathname === "/discover/here") return "here";
+  // Determine mode from route
+  const getMode = () => {
     if (location.pathname === "/discover/not-here") return "not-here";
-    if (defaultMode) return defaultMode;
-    return null;
+    return null; // Show mode selector
   };
   
-  const [mode, setMode] = useState(getInitialMode());
+  const [mode, setMode] = useState(getMode());
   const [radius, setRadius] = useState("0-10");
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [venue, setVenue] = useState(null);
-  const [venueLoading, setVenueLoading] = useState(true);
-  const [nearbyVenues, setNearbyVenues] = useState([]);
-  const [venuesLoading, setVenuesLoading] = useState(false);
-  const [proximityEchoes, setProximityEchoes] = useState([]);
   
-  // STRICT GPS LOCATION STATE
+  // Location state
   const [locationStatus, setLocationStatus] = useState("checking");
   const [locationError, setLocationError] = useState(null);
   const [userCoordinates, setUserCoordinates] = useState(null);
@@ -114,7 +96,6 @@ const Discovery = ({ defaultMode = null }) => {
   const [matchFilter, setMatchFilter] = useState("unmatched");
   const [activityFilter, setActivityFilter] = useState("all");
   const [ageFilter, setAgeFilter] = useState("all");
-  const [showFilters, setShowFilters] = useState(false);
   
   // Not for now sheet
   const [notForNowUser, setNotForNowUser] = useState(null);
@@ -126,7 +107,7 @@ const Discovery = ({ defaultMode = null }) => {
 
   // Update mode when route changes
   useEffect(() => {
-    const newMode = getInitialMode();
+    const newMode = getMode();
     setMode(newMode);
   }, [location.pathname]);
 
@@ -134,10 +115,6 @@ const Discovery = ({ defaultMode = null }) => {
   useEffect(() => {
     const cleanup = onUserBlocked((blockedUserId) => {
       setPeople(prev => prev.filter(p => p.id !== blockedUserId));
-      setProximityEchoes(prev => prev.filter(p => p.id !== blockedUserId));
-      if (fetchPeopleRef.current) {
-        fetchPeopleRef.current();
-      }
     });
     return cleanup;
   }, []);
@@ -155,19 +132,19 @@ const Discovery = ({ defaultMode = null }) => {
     fetchHiddenUsers();
   }, []);
 
-  // Check GPS location on mount
+  // Check GPS location when in Not Here mode
   useEffect(() => {
-    if (mode) {
+    if (mode === "not-here") {
       checkLocationPermission();
     }
   }, [mode]);
 
   // Fetch people when mode/radius/coordinates change
   useEffect(() => {
-    if (mode && locationStatus === "granted" && userCoordinates) {
+    if (mode === "not-here" && locationStatus === "granted" && userCoordinates) {
       fetchPeople();
     }
-  }, [mode, radius, locationStatus, userCoordinates]);
+  }, [mode, radius, locationStatus, userCoordinates, matchFilter, activityFilter, ageFilter]);
 
   const checkLocationPermission = async () => {
     if (!navigator.geolocation) {
@@ -264,17 +241,11 @@ const Discovery = ({ defaultMode = null }) => {
     await requestLocation();
   };
 
-  // Fetch people with filters applied
+  // Fetch people for Not Here mode
   const fetchPeople = async () => {
-    if (!mode) return;
-    
     setLoading(true);
     try {
-      const endpoint = mode === "here" 
-        ? `${API}/discovery/here`
-        : `${API}/discovery/not-here?radius=${radius}`;
-      
-      const response = await axios.get(endpoint);
+      const response = await axios.get(`${API}/discovery/not-here?radius=${radius}`);
       let fetchedPeople = response.data || [];
 
       // Filter out blocked users
@@ -293,8 +264,8 @@ const Discovery = ({ defaultMode = null }) => {
         fetchedPeople = fetchedPeople.filter(p => p.is_matched);
       }
 
-      // Apply activity filter (for Not Here mode)
-      if (mode === "not-here" && activityFilter !== "all") {
+      // Apply activity filter
+      if (activityFilter !== "all") {
         const maxMinutes = ACTIVITY_FILTER_OPTIONS.find(o => o.value === activityFilter)?.maxMinutes;
         if (maxMinutes) {
           const cutoff = new Date(Date.now() - maxMinutes * 60 * 1000);
@@ -327,38 +298,6 @@ const Discovery = ({ defaultMode = null }) => {
 
   fetchPeopleRef.current = fetchPeople;
 
-  // Fetch venue for Here mode
-  useEffect(() => {
-    if (mode === "here" && locationStatus === "granted") {
-      fetchCurrentVenue();
-      fetchNearbyVenues();
-    }
-  }, [mode, locationStatus]);
-
-  const fetchCurrentVenue = async () => {
-    setVenueLoading(true);
-    try {
-      const response = await axios.get(`${API}/checkin/current`);
-      setVenue(response.data);
-    } catch (error) {
-      setVenue(null);
-    } finally {
-      setVenueLoading(false);
-    }
-  };
-
-  const fetchNearbyVenues = async () => {
-    setVenuesLoading(true);
-    try {
-      const response = await axios.get(`${API}/venues/nearby`);
-      setNearbyVenues(response.data || []);
-    } catch (error) {
-      setNearbyVenues([]);
-    } finally {
-      setVenuesLoading(false);
-    }
-  };
-
   // Action handlers
   const handleGlance = async (userId, venueId) => {
     setGlancing(userId);
@@ -385,7 +324,7 @@ const Discovery = ({ defaultMode = null }) => {
     try {
       await axios.post(`${API}/icebreaker`, {
         to_user_id: selectedPerson.id,
-        venue_id: venue?.id || "not-here",
+        venue_id: "not-here",
         message_type: messageType
       });
       toast.success("Icebreaker sent!");
@@ -434,19 +373,9 @@ const Discovery = ({ defaultMode = null }) => {
     }
   };
 
-  const handleBackToDiscovery = async () => {
-    try {
-      await axios.post(`${API}/discovery/clear-mode`);
-    } catch (error) {
-      console.error("Failed to clear mode:", error);
-    }
-    navigate("/discover/select");
-  };
-
   // Determine photo state for a user
   const getPhotoState = (person) => {
     if (person.is_matched) {
-      // Post-match: check reveal state
       if (person.reveal_state?.is_mutual) {
         return 'clear';
       }
@@ -456,45 +385,61 @@ const Discovery = ({ defaultMode = null }) => {
   };
 
   // ============================================================================
-  // RENDER: Mode Selector (Gateway)
+  // RENDER: Mode Selector (Discovery Home)
   // ============================================================================
   if (!mode) {
     return (
       <Layout>
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Discover</h1>
-          <p className="text-slate-400 mb-8 text-center">How would you like to connect?</p>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Discover</h1>
+            <p className="text-slate-400">How would you like to connect?</p>
+          </div>
           
           <div className="w-full max-w-sm space-y-4">
+            {/* HERE NOW - Navigate to Venues page for Google Places venues */}
             <Button
               data-testid="select-here-now"
-              onClick={() => navigate("/discover/here")}
-              className="w-full h-20 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-2xl flex items-center justify-between px-6"
+              onClick={() => navigate("/venues")}
+              className="w-full h-24 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-2xl flex items-center justify-between px-6 shadow-lg shadow-indigo-500/20"
             >
-              <div className="flex items-center gap-3">
-                <MapPin className="w-6 h-6" />
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Building2 className="w-6 h-6" />
+                </div>
                 <div className="text-left">
-                  <p className="font-semibold">Here & Now</p>
-                  <p className="text-xs text-white/70">People at venues near you</p>
+                  <p className="font-bold text-lg">Here Now</p>
+                  <p className="text-sm text-white/70">Live venues from Google Places</p>
                 </div>
               </div>
               <ArrowRight className="w-5 h-5" />
             </Button>
             
+            {/* NOT HERE - Show nearby people not at a venue */}
             <Button
               data-testid="select-not-here"
               onClick={() => navigate("/discover/not-here")}
-              className="w-full h-20 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 rounded-2xl flex items-center justify-between px-6"
+              className="w-full h-24 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 rounded-2xl flex items-center justify-between px-6 shadow-lg shadow-cyan-500/20"
             >
-              <div className="flex items-center gap-3">
-                <Users className="w-6 h-6" />
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Users className="w-6 h-6" />
+                </div>
                 <div className="text-left">
-                  <p className="font-semibold">Not Here</p>
-                  <p className="text-xs text-white/70">People nearby not at a venue</p>
+                  <p className="font-bold text-lg">Not Here</p>
+                  <p className="text-sm text-white/70">People nearby not at a venue</p>
                 </div>
               </div>
               <ArrowRight className="w-5 h-5" />
             </Button>
+          </div>
+          
+          {/* Quick stats */}
+          <div className="mt-8 text-center">
+            <p className="text-slate-500 text-sm">
+              <Sparkles className="w-4 h-4 inline mr-1" />
+              Tap a mode to start discovering
+            </p>
           </div>
         </div>
       </Layout>
@@ -509,8 +454,8 @@ const Discovery = ({ defaultMode = null }) => {
       {/* Match Filter */}
       <select
         value={matchFilter}
-        onChange={(e) => { setMatchFilter(e.target.value); }}
-        className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+        onChange={(e) => setMatchFilter(e.target.value)}
+        className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
         data-testid="match-filter"
       >
         {MATCH_FILTER_OPTIONS.map(opt => (
@@ -518,25 +463,23 @@ const Discovery = ({ defaultMode = null }) => {
         ))}
       </select>
 
-      {/* Activity Filter (Not Here only) */}
-      {mode === "not-here" && (
-        <select
-          value={activityFilter}
-          onChange={(e) => { setActivityFilter(e.target.value); }}
-          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
-          data-testid="activity-filter"
-        >
-          {ACTIVITY_FILTER_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value} className="bg-slate-900">{opt.label}</option>
-          ))}
-        </select>
-      )}
+      {/* Activity Filter */}
+      <select
+        value={activityFilter}
+        onChange={(e) => setActivityFilter(e.target.value)}
+        className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+        data-testid="activity-filter"
+      >
+        {ACTIVITY_FILTER_OPTIONS.map(opt => (
+          <option key={opt.value} value={opt.value} className="bg-slate-900">{opt.label}</option>
+        ))}
+      </select>
 
       {/* Age Filter */}
       <select
         value={ageFilter}
-        onChange={(e) => { setAgeFilter(e.target.value); }}
-        className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+        onChange={(e) => setAgeFilter(e.target.value)}
+        className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
         data-testid="age-filter"
       >
         {AGE_PRESETS.map(opt => (
@@ -545,172 +488,6 @@ const Discovery = ({ defaultMode = null }) => {
       </select>
     </div>
   );
-
-  // ============================================================================
-  // RENDER: Here & Now Mode (/discover/here)
-  // ============================================================================
-  if (mode === "here") {
-    return (
-      <Layout>
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-          {/* Header */}
-          <div className="sticky top-0 z-40 glass border-b border-white/5">
-            <div className="max-w-4xl mx-auto px-4 py-4">
-              <button
-                data-testid="back-to-discovery"
-                onClick={handleBackToDiscovery}
-                className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="text-sm">Back to Discovery</span>
-              </button>
-
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-indigo-400" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-white">Here & Now</h1>
-                  <p className="text-sm text-slate-400">People at venues near you</p>
-                </div>
-              </div>
-
-              <FilterBar />
-            </div>
-          </div>
-
-          {/* Current Venue Card */}
-          {venue && (
-            <div className="max-w-4xl mx-auto px-4 py-4">
-              <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4">
-                <div className="flex items-center gap-3">
-                  <Building2 className="w-6 h-6 text-indigo-400" />
-                  <div>
-                    <p className="text-white font-medium">{venue.name}</p>
-                    <p className="text-slate-400 text-sm">{venue.address}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Nearby Venues Scroll */}
-          {nearbyVenues.length > 0 && (
-            <div className="max-w-4xl mx-auto px-4 py-3">
-              <p className="text-slate-400 text-sm mb-2">Other venues nearby</p>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {nearbyVenues.slice(0, 5).map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => navigate(`/venues/${v.id}`)}
-                    className="flex-shrink-0 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white hover:bg-white/10"
-                  >
-                    {v.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Content - People Grid */}
-          <div className="max-w-4xl mx-auto px-4 py-6 pb-28">
-            {locationStatus === "checking" || locationStatus === "updating" ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
-                <p className="text-slate-400">Getting your location...</p>
-              </div>
-            ) : locationStatus === "denied" || locationStatus === "unavailable" ? (
-              <div className="flex flex-col items-center justify-center py-20 px-4">
-                <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-6">
-                  <MapPinOff className="w-10 h-10 text-red-400" />
-                </div>
-                <h2 className="text-xl font-bold text-white mb-3 text-center">Location Required</h2>
-                <p className="text-slate-400 text-center mb-6 max-w-md">
-                  {locationError || "To see people at venues, we need your current GPS location."}
-                </p>
-                <Button
-                  data-testid="request-location-btn-here"
-                  onClick={requestAndUpdateLocation}
-                  className="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-xl"
-                >
-                  <MapPin className="w-4 h-4 mr-2" />
-                  Enable Location
-                </Button>
-              </div>
-            ) : loading || venueLoading ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-              </div>
-            ) : people.length === 0 ? (
-              <div className="text-center py-20">
-                <Users className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                <h2 className="text-xl font-bold text-white mb-2">No one around</h2>
-                <p className="text-slate-400 mb-4">Try adjusting your filters or check back later.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {people.map((person) => (
-                  person.is_self ? (
-                    <SelfCard
-                      key={person.id}
-                      user={person}
-                      context="here_now"
-                      showSilhouette={person.hide_photo_in_venues}
-                    />
-                  ) : (
-                    <UserCard
-                      key={person.id}
-                      user={person}
-                      isMatched={person.is_matched || person.is_connected}
-                      matchType={person.match_type}
-                      photoState={getPhotoState(person)}
-                      revealState={person.reveal_state || { iRevealed: false, theyRevealed: false }}
-                      onGlance={handleGlance}
-                      onIcebreaker={handleOpenIcebreaker}
-                      onChatRequest={handleSendChatRequest}
-                      onLongPress={handleLongPress}
-                      disabled={{
-                        glanced: person.i_glanced_at,
-                        icebreaker: person.icebreaker_sent,
-                        chatRequest: person.chat_request_sent
-                      }}
-                      loading={{
-                        glance: glancing === person.id,
-                        chatRequest: sendingChatRequest === person.id
-                      }}
-                      globalPendingRef={confirmHintRef}
-                      context="here_now"
-                      venueId={venue?.id}
-                    />
-                  )
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Icebreaker Modal */}
-        <IcebreakerModal
-          show={showIcebreakerModal}
-          person={selectedPerson}
-          sending={sendingIcebreaker}
-          onClose={() => {
-            setShowIcebreakerModal(false);
-            setSelectedPerson(null);
-          }}
-          onSend={handleSendIcebreaker}
-        />
-
-        {/* Not For Now Sheet */}
-        <NotForNowSheet
-          isOpen={!!notForNowUser}
-          onClose={() => setNotForNowUser(null)}
-          onConfirm={handleHideUser}
-          userName={notForNowUser?.display_name}
-        />
-      </Layout>
-    );
-  }
 
   // ============================================================================
   // RENDER: Not Here Mode (/discover/not-here)
@@ -723,7 +500,7 @@ const Discovery = ({ defaultMode = null }) => {
           <div className="max-w-4xl mx-auto px-4 py-4">
             <button
               data-testid="back-to-discovery"
-              onClick={handleBackToDiscovery}
+              onClick={() => navigate("/discover")}
               className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />

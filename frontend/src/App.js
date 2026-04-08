@@ -177,6 +177,14 @@ function App() {
               }
             />
             <Route
+              path="/discover"
+              element={
+                <ProtectedRoute>
+                  <Discovery />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/discover/select"
               element={
                 <ProtectedRoute>
@@ -188,7 +196,7 @@ function App() {
               path="/discover/here"
               element={
                 <ProtectedRoute>
-                  <Discovery defaultMode="here" />
+                  <Venues />
                 </ProtectedRoute>
               }
             />
@@ -196,7 +204,7 @@ function App() {
               path="/discover/not-here"
               element={
                 <ProtectedRoute>
-                  <Discovery defaultMode="not-here" />
+                  <Discovery />
                 </ProtectedRoute>
               }
             />
