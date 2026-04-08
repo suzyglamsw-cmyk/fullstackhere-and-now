@@ -717,4 +717,58 @@ Comprehensive list including:
 - Payment flows
 
 ---
-*Last Updated: April 8, 2026 - Allowance Values & Token Fallback Update*
+
+## Icebreaker Handling Logic Update (April 8, 2026)
+
+**Implementation Summary:**
+
+1. **Sending an Icebreaker:**
+   - Does NOT create a match
+   - Does NOT open a message thread
+   - Adds to sender's "Sent Icebreakers" list
+   - Free users: see "Sent" status only
+   - Premium users: see "Viewed · timestamp" when recipient opens it
+   - If declined: sender's view remains "Sent" (no decline indicator)
+
+2. **Receiving an Icebreaker:**
+   - Displayed in "Received" section of Matches
+   - Two visual states:
+     - New (unopened): bold text, cyan border, "New" badge
+     - Viewed (opened): normal weight, no badge
+   - Tapping opens detail view with Accept/Decline options
+
+3. **Decline Behavior:**
+   - Removes icebreaker ONLY from recipient's Matches list
+   - Does NOT create a match
+   - Does NOT open messaging
+   - Sender's state remains "Sent" (unchanged)
+
+4. **Accept Behavior:**
+   - Creates a mutual match/connection
+   - Opens chat capability
+   - Both sender and recipient see "Accepted" status
+   - Chat button appears
+
+5. **Visual Structure in Matches:**
+   - RECEIVED: incoming icebreakers with New/Viewed states
+   - SENT: outgoing icebreakers with Sent / Viewed (premium) / Accepted states
+
+**Backend Changes:**
+- `/app/backend/server.py` `GET /api/connections/icebreakers`:
+  - Filters out declined/not_right_now from recipient's view
+  - Adds `is_new` field for unopened icebreakers
+  - Hides decline status from sender (shows "Sent" instead)
+  - Returns `photos` array for both parties
+
+**Frontend Changes:**
+- `/app/frontend/src/pages/Connections.js`:
+  - Added "New" badge for unopened icebreakers
+  - Added cyan highlight border for new icebreakers
+  - Updated status display for sent icebreakers (removed "Response received")
+  - Chat button for accepted icebreakers
+  - Local state update when marking as viewed
+
+**Token Logic:** Unchanged - uses daily allowance first, then tokens as fallback.
+
+---
+*Last Updated: April 8, 2026 - Icebreaker Handling Logic Update*

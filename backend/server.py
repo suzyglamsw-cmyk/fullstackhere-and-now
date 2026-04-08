@@ -5138,10 +5138,23 @@ async def delete_glance(glance_id: str, current_user: dict = Depends(get_current
 
 @api_router.get("/connections/icebreakers")
 async def get_all_icebreakers(current_user: dict = Depends(get_current_user)):
-    """Get all icebreakers - both sent and received"""
+    """Get all icebreakers - both sent and received
+    
+    Icebreaker visibility rules:
+    - SENT: Sender always sees their sent icebreakers
+      - Free users: just "Sent" status
+      - Premium users: "Sent" or "Viewed · timestamp" when recipient opened it
+      - If declined: Sender still sees "Sent" (no indication of decline)
+    
+    - RECEIVED: Recipient sees pending icebreakers only
+      - "New" if not yet viewed
+      - "Viewed" once opened (but not yet accepted/declined)
+      - Accepted: shows in received list with "Accepted" status
+      - Declined: HIDDEN from recipient's list (removed silently)
+    """
     is_premium = current_user.get("is_premium", False)
     
-    # Icebreakers I sent
+    # Icebreakers I sent - show ALL (declined ones still show as "Sent" to sender)
     sent_icebreakers = await db.icebreakers.find({"from_user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
     outgoing = []
     for ib in sent_icebreakers:
@@ -5152,27 +5165,36 @@ async def get_all_icebreakers(current_user: dict = Depends(get_current_user)):
                 user = {"id": fake_user["id"], "display_name": fake_user["display_name"], "avatar_url": fake_user.get("avatar_url", "")}
         if user:
             # Determine display status for sender
+            # Key rule: Sender never sees "declined" - just "Sent" or "Viewed" (premium only)
+            status = ib.get("status", "pending")
             display_status = "Sent"
-            if is_premium and ib.get("viewed_at"):
-                display_status = f"Viewed · {ib['viewed_at'][:16].replace('T', ' ')}"
-            elif is_premium and ib.get("status") == "pending":
-                display_status = "Sent"
+            
+            if status == "accepted":
+                display_status = "Accepted"
+            elif is_premium and ib.get("viewed_at"):
+                # Premium user can see when it was viewed
+                display_status = "Viewed"
+            # For declined/not_right_now, sender just sees "Sent" (no change)
             
             outgoing.append({
                 "id": ib["id"],
                 "user_id": user["id"],
                 "display_name": user.get("display_name", "Someone"),
                 "avatar_url": user.get("avatar_url", ""),
+                "photos": user.get("photos", []),
                 "message_type": ib.get("message_type", 0),
                 "message": ib.get("message", ICEBREAKER_MESSAGES[0]),
-                "status": ib.get("status", "pending"),
+                "status": "accepted" if status == "accepted" else "pending",  # Hide decline status from sender
                 "display_status": display_status,
                 "viewed_at": ib.get("viewed_at") if is_premium else None,
                 "created_at": ib["created_at"]
             })
     
-    # Icebreakers I received
-    received_icebreakers = await db.icebreakers.find({"to_user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    # Icebreakers I received - only show pending and accepted (hide declined)
+    received_icebreakers = await db.icebreakers.find({
+        "to_user_id": current_user["id"],
+        "status": {"$in": ["pending", "accepted"]}  # Hide declined/not_right_now from recipient
+    }, {"_id": 0}).sort("created_at", -1).to_list(100)
     incoming = []
     for ib in received_icebreakers:
         user = await db.users.find_one({"id": ib["from_user_id"]}, {"_id": 0, "password": 0})
@@ -5181,14 +5203,20 @@ async def get_all_icebreakers(current_user: dict = Depends(get_current_user)):
             if fake_user:
                 user = {"id": fake_user["id"], "display_name": fake_user["display_name"], "avatar_url": fake_user.get("avatar_url", "")}
         if user:
+            # Determine if this is "new" (unopened) for the recipient
+            is_new = not ib.get("viewed_at")
+            
             incoming.append({
                 "id": ib["id"],
                 "user_id": user["id"],
                 "display_name": user.get("display_name", "Someone"),
                 "avatar_url": user.get("avatar_url", ""),
+                "photos": user.get("photos", []),
                 "message_type": ib.get("message_type", 0),
                 "message": ib.get("message", ICEBREAKER_MESSAGES[0]),
                 "status": ib.get("status", "pending"),
+                "is_new": is_new,  # True if not yet opened by recipient
+                "viewed_at": ib.get("viewed_at"),
                 "created_at": ib["created_at"]
             })
     

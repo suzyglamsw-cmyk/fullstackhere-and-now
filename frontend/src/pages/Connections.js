@@ -250,11 +250,18 @@ const Connections = () => {
     // Mark as viewed (only the first view is recorded by backend)
     try {
       await axios.post(`${API}/icebreaker/${icebreaker.id}/view`);
+      // Update local state to remove "New" status
+      setIcebreakers(prev => ({
+        ...prev,
+        incoming: prev.incoming.map(ib => 
+          ib.id === icebreaker.id ? { ...ib, is_new: false } : ib
+        )
+      }));
     } catch (error) {
       // Silently fail - viewing is not critical
       console.log("Failed to mark as viewed:", error);
     }
-    setActionSheet(icebreaker);
+    setActionSheet({ ...icebreaker, from_user_id: icebreaker.user_id });
   };
 
   const handleAcceptChatRequest = async (requestId) => {
@@ -715,10 +722,10 @@ const Connections = () => {
                       <div
                         key={ib.id}
                         data-testid={`received-icebreaker-${ib.id}`}
-                        className="glass rounded-2xl p-4 flex items-center gap-4"
+                        className={`glass rounded-2xl p-4 flex items-center gap-4 ${ib.is_new ? 'border border-cyan-500/30 bg-cyan-500/5' : ''}`}
                       >
                         <div 
-                          className="cursor-pointer"
+                          className="cursor-pointer relative"
                           onClick={() => navigate(`/profile/${ib.user_id}`)}
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-cyan-500 transition-all">
@@ -730,12 +737,27 @@ const Connections = () => {
                               fallbackInitial={ib.display_name?.charAt(0) || "?"}
                             />
                           </div>
+                          {/* New badge for unopened icebreakers */}
+                          {ib.is_new && ib.status === "pending" && (
+                            <span className="absolute -top-1 -right-1 bg-cyan-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                              New
+                            </span>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-white truncate">{ib.display_name}</h4>
+                          <h4 className={`font-semibold text-white truncate ${ib.is_new ? 'font-bold' : ''}`}>{ib.display_name}</h4>
                           <p className="text-slate-400 text-sm truncate">"{ib.message || ICEBREAKER_MESSAGES[ib.message_type || 0]}"</p>
                           <p className="text-slate-500 text-xs mt-1">
-                            {ib.status === "pending" ? "❄️ Sent you an icebreaker" : ib.status === "accepted" ? "✅ Accepted" : ib.status === "declined" ? "❌ Declined" : "Response recorded"} • {formatDate(ib.created_at)}
+                            {ib.status === "pending" ? (
+                              ib.is_new ? (
+                                <span className="text-cyan-400">❄️ New icebreaker</span>
+                              ) : (
+                                <span>❄️ Icebreaker</span>
+                              )
+                            ) : ib.status === "accepted" ? (
+                              <span className="text-emerald-400">✅ Accepted</span>
+                            ) : null}
+                            {" · "}{formatDate(ib.created_at)}
                           </p>
                         </div>
                         {ib.status === "pending" ? (
@@ -743,9 +765,9 @@ const Connections = () => {
                             data-testid={`respond-icebreaker-${ib.id}`}
                             onClick={() => openIcebreakerActionSheet(ib)}
                             size="sm"
-                            className="rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white"
+                            className={`rounded-xl ${ib.is_new ? 'bg-cyan-500 hover:bg-cyan-600' : 'bg-slate-600 hover:bg-slate-500'} text-white`}
                           >
-                            Respond
+                            {ib.is_new ? 'Open' : 'Respond'}
                           </Button>
                         ) : ib.status === "accepted" ? (
                           <Button
@@ -755,19 +777,9 @@ const Connections = () => {
                             className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
                           >
                             <MessageSquare className="w-4 h-4 mr-1" />
-                            Message
+                            Chat
                           </Button>
-                        ) : (
-                          <Button
-                            data-testid={`delete-icebreaker-${ib.id}`}
-                            onClick={() => handleDeleteIcebreaker(ib.id)}
-                            size="sm"
-                            variant="ghost"
-                            className="rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -806,30 +818,32 @@ const Connections = () => {
                           <h4 className="font-semibold text-white truncate">{ib.display_name}</h4>
                           <p className="text-slate-400 text-sm truncate">"{ib.message || ICEBREAKER_MESSAGES[ib.message_type || 0]}"</p>
                           <p className="text-slate-500 text-xs mt-1">
-                            {/* Premium users see "Viewed · timestamp" if viewed */}
-                            {user?.is_premium && ib.viewed_at ? (
-                              <span className="text-emerald-400">Viewed · {formatViewedTime(ib.viewed_at)}</span>
-                            ) : user?.is_premium && ib.status === "pending" ? (
-                              <span>Sent</span>
-                            ) : ib.status === "accepted" ? (
+                            {/* Status display based on premium and state */}
+                            {ib.status === "accepted" ? (
                               <span className="text-emerald-400">✅ Accepted</span>
-                            ) : ib.status === "declined" || ib.status === "not_right_now" ? (
-                              <span className="text-slate-400">Response received</span>
-                            ) : null}
-                            {/* Show sent time for non-premium or add separator */}
-                            {(user?.is_premium || ib.status !== "pending") && " · "}
-                            {formatDate(ib.created_at)}
+                            ) : user?.is_premium && ib.viewed_at ? (
+                              <span className="text-emerald-400">Viewed · {formatViewedTime(ib.viewed_at)}</span>
+                            ) : (
+                              <span>Sent</span>
+                            )}
+                            {" · "}{formatDate(ib.created_at)}
                           </p>
                         </div>
-                        <Button
-                          data-testid={`delete-sent-icebreaker-${ib.id}`}
-                          onClick={(e) => { e.stopPropagation(); handleDeleteIcebreaker(ib.id); }}
-                          size="sm"
-                          variant="ghost"
-                          className="rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {ib.status === "accepted" ? (
+                          <Button
+                            data-testid={`message-sent-icebreaker-${ib.id}`}
+                            onClick={() => navigate(`/chat/${ib.user_id}`)}
+                            size="sm"
+                            className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-1" />
+                            Chat
+                          </Button>
+                        ) : (
+                          <span className="text-slate-500 text-xs">
+                            {user?.is_premium && ib.viewed_at ? "👁" : "⏳"}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
