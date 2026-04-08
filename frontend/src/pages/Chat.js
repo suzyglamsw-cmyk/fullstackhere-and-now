@@ -6,7 +6,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import { ArrowLeft, Send, Loader2, Check, CheckCheck, Lock, Unlock, Shield } from "lucide-react";
-import BlurredImage from "../components/BlurredImage";
+import BlurredImage, { BLUR_STATES } from "../components/BlurredImage";
 
 const Chat = () => {
   const { userId } = useParams();
@@ -18,6 +18,7 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState("");
   const [otherUser, setOtherUser] = useState(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);  // Mutual reveal state
   const [unlockReason, setUnlockReason] = useState(null);
   const [accepting, setAccepting] = useState(false);
   const messagesEndRef = useRef(null);
@@ -93,21 +94,23 @@ const Chat = () => {
       const response = await axios.get(`${API}/messages/${userId}`);
       const data = response.data;
       
-      // Handle new response format with unlock status
+      // Handle new response format with unlock status and reveal state
       if (data.messages !== undefined) {
         setMessages(data.messages);
         setIsUnlocked(data.is_unlocked);
+        setIsRevealed(data.is_revealed || false);  // Mutual reveal state
         setUnlockReason(data.unlock_reason);
         setOtherUser(data.other_user);
       } else {
         // Old format fallback
         setMessages(data);
         setIsUnlocked(true);
+        setIsRevealed(false);
       }
     } catch (error) {
       if (error.response?.status === 403) {
         toast.error("You're not connected with this person");
-        navigate("/connections");
+        navigate("/matches");
       }
     } finally {
       setLoading(false);
@@ -214,12 +217,13 @@ const Chat = () => {
                 onClick={() => navigate(`/profile/${userId}`)}
                 data-testid="chat-user-header"
               >
-                {/* Profile photo */}
+                {/* Profile photo - 2-stage blur: light blur (match, no reveal) or clear (revealed) */}
+                {/* Heavy blur should NEVER appear in message threads */}
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-800 shrink-0 ring-2 ring-white/10">
                   <BlurredImage
                     src={otherUser.avatar_url || (otherUser.photos && otherUser.photos[0])}
                     alt={otherUser.display_name}
-                    isRevealed={isUnlocked}
+                    blurState={isRevealed ? BLUR_STATES.CLEAR : BLUR_STATES.LOW_BLUR}
                     isThumbnail={true}
                     fallbackInitial={otherUser.display_name?.charAt(0) || "?"}
                   />

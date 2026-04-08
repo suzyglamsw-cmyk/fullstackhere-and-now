@@ -2138,11 +2138,46 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
     - Removes from discovery, matches, recents, and chat for both
     - Clears all notifications and chat facilities
     - Prevents future messaging, visibility, matching, and presence
+    - PRESERVES reveal state for potential unblock restoration
     """
     if data.user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="Cannot block yourself")
     
     now = datetime.now(timezone.utc).isoformat()
+    
+    # PRESERVE reveal state before blocking
+    # Check if mutual reveal existed (for restoration on unblock)
+    i_glanced = await db.glances.find_one({"from_user_id": current_user["id"], "to_user_id": data.user_id})
+    they_glanced = await db.glances.find_one({"from_user_id": data.user_id, "to_user_id": current_user["id"]})
+    connection = await db.connections.find_one({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": data.user_id},
+            {"user1_id": data.user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    # Determine reveal state to preserve
+    connection_revealed = connection and connection.get("reveal_state") == "mutual"
+    mutual_glance = bool(i_glanced and they_glanced)
+    was_revealed = connection_revealed or mutual_glance
+    
+    # Store blocked relationship state for potential unblock
+    blocked_relationship = {
+        "blocker_id": current_user["id"],
+        "blocked_id": data.user_id,
+        "blocked_at": now,
+        "was_revealed": was_revealed,
+        "had_connection": bool(connection),
+        "had_mutual_glance": mutual_glance,
+        "connection_reveal_state": connection.get("reveal_state") if connection else None
+    }
+    
+    # Upsert the blocked relationship state
+    await db.blocked_relationships.update_one(
+        {"blocker_id": current_user["id"], "blocked_id": data.user_id},
+        {"$set": blocked_relationship},
+        upsert=True
+    )
     
     # Add to BOTH users' blocked lists (bilateral)
     await db.users.update_one(
@@ -2244,11 +2279,19 @@ async def unblock_user(data: BlockUserRequest, current_user: dict = Depends(get_
     """
     Unblock a user:
     - Restores visibility and allows future matching/messaging
-    - Does NOT restore previous match state, reveal state, or chat history
-    - Both users start fresh as if they never interacted
+    - RESTORES previous reveal state and blur level
+    - Connection and glances are restored to their pre-block state
     """
     if data.user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="Cannot unblock yourself")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Retrieve the saved relationship state
+    blocked_relationship = await db.blocked_relationships.find_one({
+        "blocker_id": current_user["id"],
+        "blocked_id": data.user_id
+    })
     
     # Remove from blocker's blocked list
     await db.users.update_one(
@@ -2262,7 +2305,64 @@ async def unblock_user(data: BlockUserRequest, current_user: dict = Depends(get_
         {"$pull": {"blocked_by_users": current_user["id"]}}
     )
     
-    return {"message": "User unblocked. You can now see each other again."}
+    # Restore previous state if it existed
+    if blocked_relationship:
+        # Restore mutual glances if they existed
+        if blocked_relationship.get("had_mutual_glance"):
+            # Check if glances don't already exist (avoid duplicates)
+            existing_my_glance = await db.glances.find_one({
+                "from_user_id": current_user["id"], 
+                "to_user_id": data.user_id
+            })
+            existing_their_glance = await db.glances.find_one({
+                "from_user_id": data.user_id, 
+                "to_user_id": current_user["id"]
+            })
+            
+            if not existing_my_glance:
+                await db.glances.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "from_user_id": current_user["id"],
+                    "to_user_id": data.user_id,
+                    "created_at": now,
+                    "restored_after_unblock": True
+                })
+            
+            if not existing_their_glance:
+                await db.glances.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "from_user_id": data.user_id,
+                    "to_user_id": current_user["id"],
+                    "created_at": now,
+                    "restored_after_unblock": True
+                })
+        
+        # Restore connection if it existed
+        if blocked_relationship.get("had_connection"):
+            existing_connection = await db.connections.find_one({
+                "$or": [
+                    {"user1_id": current_user["id"], "user2_id": data.user_id},
+                    {"user1_id": data.user_id, "user2_id": current_user["id"]}
+                ]
+            })
+            
+            if not existing_connection:
+                await db.connections.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "user1_id": current_user["id"],
+                    "user2_id": data.user_id,
+                    "connected_at": now,
+                    "reveal_state": blocked_relationship.get("connection_reveal_state", "none"),
+                    "restored_after_unblock": True
+                })
+        
+        # Clean up the blocked relationship record
+        await db.blocked_relationships.delete_one({
+            "blocker_id": current_user["id"],
+            "blocked_id": data.user_id
+        })
+    
+    return {"message": "User unblocked. Previous connection state has been restored."}
 
 
 @api_router.get("/users/blocked")
@@ -5749,15 +5849,35 @@ async def get_messages(user_id: str, current_user: dict = Depends(get_current_us
         return {
             "messages": result,
             "is_unlocked": False,
+            "is_revealed": False,
             "unlock_reason": None,
             "other_user": {
                 "id": user_id,
                 "display_name": get_first_name(other_user.get("display_name", "Someone")) if other_user else "Someone",
-                "avatar_url": ""  # Hide full avatar
+                "avatar_url": "",  # Hide full avatar
+                "photos": []
             }
         }
     
     # Chat is unlocked - return full messages
+    # Check reveal status: is there mutual reveal between users?
+    # Reveal happens when both users have glanced at each other or there's a confirmed connection
+    i_glanced_at = await db.glances.find_one({"from_user_id": current_user["id"], "to_user_id": user_id})
+    they_glanced_at_me = await db.glances.find_one({"from_user_id": user_id, "to_user_id": current_user["id"]})
+    
+    # Check for connection (mutual match)
+    connection = await db.connections.find_one({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": user_id},
+            {"user1_id": user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    # Mutual reveal happens when both glanced OR connection has reveal_state = "mutual"
+    connection_revealed = connection and connection.get("reveal_state") == "mutual"
+    mutual_glance = bool(i_glanced_at and they_glanced_at_me)
+    is_revealed = connection_revealed or mutual_glance
+    
     # Find unread messages from the other user
     unread_message_ids = [
         msg["id"] for msg in messages 
@@ -5812,11 +5932,13 @@ async def get_messages(user_id: str, current_user: dict = Depends(get_current_us
     return {
         "messages": result,
         "is_unlocked": True,
+        "is_revealed": is_revealed,
         "unlock_reason": unlock_status["reason"],
         "other_user": {
             "id": user_id,
             "display_name": other_user.get("display_name", "Someone") if other_user else "Someone",
-            "avatar_url": other_user.get("avatar_url", "") if other_user else ""
+            "avatar_url": other_user.get("avatar_url", "") if other_user else "",
+            "photos": other_user.get("photos", []) if other_user else []
         }
     }
 
