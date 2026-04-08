@@ -581,5 +581,57 @@ Comprehensive list including:
 - **Result**: Accepted icebreakers now appear immediately for both sender and recipient
 - **Badge styling**: Icebreaker connections show cyan badge with Wine icon
 
+### Unified User Card System Implementation (April 8, 2026)
+
+**SECTION 1 - UNIFIED USER CARD:**
+- Created `/app/frontend/src/components/UserCard.js` with unified `UserCard` and `SelfCard` components
+- Standardized layout: icons vertically stacked on right edge
+- Used across: Here Now, Not Here, Discovery, Matches, Venue pages
+- SelfCard shows CLEAR photos (never blurred except in Preview Mode)
+
+**SECTION 2 - MATCHED VS NON-MATCHED UI:**
+- Matched users show: Green "Message" button, "You're matched! Start a conversation" banner
+- Non-matched users show: pre-match action buttons (Glance, Icebreaker, Chat Request)
+- Profile pages for matched users: grey out and disable pre-match actions
+- Add Friend does NOT consume tokens
+- Block remains unchanged
+
+**SECTION 3 - PHOTO BLUR + REVEAL SYSTEM:**
+- Updated `BlurredImage.js` with three states:
+  - `HIGH_BLUR` (12px): Pre-match only
+  - `LOW_BLUR` (4px): Post-match, pre-reveal  
+  - `CLEAR` (0px): After mutual reveal
+- One-sided reveal shows banner: "They've revealed their photo. Reveal yours when ready."
+- Mutual reveal unlocks additional photos
+
+**SECTION 4 - FILTERS:**
+- Added to Discovery (Here Now & Not Here) and WhosHere:
+  - Match status filter: Unmatched only (default), All, Matched only
+  - Activity filter (Not Here): Active now (≤2 min), Recently (≤10 min), This hour (≤60 min), All
+  - Age filter: All ages, 18-25, 25-35, 35-45, 45+
+- All filters are fully combinable
+
+**SECTION 5 - LONG-PRESS "NOT FOR NOW":**
+- Created `/app/frontend/src/components/NotForNowSheet.js`
+- Long-press opens bottom sheet: "Not for now - This profile will be hidden from your feed"
+- Hides profile for 90 days, no notification to other user
+- Backend endpoints: `POST /users/{id}/hide`, `DELETE /users/{id}/hide`, `GET /users/hidden`
+
+**SECTION 6 - BACKEND ADDITIONS:**
+- `POST /reveal/{user_id}` - Reveal photo to matched user
+- `GET /reveal/status/{user_id}` - Get reveal state between users
+- `GET /match/status/{user_id}` - Get detailed match status
+- `check_if_matched()` helper for comprehensive match detection
+
+**Files Modified:**
+- `/app/frontend/src/components/UserCard.js` (NEW)
+- `/app/frontend/src/components/NotForNowSheet.js` (NEW)
+- `/app/frontend/src/components/BlurredImage.js` (UPDATED)
+- `/app/frontend/src/pages/Discovery.js` (REWRITTEN)
+- `/app/frontend/src/pages/WhosHere.js` (REWRITTEN)
+- `/app/frontend/src/pages/Connections.js` (UPDATED)
+- `/app/frontend/src/pages/UserProfile.js` (UPDATED)
+- `/app/backend/routes/connections.py` (UPDATED)
+
 ---
-*Last Updated: April 7, 2026 - Accepted Icebreakers in Mutual Matches Fix*
+*Last Updated: April 8, 2026 - Unified User Card System Implementation*

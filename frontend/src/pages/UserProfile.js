@@ -45,12 +45,17 @@ const UserProfile = () => {
   const [selectedIcebreaker, setSelectedIcebreaker] = useState(null);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+  
+  // Match and reveal state
+  const [matchStatus, setMatchStatus] = useState(null);
   
   // Global ref for confirmation hints (only one visible at a time)
   const confirmHintRef = useConfirmHintGlobal();
 
   useEffect(() => {
     fetchProfile();
+    fetchMatchStatus();
   }, [userId]);
 
   const fetchProfile = async () => {
@@ -63,6 +68,39 @@ const UserProfile = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchMatchStatus = async () => {
+    try {
+      const response = await axios.get(`${API}/match/status/${userId}`);
+      setMatchStatus(response.data);
+    } catch (error) {
+      console.error("Failed to fetch match status:", error);
+    }
+  };
+
+  const handleRevealPhoto = async () => {
+    setRevealing(true);
+    try {
+      await axios.post(`${API}/reveal/${userId}`);
+      toast.success("Photo revealed!");
+      fetchMatchStatus();
+      fetchProfile();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to reveal photo"));
+    } finally {
+      setRevealing(false);
+    }
+  };
+
+  // Helper: Check if users are matched
+  const isMatched = matchStatus?.is_matched || profile?.is_matched || profile?.is_connected;
+  
+  // Helper: Get photo state based on match/reveal status
+  const getPhotoState = () => {
+    if (!isMatched) return 'high_blur';
+    if (matchStatus?.reveal_state?.is_mutual) return 'clear';
+    return 'low_blur';
   };
 
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -357,6 +395,122 @@ const UserProfile = () => {
 
             {/* Action Buttons */}
             <div className="space-y-3">
+              {/* MATCHED USER UI */}
+              {isMatched && (
+                <>
+                  {/* Matched Banner */}
+                  <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl p-4 mb-4">
+                    <p className="text-emerald-300 text-center font-medium">
+                      You're matched! Start a conversation
+                    </p>
+                  </div>
+                  
+                  {/* Reveal Banner (if they revealed but I haven't) */}
+                  {matchStatus?.reveal_state?.they_revealed && !matchStatus?.reveal_state?.i_revealed && (
+                    <div className="bg-indigo-500/20 border border-indigo-500/30 rounded-xl p-4 mb-4">
+                      <p className="text-indigo-300 text-center text-sm">
+                        They've revealed their photo. Reveal yours when you're ready.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Primary: Message Button */}
+                  <Button
+                    data-testid="message-btn"
+                    onClick={() => navigate(`/chat/${userId}`)}
+                    className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white h-12"
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Message
+                  </Button>
+                  
+                  {/* Reveal Button (if not yet revealed by me) */}
+                  {!matchStatus?.reveal_state?.i_revealed && (
+                    <Button
+                      data-testid="reveal-btn"
+                      onClick={handleRevealPhoto}
+                      disabled={revealing}
+                      className="w-full rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white h-12"
+                    >
+                      {revealing ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Eye className="w-4 h-4 mr-2" />
+                      )}
+                      Reveal My Photo
+                    </Button>
+                  )}
+                  
+                  {/* Add Friend (does not consume tokens) */}
+                  <div className="flex gap-2">
+                    {profile.is_friend ? (
+                      <Button
+                        data-testid="friends-btn"
+                        disabled
+                        className="flex-1 rounded-xl bg-emerald-500/20 text-emerald-400 cursor-default h-12"
+                      >
+                        <Heart className="w-4 h-4 mr-2" />
+                        Friends
+                      </Button>
+                    ) : profile.friend_request_sent ? (
+                      <Button
+                        data-testid="request-sent-btn"
+                        disabled
+                        className="flex-1 rounded-xl bg-amber-500/20 text-amber-400 cursor-default h-12"
+                      >
+                        <Heart className="w-4 h-4 mr-2" />
+                        Requested
+                      </Button>
+                    ) : (
+                      <Button
+                        data-testid="add-friend-btn"
+                        onClick={handleAddFriend}
+                        disabled={addingFriend}
+                        className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 text-white h-12 border border-white/10"
+                      >
+                        {addingFriend ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          <UserPlus className="w-4 h-4 mr-2" />
+                        )}
+                        Add Friend
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {/* Greyed out pre-match actions (visible but disabled for matched users) */}
+                  <div className="pt-4 border-t border-white/10">
+                    <p className="text-slate-500 text-xs mb-2">Pre-match actions (disabled)</p>
+                    <div className="flex gap-2 flex-wrap opacity-50">
+                      <Button
+                        disabled
+                        className="rounded-full bg-slate-800/50 text-slate-500 h-10 px-4 cursor-not-allowed"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Glance</span>
+                      </Button>
+                      <Button
+                        disabled
+                        className="rounded-full bg-slate-800/50 text-slate-500 h-10 px-4 cursor-not-allowed"
+                      >
+                        <Snowflake className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Icebreaker</span>
+                      </Button>
+                      <Button
+                        disabled
+                        className="rounded-full bg-slate-800/50 text-slate-500 h-10 px-4 cursor-not-allowed"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Chat Request</span>
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              {/* NON-MATCHED USER UI - Pre-match Actions */}
+              {!isMatched && (
+                <>
               {/* Primary Actions - Always Available Pre-Reveal */}
               <div className="flex gap-2 justify-start flex-wrap">
                 {/* Glance Button */}
@@ -569,6 +723,8 @@ const UserProfile = () => {
                     : "Unlocks after an icebreaker or chat request is accepted."
                   }
                 </p>
+              )}
+                </>
               )}
             </div>
 

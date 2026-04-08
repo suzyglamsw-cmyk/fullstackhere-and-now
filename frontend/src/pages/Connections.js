@@ -5,6 +5,8 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
+import { UserCard } from "../components/UserCard";
+import { NotForNowSheet } from "../components/NotForNowSheet";
 import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Snowflake, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2, Ban, UserMinus, MoreVertical, Wine, Archive } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
 import BlurredImage from "../components/BlurredImage";
@@ -1227,7 +1229,7 @@ const Connections = () => {
             </div>
           )
         ) : (
-          /* All Connections Tab */
+          /* All Connections Tab - Mutual Matches */
           connections.length === 0 ? (
             <div className="text-center py-20">
               <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
@@ -1236,93 +1238,39 @@ const Connections = () => {
               <h2 className="text-xl font-semibold text-white mb-2">No mutual matches yet</h2>
             </div>
           ) : (
-            <div className="space-y-4" data-testid="connections-list">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4" data-testid="connections-list">
               {connections.map((connection) => (
-                <div
+                <UserCard
                   key={connection.id}
-                  data-testid={`connection-card-${connection.id}`}
-                  onClick={() => navigate(`/chat/${connection.user_id}`)}
-                  className="glass rounded-2xl p-4 flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer"
-                >
-                  {/* Avatar - tappable to profile */}
-                  <div 
-                    className="relative cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/profile/${connection.user_id}`);
-                    }}
-                  >
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
-                      {connection.avatar_url ? (
-                        <img
-                          src={connection.thumbnail_url || connection.avatar_url}
-                          alt={connection.display_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                          <span className="text-2xl text-slate-400">
-                            {connection.display_name?.charAt(0) || "?"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${
-                      connection.connection_type === "mutual_glance" ? "bg-pink-500" :
-                      connection.connection_type === "icebreaker_accepted" ? "bg-cyan-500" :
-                      "bg-emerald-500"
-                    }`}>
-                      {connection.connection_type === "mutual_glance" ? (
-                        <Heart className="w-3 h-3 text-white" />
-                      ) : connection.connection_type === "icebreaker_accepted" ? (
-                        <Wine className="w-3 h-3 text-white" />
-                      ) : (
-                        <Sparkles className="w-3 h-3 text-white" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-white truncate">{connection.display_name}</h3>
-                    {connection.bio && (
-                      <p className="text-slate-400 text-sm truncate">{connection.bio}</p>
-                    )}
-                    <div className="flex items-center gap-2 mt-1 text-slate-500 text-xs">
-                      {connection.connection_type === "mutual_glance" ? (
-                        <Heart className="w-3 h-3" />
-                      ) : connection.connection_type === "icebreaker_accepted" ? (
-                        <Wine className="w-3 h-3" />
-                      ) : (
-                        <MapPin className="w-3 h-3" />
-                      )}
-                      <span>{connection.venue_name}</span>
-                      <span>•</span>
-                      <span>{formatDate(connection.connected_at)}</span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      data-testid={`chat-btn-${connection.user_id}`}
-                      onClick={() => navigate(`/chat/${connection.user_id}`)}
-                      className="rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white"
-                    >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Chat
-                    </Button>
-                    <Button
-                      data-testid={`clear-match-btn-${connection.user_id}`}
-                      onClick={() => setClearConfirmUser(connection)}
-                      size="icon"
-                      variant="ghost"
-                      className="rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                    >
-                      <UserMinus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+                  user={{
+                    id: connection.user_id,
+                    display_name: connection.display_name,
+                    avatar_url: connection.avatar_url,
+                    thumbnail_url: connection.thumbnail_url,
+                    bio: connection.bio,
+                    age: connection.age,
+                    show_as: connection.show_as,
+                    rainbow: connection.rainbow,
+                    open_to_all: connection.open_to_all,
+                    is_premium: connection.is_premium,
+                    venue_name: connection.venue_name
+                  }}
+                  isMatched={true}
+                  matchType={connection.connection_type}
+                  photoState={connection.reveal_state?.is_mutual ? 'clear' : 'low_blur'}
+                  revealState={connection.reveal_state || { iRevealed: false, theyRevealed: false }}
+                  onMessage={(userId) => navigate(`/chat/${userId}`)}
+                  onReveal={async (userId) => {
+                    try {
+                      await axios.post(`${API}/reveal/${userId}`);
+                      toast.success("Photo revealed!");
+                      fetchAllData();
+                    } catch (error) {
+                      toast.error("Failed to reveal photo");
+                    }
+                  }}
+                  context="matches"
+                />
               ))}
             </div>
           )
