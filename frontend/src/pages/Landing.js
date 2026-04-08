@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/App";
-import { Eye, Users, Shield, UserPlus } from "lucide-react";
+import { Eye, Snowflake, MessageSquare, Sparkles, EyeOff, Users, Clock } from "lucide-react";
 import { Logo, LogoIcon } from "../components/Logo";
 
 const Landing = () => {
@@ -40,22 +40,32 @@ const Landing = () => {
     {
       icon: Eye,
       title: "Glance",
-      description: "Send a gentle signal of interest.",
+      description: "Let them know they've caught your attention.",
+    },
+    {
+      icon: Snowflake,
+      title: "Icebreakers",
+      description: "A short gesture to get the ball rolling.",
+    },
+    {
+      icon: MessageSquare,
+      title: "Chat Request",
+      description: "Dive straight in with a chat request.",
+    },
+    {
+      icon: Sparkles,
+      title: "Reveal",
+      description: "Accepted glances, icebreakers, or chat requests open messaging and begin the reveal process. Profiles start with a soft blur, and you can mutually choose to share clear photos as things progress.",
+    },
+    {
+      icon: EyeOff,
+      title: "Visibility",
+      description: "You choose when you're visible — at venues, nearby, or not at all.",
     },
     {
       icon: Users,
-      title: "Reveal",
-      description: "When interest is mutual, your full photos and profile become clear for both of you.",
-    },
-    {
-      icon: Shield,
-      title: "Privacy",
-      description: "Choose whether to show your online visibility in Here & Now wherever you are.",
-    },
-    {
-      icon: UserPlus,
       title: "Friends",
-      description: "Option to turn a mutual connection into a friend with a dedicated friends list.",
+      description: "Keep the good ones close with a simple friends list.",
     },
   ];
 
@@ -77,16 +87,13 @@ const Landing = () => {
 
           {/* Hero Content - Main Tagline */}
           <div className="text-center space-y-6">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
-              Live location check-in.
-            </h1>
-            <p className="text-2xl md:text-3xl lg:text-4xl font-bold">
-              See who's{" "}
-              <span className="text-indigo-400">HERE</span>
-              {" "}with you{" "}
-              <span className="text-slate-500">&</span>
-              {" "}connect{" "}
-              <span className="text-pink-400">NOW</span>.
+            <p className="text-xl md:text-2xl text-slate-300 leading-relaxed max-w-3xl mx-auto">
+              Two fun ways to meet people — make new friends, date, or a bit of both.
+            </p>
+            <p className="text-lg md:text-xl text-slate-400 leading-relaxed max-w-3xl mx-auto">
+              Live location check-in at venues to see who's there{" "}
+              <span className="text-indigo-400">(here now)</span>, or see who's nearby and ready to connect wherever you are{" "}
+              <span className="text-pink-400">(not here)</span>.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
@@ -115,7 +122,7 @@ const Landing = () => {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">How it works</h2>
-            <p className="text-slate-400">Simple, spontaneous, safe</p>
+            <p className="text-slate-400">Simple, spontaneous, safe.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -136,18 +143,28 @@ const Landing = () => {
               </div>
             ))}
           </div>
+
+          {/* Additional Info */}
+          <div className="mt-12 text-center space-y-4">
+            <p className="text-slate-400 leading-relaxed max-w-2xl mx-auto">
+              All profiles begin with a heavy blur, which softens once a mutual match is made.
+            </p>
+            <p className="text-slate-400 leading-relaxed max-w-2xl mx-auto">
+              Not so outgoing? Not sure yet? Just testing the waters? We've got you.
+            </p>
+            <p className="text-slate-400 leading-relaxed max-w-2xl mx-auto">
+              In live venues, you can still be open to connect — with the option to show no picture until you're ready.
+            </p>
+          </div>
         </div>
       </div>
 
       {/* CTA Section */}
       <div className="relative py-16 px-4">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-            Ready to make your next connection?
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-6 flex items-center justify-center gap-2 flex-wrap">
+            What are you waiting for? The time is now <Clock className="w-7 h-7 text-indigo-400 inline-block" />
           </h2>
-          <p className="text-slate-400 mb-6">
-            Join thousands discovering spontaneous connections at venues near them.
-          </p>
           <Button
             data-testid="cta-get-started-btn"
             onClick={() => navigate("/onboarding/discover")}
