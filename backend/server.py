@@ -226,7 +226,7 @@ def validate_dob_minimum_age(date_of_birth: str, min_age: int = 18) -> bool:
     return age >= min_age
 
 def is_checkin_valid(checkin: dict) -> bool:
-    """Check if a checkin is still valid (not expired)"""
+    """Check if a checkin is still valid (not expired) - synchronous check only"""
     if not checkin.get("is_active", False):
         return False
     
@@ -249,6 +249,85 @@ def is_checkin_valid(checkin: dict) -> bool:
                     return False
             except:
                 pass
+    
+    return True
+
+
+async def validate_and_expire_checkin(checkin: dict) -> bool:
+    """
+    Validate a check-in and auto-expire it if stale.
+    
+    Returns True if check-in is valid, False if expired/invalid.
+    If expired, the check-in is automatically updated in the database with:
+      - is_active = False
+      - checked_out_at = now
+      - checkout_reason = "auto_expired"
+    
+    Expiration rules:
+      1. If expires_at exists and is in the past -> expired
+      2. If last_activity_at is older than AUTO_CHECKOUT_MINUTES (2 hours) -> expired
+      3. If checked_in_at is older than AUTO_CHECKOUT_MINUTES and no activity -> expired
+    """
+    if not checkin.get("is_active", False):
+        return False
+    
+    checkin_id = checkin.get("id")
+    if not checkin_id:
+        return False
+    
+    now = datetime.now(timezone.utc)
+    is_expired = False
+    expiry_reason = None
+    
+    # Check 1: expires_at timestamp
+    if checkin.get("expires_at"):
+        try:
+            expires = datetime.fromisoformat(checkin["expires_at"].replace('Z', '+00:00'))
+            if expires < now:
+                is_expired = True
+                expiry_reason = "expires_at_passed"
+        except:
+            pass
+    
+    # Check 2: last_activity_at older than AUTO_CHECKOUT_MINUTES
+    if not is_expired and checkin.get("last_activity_at"):
+        try:
+            last_activity = datetime.fromisoformat(checkin["last_activity_at"].replace('Z', '+00:00'))
+            if last_activity < now - timedelta(minutes=AUTO_CHECKOUT_MINUTES):
+                is_expired = True
+                expiry_reason = "activity_timeout"
+        except:
+            pass
+    
+    # Check 3: If no last_activity_at, check checked_in_at
+    if not is_expired and not checkin.get("last_activity_at") and checkin.get("checked_in_at"):
+        try:
+            checked_in = datetime.fromisoformat(checkin["checked_in_at"].replace('Z', '+00:00'))
+            if checked_in < now - timedelta(minutes=AUTO_CHECKOUT_MINUTES):
+                is_expired = True
+                expiry_reason = "checkin_timeout"
+        except:
+            pass
+    
+    # If expired, auto-update the database
+    if is_expired:
+        await db.checkins.update_one(
+            {"id": checkin_id},
+            {"$set": {
+                "is_active": False,
+                "checked_out_at": now.isoformat(),
+                "checkout_reason": "auto_expired",
+                "auto_checkout_reason": expiry_reason
+            }}
+        )
+        # Also update user's presence status to "not_here"
+        user_id = checkin.get("user_id")
+        if user_id:
+            await db.users.update_one(
+                {"id": user_id},
+                {"$set": {"presence_status": "not_here"}}
+            )
+        return False
     
     return True
 
@@ -1090,18 +1169,18 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     # Check for active venue check-in
     checkin = await db.checkins.find_one({"user_id": current_user["id"], "is_active": True}, {"_id": 0})
     
-    if checkin and is_checkin_valid(checkin):
-        # User has valid active check-in
-        current_user["active_venue_id"] = checkin.get("venue_id")
-        current_user["active_venue_timestamp"] = checkin.get("checked_in_at")
+    if checkin:
+        # Validate and auto-expire if stale
+        is_valid = await validate_and_expire_checkin(checkin)
+        if is_valid:
+            # User has valid active check-in
+            current_user["active_venue_id"] = checkin.get("venue_id")
+            current_user["active_venue_timestamp"] = checkin.get("checked_in_at")
+        else:
+            # Check-in was auto-expired
+            current_user["active_venue_id"] = None
+            current_user["active_venue_timestamp"] = None
     else:
-        # No active check-in or expired - clear any stale data
-        if checkin:
-            # Auto-checkout expired check-in
-            await db.checkins.update_one(
-                {"id": checkin["id"]},
-                {"$set": {"is_active": False, "checked_out_at": datetime.now(timezone.utc).isoformat(), "auto_checkout_reason": "expired"}}
-            )
         current_user["active_venue_id"] = None
         current_user["active_venue_timestamp"] = None
     
@@ -3505,8 +3584,9 @@ async def get_venues(current_user: dict = Depends(get_current_user)):
         checkins = await db.checkins.find({"venue_id": venue["id"], "is_active": True}, {"_id": 0}).to_list(100)
         valid_count = 0
         for checkin in checkins:
-            # Skip expired checkins
-            if not is_checkin_valid(checkin):
+            # Validate and auto-expire stale checkins
+            is_valid = await validate_and_expire_checkin(checkin)
+            if not is_valid:
                 continue
             user = await db.users.find_one({"id": checkin["user_id"]}, {"_id": 0})
             if user:
@@ -3540,8 +3620,9 @@ async def get_venue(venue_id: str, current_user: dict = Depends(get_current_user
     checkins = await db.checkins.find({"venue_id": venue_id, "is_active": True}, {"_id": 0}).to_list(100)
     valid_count = 0
     for checkin in checkins:
-        # Skip expired checkins
-        if not is_checkin_valid(checkin):
+        # Validate and auto-expire stale checkins
+        is_valid = await validate_and_expire_checkin(checkin)
+        if not is_valid:
             continue
         # Skip current user from validation but count them
         if checkin["user_id"] == current_user["id"]:
@@ -3811,13 +3892,9 @@ async def get_current_checkin(current_user: dict = Depends(get_current_user)):
     if not checkin:
         return {"checked_in": False}
     
-    # Check if current user's checkin has expired
-    if not is_checkin_valid(checkin):
-        # Auto-checkout the expired checkin
-        await db.checkins.update_one(
-            {"id": checkin["id"]},
-            {"$set": {"is_active": False, "checked_out_at": datetime.now(timezone.utc).isoformat(), "auto_checkout_reason": "expired"}}
-        )
+    # Validate and auto-expire if stale
+    is_valid = await validate_and_expire_checkin(checkin)
+    if not is_valid:
         return {"checked_in": False}
     
     venue = await db.venues.find_one({"id": checkin["venue_id"]}, {"_id": 0})
@@ -3827,8 +3904,9 @@ async def get_current_checkin(current_user: dict = Depends(get_current_user)):
         all_checkins = await db.checkins.find({"venue_id": checkin["venue_id"], "is_active": True}, {"_id": 0}).to_list(100)
         valid_count = 0
         for c in all_checkins:
-            # Skip expired checkins
-            if not is_checkin_valid(c):
+            # Validate and auto-expire stale checkins
+            c_valid = await validate_and_expire_checkin(c)
+            if not c_valid:
                 continue
             user = await db.users.find_one({"id": c["user_id"]}, {"_id": 0})
             if user:
@@ -3882,7 +3960,9 @@ async def get_venue_checkin_count(venue_id: str, current_user: dict = Depends(ge
     
     valid_count = 0
     for c in all_checkins:
-        if not is_checkin_valid(c):
+        # Validate and auto-expire stale checkins
+        is_valid = await validate_and_expire_checkin(c)
+        if not is_valid:
             continue
         user = await db.users.find_one({"id": c["user_id"]}, {"_id": 0})
         if user:
@@ -3899,7 +3979,8 @@ async def get_venue_checkin_count(venue_id: str, current_user: dict = Depends(ge
         "is_active": True
     }, {"_id": 0})
     
-    is_user_checked_in = current_checkin is not None and is_checkin_valid(current_checkin)
+    # Validate and auto-expire if stale
+    is_user_checked_in = current_checkin is not None and await validate_and_expire_checkin(current_checkin)
     
     return {
         "venue_id": venue_id,
@@ -3931,7 +4012,9 @@ async def get_people_at_venue(
         "is_active": True
     }, {"_id": 0})
     
-    if not current_checkin or not is_checkin_valid(current_checkin):
+    # Validate current user's check-in (auto-expires if stale)
+    current_user_valid = current_checkin is not None and await validate_and_expire_checkin(current_checkin)
+    if not current_user_valid:
         raise HTTPException(
             status_code=403, 
             detail="You must check in to this venue to see who's here. Check-ins require being physically present."
@@ -3962,13 +4045,11 @@ async def get_people_at_venue(
         if checkin["user_id"] == current_user["id"]:
             continue
         
-        # Skip expired checkins (validates timestamp within AUTO_CHECKOUT_MINUTES window)
-        if not is_checkin_valid(checkin):
-            # Auto-deactivate stale checkins found during query
-            await db.checkins.update_one(
-                {"id": checkin["id"]},
-                {"$set": {"is_active": False, "checked_out_at": now.isoformat(), "auto_checkout_reason": "stale_presence"}}
-            )
+        # Validate and auto-expire stale checkins
+        # This will update the database if the checkin is expired
+        is_valid = await validate_and_expire_checkin(checkin)
+        if not is_valid:
+            # Checkin was expired and updated in DB - skip it
             continue
         
         # Try to find real user first - check both visibility fields
