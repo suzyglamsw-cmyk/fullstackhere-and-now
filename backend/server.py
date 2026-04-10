@@ -3944,7 +3944,17 @@ async def get_people_at_venue(
         {"$set": {"last_active_at": now.isoformat()}}
     )
     
-    checkins = await db.checkins.find({"venue_id": venue_id, "is_active": True}, {"_id": 0}).to_list(100)
+    # Query for ACTIVE checkins only:
+    # - is_active must be True
+    # - checked_out_at must be None (not checked out)
+    checkins = await db.checkins.find({
+        "venue_id": venue_id, 
+        "is_active": True,
+        "$or": [
+            {"checked_out_at": None},
+            {"checked_out_at": {"$exists": False}}
+        ]
+    }, {"_id": 0}).to_list(100)
     
     people = []
     for checkin in checkins:
@@ -3952,18 +3962,38 @@ async def get_people_at_venue(
         if checkin["user_id"] == current_user["id"]:
             continue
         
-        # Skip expired checkins
+        # Skip expired checkins (validates timestamp within AUTO_CHECKOUT_MINUTES window)
         if not is_checkin_valid(checkin):
+            # Auto-deactivate stale checkins found during query
+            await db.checkins.update_one(
+                {"id": checkin["id"]},
+                {"$set": {"is_active": False, "checked_out_at": now.isoformat(), "auto_checkout_reason": "stale_presence"}}
+            )
             continue
         
         # Try to find real user first - check both visibility fields
+        # AND verify presence_status is "here" (not "not_here")
         user = await db.users.find_one({
             "id": checkin["user_id"], 
-            "$or": [
-                {"visibility": "visible"},
-                {"visibility": {"$exists": False}, "is_visible": True}
+            "$and": [
+                {"$or": [
+                    {"visibility": "visible"},
+                    {"visibility": {"$exists": False}, "is_visible": True}
+                ]},
+                {"$or": [
+                    {"presence_status": "here"},
+                    {"presence_status": {"$exists": False}}  # Legacy users without presence_status field
+                ]}
             ]
         }, {"_id": 0, "password": 0})
+        
+        # If user not found, they either don't exist, are hidden, or have presence_status "not_here"
+        if not user:
+            # Check if user exists but has "not_here" status - skip them silently
+            user_check = await db.users.find_one({"id": checkin["user_id"]}, {"presence_status": 1, "_id": 0})
+            if user_check and user_check.get("presence_status") == "not_here":
+                # User has explicitly set to "not_here" - don't show them
+                continue
         
         # Skip users with hidden visibility
         if user and user.get("visibility") == "hidden":
