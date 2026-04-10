@@ -127,7 +127,7 @@ const UserProfile = () => {
         venue_id: "profile_view"
       });
       
-      toast.success(response.data.is_mutual ? "It's a match!" : "Glance sent!");
+      toast.success(response.data.is_mutual ? "It's mutual!" : "Glance sent!");
       
       // Refresh profile to update glance status
       await fetchProfile();
@@ -493,7 +493,7 @@ const UserProfile = () => {
                   {/* Matched Banner */}
                   <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl p-4 mb-4">
                     <p className="text-emerald-300 text-center font-medium">
-                      You're matched! Start a conversation
+                      You're mutual. Start a conversation
                     </p>
                   </div>
                   

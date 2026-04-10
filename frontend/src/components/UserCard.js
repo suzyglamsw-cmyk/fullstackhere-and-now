@@ -392,7 +392,7 @@ export const UserCard = ({
       {isMatched && (
         <div className="bg-emerald-500/20 border-t border-emerald-500/30 px-3 py-2">
           <p className="text-emerald-300 text-xs text-center">
-            You're matched! Start a conversation
+            You're mutual. Start a conversation
           </p>
         </div>
       )}

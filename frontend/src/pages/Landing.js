@@ -147,7 +147,7 @@ const Landing = () => {
           {/* Additional Info */}
           <div className="mt-12 text-center space-y-4">
             <p className="text-slate-400 leading-relaxed max-w-2xl mx-auto">
-              All profiles begin with a heavy blur, which softens once a mutual match is made.
+              All profiles begin with a heavy blur, which softens once a mutual connection is made.
             </p>
             <p className="text-slate-400 leading-relaxed max-w-2xl mx-auto">
               Not so outgoing? Not sure yet? Just testing the waters? We've got you.

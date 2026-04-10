@@ -350,7 +350,7 @@ const Connections = () => {
   const handleClearFromMatches = async (userId, displayName) => {
     try {
       await axios.delete(`${API}/connections/${userId}/clear`);
-      toast.success(`${displayName} cleared from mutual matches`);
+      toast.success(`${displayName} cleared from mutual connections`);
       setClearConfirmUser(null);
       fetchAllData();
     } catch (error) {
@@ -477,7 +477,7 @@ const Connections = () => {
             className={`rounded-xl flex-shrink-0 ${tab === "connections" ? "bg-white/10" : "text-slate-400"}`}
           >
             <Users className="w-4 h-4 mr-2" />
-            Mutual Matches
+            Mutual Connections
           </Button>
         </div>
 
@@ -1249,7 +1249,7 @@ const Connections = () => {
               <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
                 <Users className="w-10 h-10 text-slate-600" />
               </div>
-              <h2 className="text-xl font-semibold text-white mb-2">No mutual matches yet</h2>
+              <h2 className="text-xl font-semibold text-white mb-2">No mutual connections yet</h2>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4" data-testid="connections-list">
@@ -1313,14 +1313,14 @@ const Connections = () => {
             </div>
 
             <div className="space-y-2">
-              {/* Stay Matched & Clear (soft archive) */}
+              {/* Stay mutual & clear (soft archive) */}
               <Button
                 data-testid="stay-matched-clear-btn"
                 onClick={() => handleClearFromMatches(clearConfirmUser.user_id, clearConfirmUser.display_name)}
                 className="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold"
               >
                 <Archive className="w-4 h-4 mr-2" />
-                Stay Matched & Clear
+                Stay mutual & clear
               </Button>
               <p className="text-slate-500 text-xs text-center px-2">
                 Removes from list but preserves match. You can re-match easily.

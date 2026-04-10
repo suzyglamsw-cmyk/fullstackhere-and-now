@@ -137,7 +137,7 @@ const Notifications = () => {
     switch (notification.type) {
       case "mutual_glance":
         return {
-          title: `You matched with ${userName}!`,
+          title: `You're mutual with ${userName}!`,
           subtitle: "You can now chat with them"
         };
       case "glance":
