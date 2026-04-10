@@ -15,8 +15,13 @@ const getPhotoUrl = (photoIdOrUrl) => {
   if (!photoIdOrUrl) return '';
   // External URLs (e.g., unsplash) - return as-is
   if (photoIdOrUrl.startsWith('http')) return photoIdOrUrl;
-  // Already a full URL path - return as-is
-  if (photoIdOrUrl.startsWith('/api/')) return photoIdOrUrl;
+  // Already a serve endpoint - return as-is
+  if (photoIdOrUrl.startsWith('/api/photos/serve/')) return photoIdOrUrl;
+  // Direct photo path: /api/photos/UUID -> convert to serve endpoint
+  if (photoIdOrUrl.startsWith('/api/photos/')) {
+    const uuid = photoIdOrUrl.replace('/api/photos/', '');
+    return `${API}/photos/serve/${uuid}`;
+  }
   // Just a photo ID - construct serve URL
   return `${API}/photos/serve/${photoIdOrUrl}`;
 };
