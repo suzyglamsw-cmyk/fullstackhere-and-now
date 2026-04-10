@@ -42,7 +42,7 @@ const RADIUS_OPTIONS = [
 const MATCH_FILTER_OPTIONS = [
   { value: "unmatched", label: "Unmatched only" },
   { value: "all", label: "All users" },
-  { value: "matched", label: "Matched only" },
+  { value: "mutual", label: "Mutual only" },
 ];
 
 const ACTIVITY_FILTER_OPTIONS = [
@@ -255,9 +255,9 @@ const Discovery = () => {
 
       // Apply match filter (but NOT to self)
       if (matchFilter === "unmatched") {
-        fetchedPeople = fetchedPeople.filter(p => p.is_self || !p.is_matched);
-      } else if (matchFilter === "matched") {
-        fetchedPeople = fetchedPeople.filter(p => p.is_self || p.is_matched);
+        fetchedPeople = fetchedPeople.filter(p => p.is_self || !p.is_connection_accepted);
+      } else if (matchFilter === "mutual") {
+        fetchedPeople = fetchedPeople.filter(p => p.is_self || p.is_connection_accepted);
       }
 
       // Apply activity filter (but NOT to self)
@@ -596,7 +596,7 @@ const Discovery = () => {
                   <UserCard
                     key={person.id}
                     user={person}
-                    isMatched={person.is_matched || person.is_connected}
+                    isMatched={person.is_connection_accepted}
                     matchType={person.match_type}
                     photoState={getPhotoState(person)}
                     revealState={person.reveal_state || { iRevealed: false, theyRevealed: false }}
