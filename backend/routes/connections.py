@@ -713,7 +713,7 @@ async def get_mutual_glances(current_user: dict = Depends(get_current_user)):
 
 @router.get("/connections/glances")
 async def get_glances(current_user: dict = Depends(get_current_user)):
-    """Get glances sent and received"""
+    """Get glances sent and received with blur state fields"""
     sent = await db.glances.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     received = await db.glances.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     
@@ -721,30 +721,75 @@ async def get_glances(current_user: dict = Depends(get_current_user)):
     sent_to_ids = {g["to_user_id"] for g in sent}
     received_from_ids = {g["from_user_id"] for g in received}
     
+    async def get_blur_state(user_id: str) -> dict:
+        """Calculate blur state for a user"""
+        # Check for mutual glance
+        is_mutual = user_id in sent_to_ids and user_id in received_from_ids
+        
+        # Check for accepted icebreaker
+        accepted_icebreaker = await db.icebreakers.find_one({
+            "$or": [
+                {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
+                {"from_user_id": user_id, "to_user_id": current_user["id"], "status": "accepted"}
+            ]
+        })
+        
+        # Check for accepted chat request
+        accepted_chat = await db.chat_requests.find_one({
+            "$or": [
+                {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
+                {"from_user_id": user_id, "to_user_id": current_user["id"], "status": "accepted"}
+            ]
+        })
+        
+        # is_connection_accepted = mutual glance OR accepted icebreaker/chat
+        is_connection_accepted = is_mutual or bool(accepted_icebreaker) or bool(accepted_chat)
+        
+        # Check for explicit reveal (both users pressed reveal button)
+        i_revealed = await db.reveals.find_one({
+            "from_user_id": current_user["id"], "to_user_id": user_id
+        }) is not None
+        they_revealed = await db.reveals.find_one({
+            "from_user_id": user_id, "to_user_id": current_user["id"]
+        }) is not None
+        is_revealed = i_revealed and they_revealed
+        
+        return {
+            "is_mutual": is_mutual,
+            "is_connection_accepted": is_connection_accepted,
+            "reveal_state": {
+                "is_revealed": is_revealed,
+                "iRevealed": i_revealed,
+                "theyRevealed": they_revealed
+            }
+        }
+    
     outgoing_list = []
     for g in sent:
         user = await db.users.find_one({"id": g["to_user_id"]}, {"_id": 0})
         if user:
-            is_mutual = g["to_user_id"] in received_from_ids
+            blur_state = await get_blur_state(g["to_user_id"])
             outgoing_list.append({
                 **g,
                 "user_id": g["to_user_id"],
                 "display_name": user.get("display_name"),
                 "avatar_url": user.get("avatar_url", ""),
-                "is_mutual": is_mutual
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                **blur_state
             })
     
     incoming_list = []
     for g in received:
         user = await db.users.find_one({"id": g["from_user_id"]}, {"_id": 0})
         if user:
-            is_mutual = g["from_user_id"] in sent_to_ids
+            blur_state = await get_blur_state(g["from_user_id"])
             incoming_list.append({
                 **g,
                 "user_id": g["from_user_id"],
                 "display_name": get_first_name(user.get("display_name")),
                 "avatar_url": user.get("avatar_url", ""),
-                "is_mutual": is_mutual
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                **blur_state
             })
     
     return {"incoming": incoming_list, "outgoing": outgoing_list}
@@ -752,30 +797,84 @@ async def get_glances(current_user: dict = Depends(get_current_user)):
 
 @router.get("/connections/icebreakers")
 async def get_icebreakers(current_user: dict = Depends(get_current_user)):
-    """Get icebreakers sent and received"""
+    """Get icebreakers sent and received with blur state fields"""
     sent = await db.icebreakers.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     received = await db.icebreakers.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    
+    async def get_blur_state(user_id: str) -> dict:
+        """Calculate blur state for a user"""
+        # Check for mutual glance
+        my_glance = await db.glances.find_one({
+            "from_user_id": current_user["id"], "to_user_id": user_id
+        })
+        their_glance = await db.glances.find_one({
+            "from_user_id": user_id, "to_user_id": current_user["id"]
+        })
+        is_mutual_glance = bool(my_glance) and bool(their_glance)
+        
+        # Check for accepted icebreaker
+        accepted_icebreaker = await db.icebreakers.find_one({
+            "$or": [
+                {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
+                {"from_user_id": user_id, "to_user_id": current_user["id"], "status": "accepted"}
+            ]
+        })
+        
+        # Check for accepted chat request
+        accepted_chat = await db.chat_requests.find_one({
+            "$or": [
+                {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
+                {"from_user_id": user_id, "to_user_id": current_user["id"], "status": "accepted"}
+            ]
+        })
+        
+        # is_connection_accepted = mutual glance OR accepted icebreaker/chat
+        is_connection_accepted = is_mutual_glance or bool(accepted_icebreaker) or bool(accepted_chat)
+        
+        # Check for explicit reveal
+        i_revealed = await db.reveals.find_one({
+            "from_user_id": current_user["id"], "to_user_id": user_id
+        }) is not None
+        they_revealed = await db.reveals.find_one({
+            "from_user_id": user_id, "to_user_id": current_user["id"]
+        }) is not None
+        is_revealed = i_revealed and they_revealed
+        
+        return {
+            "is_connection_accepted": is_connection_accepted,
+            "reveal_state": {
+                "is_revealed": is_revealed,
+                "iRevealed": i_revealed,
+                "theyRevealed": they_revealed
+            }
+        }
     
     outgoing_list = []
     for ib in sent:
         user = await db.users.find_one({"id": ib["to_user_id"]}, {"_id": 0})
         if user:
+            blur_state = await get_blur_state(ib["to_user_id"])
             outgoing_list.append({
                 **ib,
                 "user_id": ib["to_user_id"],
                 "display_name": user.get("display_name"),
-                "avatar_url": user.get("avatar_url", "")
+                "avatar_url": user.get("avatar_url", ""),
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                **blur_state
             })
     
     incoming_list = []
     for ib in received:
         user = await db.users.find_one({"id": ib["from_user_id"]}, {"_id": 0})
         if user:
+            blur_state = await get_blur_state(ib["from_user_id"])
             incoming_list.append({
                 **ib,
                 "user_id": ib["from_user_id"],
                 "display_name": user.get("display_name"),
-                "avatar_url": user.get("avatar_url", "")
+                "avatar_url": user.get("avatar_url", ""),
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                **blur_state
             })
     
     return {"incoming": incoming_list, "outgoing": outgoing_list}
@@ -784,30 +883,84 @@ async def get_icebreakers(current_user: dict = Depends(get_current_user)):
 
 @router.get("/connections/chat-requests")
 async def get_chat_requests(current_user: dict = Depends(get_current_user)):
-    """Get chat requests sent and received"""
+    """Get chat requests sent and received with blur state fields"""
     sent = await db.chat_requests.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
     received = await db.chat_requests.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    
+    async def get_blur_state(user_id: str) -> dict:
+        """Calculate blur state for a user"""
+        # Check for mutual glance
+        my_glance = await db.glances.find_one({
+            "from_user_id": current_user["id"], "to_user_id": user_id
+        })
+        their_glance = await db.glances.find_one({
+            "from_user_id": user_id, "to_user_id": current_user["id"]
+        })
+        is_mutual_glance = bool(my_glance) and bool(their_glance)
+        
+        # Check for accepted icebreaker
+        accepted_icebreaker = await db.icebreakers.find_one({
+            "$or": [
+                {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
+                {"from_user_id": user_id, "to_user_id": current_user["id"], "status": "accepted"}
+            ]
+        })
+        
+        # Check for accepted chat request
+        accepted_chat = await db.chat_requests.find_one({
+            "$or": [
+                {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
+                {"from_user_id": user_id, "to_user_id": current_user["id"], "status": "accepted"}
+            ]
+        })
+        
+        # is_connection_accepted = mutual glance OR accepted icebreaker/chat
+        is_connection_accepted = is_mutual_glance or bool(accepted_icebreaker) or bool(accepted_chat)
+        
+        # Check for explicit reveal
+        i_revealed = await db.reveals.find_one({
+            "from_user_id": current_user["id"], "to_user_id": user_id
+        }) is not None
+        they_revealed = await db.reveals.find_one({
+            "from_user_id": user_id, "to_user_id": current_user["id"]
+        }) is not None
+        is_revealed = i_revealed and they_revealed
+        
+        return {
+            "is_connection_accepted": is_connection_accepted,
+            "reveal_state": {
+                "is_revealed": is_revealed,
+                "iRevealed": i_revealed,
+                "theyRevealed": they_revealed
+            }
+        }
     
     outgoing_list = []
     for req in sent:
         user = await db.users.find_one({"id": req["to_user_id"]}, {"_id": 0})
         if user:
+            blur_state = await get_blur_state(req["to_user_id"])
             outgoing_list.append({
                 **req,
                 "user_id": req["to_user_id"],
                 "display_name": user.get("display_name"),
-                "avatar_url": user.get("avatar_url", "")
+                "avatar_url": user.get("avatar_url", ""),
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                **blur_state
             })
     
     incoming_list = []
     for req in received:
         user = await db.users.find_one({"id": req["from_user_id"]}, {"_id": 0})
         if user:
+            blur_state = await get_blur_state(req["from_user_id"])
             incoming_list.append({
                 **req,
                 "user_id": req["from_user_id"],
                 "display_name": user.get("display_name"),
-                "avatar_url": user.get("avatar_url", "")
+                "avatar_url": user.get("avatar_url", ""),
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                **blur_state
             })
     
     return {"incoming": incoming_list, "outgoing": outgoing_list}
