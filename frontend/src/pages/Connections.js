@@ -13,6 +13,18 @@ import BlurredImage from "../components/BlurredImage";
 import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 import { dispatchBlockEvent, onUserBlocked } from "../utils/blockEvents";
 
+/**
+ * Helper: Determine photo blur state using 3-stage system
+ * @param {Object} item - The connection/glance/icebreaker/request object
+ * @returns {'blocked' | 'revealed' | 'connection_accepted' | 'unmatched'}
+ */
+const getPhotoState = (item) => {
+  if (item.is_blocked) return 'blocked';
+  if (item.reveal_state?.is_revealed) return 'revealed';
+  if (item.is_connection_accepted) return 'connection_accepted';
+  return 'unmatched';
+};
+
 const ICEBREAKER_MESSAGES = [
   "Hello",
   "You seem interesting",
@@ -598,12 +610,12 @@ const Connections = () => {
                             <BlurredImage
                               src={glance.thumbnail_url || glance.avatar_url}
                               alt={glance.display_name}
-                              isRevealed={glance.is_revealed}
+                              blurState={getPhotoState(glance)}
                               isThumbnail={true}
                               fallbackInitial={glance.display_name?.charAt(0) || "?"}
                             />
                           </div>
-                          {glance.is_mutual && (
+                          {glance.is_connection_accepted && (
                             <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
                               <Heart className="w-3 h-3 text-white" />
                             </div>
@@ -612,10 +624,10 @@ const Connections = () => {
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white truncate">{glance.display_name}</h4>
                           <p className="text-slate-500 text-xs">
-                            {glance.is_mutual ? "Mutual glance" : "Glanced at you"} • {formatDate(glance.created_at)}
+                            {glance.is_connection_accepted ? "Mutual glance" : "Glanced at you"} • {formatDate(glance.created_at)}
                           </p>
                         </div>
-                        {!glance.is_mutual && (
+                        {!glance.is_connection_accepted && (
                           <Button
                             data-testid={`glance-back-${glance.id}`}
                             onClick={(e) => { e.stopPropagation(); navigate(`/profile/${glance.user_id}`); }}
@@ -663,12 +675,12 @@ const Connections = () => {
                             <BlurredImage
                               src={glance.thumbnail_url || glance.avatar_url}
                               alt={glance.display_name}
-                              isRevealed={glance.is_revealed}
+                              blurState={getPhotoState(glance)}
                               isThumbnail={true}
                               fallbackInitial={glance.display_name?.charAt(0) || "?"}
                             />
                           </div>
-                          {glance.is_mutual && (
+                          {glance.is_connection_accepted && (
                             <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center">
                               <Heart className="w-3 h-3 text-white" />
                             </div>
@@ -677,7 +689,7 @@ const Connections = () => {
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white truncate">{glance.display_name}</h4>
                           <p className="text-slate-500 text-xs">
-                            {glance.is_mutual ? "Mutual glance" : "Waiting for them to glance back"} • {formatDate(glance.created_at)}
+                            {glance.is_connection_accepted ? "Mutual glance" : "Waiting for them to glance back"} • {formatDate(glance.created_at)}
                           </p>
                         </div>
                         <Button
@@ -732,7 +744,7 @@ const Connections = () => {
                             <BlurredImage
                               src={ib.thumbnail_url || ib.avatar_url}
                               alt={ib.display_name}
-                              isRevealed={ib.status === "accepted"}
+                              blurState={getPhotoState(ib)}
                               isThumbnail={true}
                               fallbackInitial={ib.display_name?.charAt(0) || "?"}
                             />
@@ -808,7 +820,7 @@ const Connections = () => {
                             <BlurredImage
                               src={ib.thumbnail_url || ib.avatar_url}
                               alt={ib.display_name}
-                              isRevealed={ib.status === "accepted"}
+                              blurState={getPhotoState(ib)}
                               isThumbnail={true}
                               fallbackInitial={ib.display_name?.charAt(0) || "?"}
                             />
@@ -887,7 +899,7 @@ const Connections = () => {
                             <BlurredImage
                               src={request.thumbnail_url || request.avatar_url}
                               alt={request.display_name}
-                              isRevealed={request.status === "accepted"}
+                              blurState={getPhotoState(request)}
                               isThumbnail={true}
                               fallbackInitial={request.display_name?.charAt(0) || "?"}
                             />
@@ -974,7 +986,7 @@ const Connections = () => {
                             <BlurredImage
                               src={request.thumbnail_url || request.avatar_url}
                               alt={request.display_name}
-                              isRevealed={request.status === "accepted"}
+                              blurState={getPhotoState(request)}
                               isThumbnail={true}
                               fallbackInitial={request.display_name?.charAt(0) || "?"}
                             />
@@ -1389,7 +1401,7 @@ const Connections = () => {
                 <BlurredImage
                   src={actionSheet.thumbnail_url || actionSheet.avatar_url}
                   alt={actionSheet.display_name}
-                  isRevealed={false}
+                  blurState={getPhotoState(actionSheet)}
                   isThumbnail={true}
                   fallbackInitial={actionSheet.display_name?.charAt(0)}
                 />
@@ -1477,7 +1489,7 @@ const Connections = () => {
                 <BlurredImage
                   src={chatActionSheet.thumbnail_url || chatActionSheet.avatar_url}
                   alt={chatActionSheet.display_name}
-                  isRevealed={false}
+                  blurState={getPhotoState(chatActionSheet)}
                   isThumbnail={true}
                   fallbackInitial={chatActionSheet.display_name?.charAt(0)}
                 />
