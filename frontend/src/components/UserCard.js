@@ -204,17 +204,27 @@ export const UserCard = ({
   const longPressTimer = useRef(null);
   const [longPressTriggered, setLongPressTriggered] = useState(false);
   
-  // Determine blur level based on photoState
-  const getBlurClass = () => {
+  // Get blur value based on photoState (same logic as BlurredImage.js)
+  const getBlurValue = () => {
     switch (photoState) {
       case 'clear':
-        return 'blur-none';
+        return 0;
       case 'low_blur':
-        return 'blur-[4px]';
+        return 4;
       case 'high_blur':
       default:
-        return 'blur-[12px]';
+        return 12;
     }
+  };
+  
+  // Get blur style (same approach as BlurredImage.js - always apply CSS blur)
+  const getBlurStyle = () => {
+    const blurValue = getBlurValue();
+    return {
+      filter: blurValue > 0 ? `blur(${blurValue}px)` : 'none',
+      transition: 'filter 0.3s ease-out',
+      transform: blurValue > 0 ? 'scale(1.05)' : 'scale(1)', // Prevent blur edge artifacts
+    };
   };
   
   // Check if we should show silhouette
@@ -274,7 +284,8 @@ export const UserCard = ({
             <img
               src={getPhotoUrl(user.avatar_url) || getPhotoUrl(user.thumbnail_url) || getPhotoUrl(user.photos?.[0]) || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200"}
               alt={user.display_name}
-              className={`w-full h-full object-cover transition-all ${getBlurClass()}`}
+              className="w-full h-full object-cover"
+              style={getBlurStyle()}
             />
           </div>
         )}

@@ -93,13 +93,15 @@ const UserProfile = () => {
     }
   };
 
-  // Helper: Check if users are matched
-  const isMatched = matchStatus?.is_matched || profile?.is_matched || profile?.is_connected;
+  // Helper: Check if users are matched (mutual glance, accepted icebreaker, etc.)
+  const isMatched = matchStatus?.is_matched || profile?.is_mutual || profile?.is_matched || profile?.is_connected;
   
   // Helper: Get photo state based on match/reveal status
   const getPhotoState = () => {
     if (!isMatched) return 'high_blur';
-    if (matchStatus?.reveal_state?.is_mutual) return 'clear';
+    // Check reveal status from profile or matchStatus
+    const isRevealed = profile?.is_revealed || matchStatus?.reveal_state?.is_mutual;
+    if (isRevealed) return 'clear';
     return 'low_blur';
   };
 
