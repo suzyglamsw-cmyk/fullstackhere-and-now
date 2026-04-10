@@ -300,27 +300,67 @@ const UserProfile = () => {
 
           {/* Profile Info */}
           <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h1 className="text-2xl font-bold text-white">
+            {/* Name + Age row with icons right-aligned */}
+            <div className="flex justify-between items-center flex-nowrap mb-4">
+              {/* Left: Name + Age */}
+              <div className="min-w-0 flex-shrink">
+                <h1 className="text-2xl font-bold text-white truncate">
                   {profile.is_revealed ? profile.display_name : (profile.display_name || "?").charAt(0)}
                   {profile.age && <span className="text-slate-400 ml-2">{profile.age}</span>}
                 </h1>
-                {/* Free-text line (bio) - always visible */}
-                {profile.bio && (
-                  <p className="text-slate-400 mt-1">{profile.bio}</p>
-                )}
               </div>
               
-              {/* Glance Status Badge */}
+              {/* Right: Icon group (gender, rainbow, open_to_all) */}
+              <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
+                {/* Gender indicator */}
+                {profile.show_as && (
+                  <div 
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${
+                      profile.show_as === "male" 
+                        ? "bg-blue-400/90 text-white" 
+                        : "bg-pink-400/90 text-white"
+                    }`}
+                  >
+                    {profile.show_as === "male" ? "M" : "F"}
+                  </div>
+                )}
+                
+                {/* Rainbow indicator */}
+                {profile.rainbow && (
+                  <div 
+                    className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
+                    style={{ 
+                      background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
+                    }}
+                  >
+                    <div className="w-4 h-4 rounded-full bg-slate-900/50" />
+                  </div>
+                )}
+                
+                {/* Open to all indicator */}
+                {profile.open_to_all && (
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg bg-amber-400/90">
+                    <span className="text-xs">🤗</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Bio - always visible */}
+            {profile.bio && (
+              <p className="text-slate-400 mb-4">{profile.bio}</p>
+            )}
+            
+            {/* Glance Status Badge */}
+            <div className="mb-4">
               {profile.is_mutual && (
-                <div className="flex items-center gap-1 bg-pink-500/20 text-pink-400 px-3 py-1 rounded-full text-sm">
+                <div className="inline-flex items-center gap-1 bg-pink-500/20 text-pink-400 px-3 py-1 rounded-full text-sm">
                   <Heart className="w-4 h-4" />
                   Mutual
                 </div>
               )}
               {profile.they_glanced_at_me && !profile.i_glanced_at_them && (
-                <div className="flex items-center gap-1 bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-sm">
+                <div className="inline-flex items-center gap-1 bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-sm">
                   <Eye className="w-4 h-4" />
                   Glanced at you
                 </div>
@@ -356,11 +396,11 @@ const UserProfile = () => {
 
             {/* FOOD MOOD SECTION - Visible in ALL profile states */}
             {profile.food_mood && (
-              <div className="mb-6 bg-amber-500/10 rounded-xl p-4">
-                <h3 className="text-xs font-medium text-amber-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
+              <div className="mb-6 bg-purple-500/10 rounded-xl p-4">
+                <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
                 <div>
-                  <p className="text-amber-300/50 text-xs">In the kitchen?</p>
-                  <p className="text-amber-100 text-sm">{profile.food_mood}</p>
+                  <p className="text-purple-300/50 text-xs">In the kitchen?</p>
+                  <p className="text-purple-100 text-sm">{profile.food_mood}</p>
                 </div>
               </div>
             )}

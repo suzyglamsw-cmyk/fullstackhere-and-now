@@ -1856,43 +1856,44 @@ const Profile = () => {
                     </div>
                   )}
                   
-                  {/* Gender indicator */}
-                  {formData.show_as && (
-                    <div 
-                      className={`absolute bottom-20 left-3 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-lg ${
-                        formData.show_as === "male" 
-                          ? "bg-blue-400/90 text-white" 
-                          : "bg-pink-400/90 text-white"
-                      }`}
-                    >
-                      {formData.show_as === "male" ? "M" : "F"}
-                    </div>
-                  )}
-                  
-                  {/* Rainbow/OpenToAll indicators */}
-                  <div className="absolute bottom-20 left-12 flex gap-1">
-                    {formData.rainbow && (
-                      <div 
-                        className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
-                        style={{ 
-                          background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
-                        }}
-                      >
-                        <div className="w-4 h-4 rounded-full bg-slate-900/50" />
-                      </div>
-                    )}
-                    {formData.open_to_all && (
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg bg-amber-400/90">
-                        <span className="text-sm">🤗</span>
-                      </div>
-                    )}
-                  </div>
-                  
                   {/* Pre-match Info Overlay - Initial only */}
                   <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold text-white">{(formData.display_name || "?").charAt(0)}</h3>
-                      {user?.age && <span className="text-purple-200/70">{user.age}</span>}
+                    {/* Name + Age with icons right-aligned - nowrap flex */}
+                    <div className="flex justify-between items-center flex-nowrap">
+                      {/* Left: Name + Age */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 className="text-xl font-bold text-white truncate">{(formData.display_name || "?").charAt(0)}</h3>
+                        {user?.age && <span className="text-purple-200/70">{user.age}</span>}
+                      </div>
+                      {/* Right: Icon group */}
+                      <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                        {formData.show_as && (
+                          <div 
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${
+                              formData.show_as === "male" 
+                                ? "bg-blue-400/90 text-white" 
+                                : "bg-pink-400/90 text-white"
+                            }`}
+                          >
+                            {formData.show_as === "male" ? "M" : "F"}
+                          </div>
+                        )}
+                        {formData.rainbow && (
+                          <div 
+                            className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
+                            style={{ 
+                              background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
+                            }}
+                          >
+                            <div className="w-4 h-4 rounded-full bg-slate-900/50" />
+                          </div>
+                        )}
+                        {formData.open_to_all && (
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg bg-amber-400/90">
+                            <span className="text-xs">🤗</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {formData.intent && (
                       <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${
@@ -1940,11 +1941,11 @@ const Profile = () => {
                 
                 {/* FOOD MOOD SECTION - Visible in ALL states */}
                 {formData.food_mood && (
-                  <div className="bg-amber-500/10 rounded-xl p-4">
-                    <h3 className="text-xs font-medium text-amber-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
+                  <div className="bg-purple-500/10 rounded-xl p-4">
+                    <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
                     <div>
-                      <p className="text-amber-300/50 text-xs">In the kitchen?</p>
-                      <p className="text-amber-100 text-sm">{formData.food_mood}</p>
+                      <p className="text-purple-300/50 text-xs">In the kitchen?</p>
+                      <p className="text-purple-100 text-sm">{formData.food_mood}</p>
                     </div>
                   </div>
                 )}
@@ -2005,43 +2006,44 @@ const Profile = () => {
                     </div>
                   )}
                   
-                  {/* Gender indicator */}
-                  {formData.show_as && (
-                    <div 
-                      className={`absolute bottom-20 left-3 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-lg ${
-                        formData.show_as === "male" 
-                          ? "bg-blue-400/90 text-white" 
-                          : "bg-pink-400/90 text-white"
-                      }`}
-                    >
-                      {formData.show_as === "male" ? "M" : "F"}
-                    </div>
-                  )}
-                  
-                  {/* Rainbow/OpenToAll indicators */}
-                  <div className="absolute bottom-20 left-12 flex gap-1">
-                    {formData.rainbow && (
-                      <div 
-                        className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
-                        style={{ 
-                          background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
-                        }}
-                      >
-                        <div className="w-4 h-4 rounded-full bg-slate-900/50" />
-                      </div>
-                    )}
-                    {formData.open_to_all && (
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg bg-amber-400/90">
-                        <span className="text-sm">🤗</span>
-                      </div>
-                    )}
-                  </div>
-                  
                   {/* Post-match Info Overlay - Still initial only */}
                   <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold text-white">{(formData.display_name || "?").charAt(0)}</h3>
-                      {user?.age && <span className="text-purple-200/70">{user.age}</span>}
+                    {/* Name + Age with icons right-aligned - nowrap flex */}
+                    <div className="flex justify-between items-center flex-nowrap">
+                      {/* Left: Name + Age */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 className="text-xl font-bold text-white truncate">{(formData.display_name || "?").charAt(0)}</h3>
+                        {user?.age && <span className="text-purple-200/70">{user.age}</span>}
+                      </div>
+                      {/* Right: Icon group */}
+                      <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                        {formData.show_as && (
+                          <div 
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${
+                              formData.show_as === "male" 
+                                ? "bg-blue-400/90 text-white" 
+                                : "bg-pink-400/90 text-white"
+                            }`}
+                          >
+                            {formData.show_as === "male" ? "M" : "F"}
+                          </div>
+                        )}
+                        {formData.rainbow && (
+                          <div 
+                            className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
+                            style={{ 
+                              background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
+                            }}
+                          >
+                            <div className="w-4 h-4 rounded-full bg-slate-900/50" />
+                          </div>
+                        )}
+                        {formData.open_to_all && (
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg bg-amber-400/90">
+                            <span className="text-xs">🤗</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {formData.intent && (
                       <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${
@@ -2191,43 +2193,44 @@ const Profile = () => {
                     </div>
                   )}
                   
-                  {/* Gender indicator - bottom left of photo */}
-                  {formData.show_as && (
-                    <div 
-                      className={`absolute bottom-20 left-3 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shadow-lg ${
-                        formData.show_as === "male" 
-                          ? "bg-blue-400/90 text-white" 
-                          : "bg-pink-400/90 text-white"
-                      }`}
-                    >
-                      {formData.show_as === "male" ? "M" : "F"}
-                    </div>
-                  )}
-                  
-                  {/* Rainbow/OpenToAll indicators */}
-                  <div className="absolute bottom-20 left-12 flex gap-1">
-                    {formData.rainbow && (
-                      <div 
-                        className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
-                        style={{ 
-                          background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
-                        }}
-                      >
-                        <div className="w-4 h-4 rounded-full bg-slate-900/50" />
-                      </div>
-                    )}
-                    {formData.open_to_all && (
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg bg-amber-400/90">
-                        <span className="text-sm">🤗</span>
-                      </div>
-                    )}
-                  </div>
-                  
                   {/* Full Info Overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold text-white">{formData.display_name || "Your Name"}</h3>
-                      {user?.age && <span className="text-purple-200/70">{user.age}</span>}
+                    {/* Name + Age with icons right-aligned - nowrap flex */}
+                    <div className="flex justify-between items-center flex-nowrap">
+                      {/* Left: Name + Age */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 className="text-xl font-bold text-white truncate">{formData.display_name || "Your Name"}</h3>
+                        {user?.age && <span className="text-purple-200/70">{user.age}</span>}
+                      </div>
+                      {/* Right: Icon group */}
+                      <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                        {formData.show_as && (
+                          <div 
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${
+                              formData.show_as === "male" 
+                                ? "bg-blue-400/90 text-white" 
+                                : "bg-pink-400/90 text-white"
+                            }`}
+                          >
+                            {formData.show_as === "male" ? "M" : "F"}
+                          </div>
+                        )}
+                        {formData.rainbow && (
+                          <div 
+                            className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
+                            style={{ 
+                              background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
+                            }}
+                          >
+                            <div className="w-4 h-4 rounded-full bg-slate-900/50" />
+                          </div>
+                        )}
+                        {formData.open_to_all && (
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg bg-amber-400/90">
+                            <span className="text-xs">🤗</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {/* Intent badge */}
                     {formData.intent && (
@@ -2276,11 +2279,11 @@ const Profile = () => {
                 
                 {/* FOOD MOOD SECTION - Visible in ALL states */}
                 {formData.food_mood && (
-                  <div className="bg-amber-500/10 rounded-xl p-4">
-                    <h3 className="text-xs font-medium text-amber-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
+                  <div className="bg-purple-500/10 rounded-xl p-4">
+                    <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
                     <div>
-                      <p className="text-amber-300/50 text-xs">In the kitchen?</p>
-                      <p className="text-amber-100 text-sm">{formData.food_mood}</p>
+                      <p className="text-purple-300/50 text-xs">In the kitchen?</p>
+                      <p className="text-purple-100 text-sm">{formData.food_mood}</p>
                     </div>
                   </div>
                 )}
