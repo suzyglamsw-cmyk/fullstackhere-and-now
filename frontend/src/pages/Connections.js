@@ -598,7 +598,7 @@ const Connections = () => {
                             <BlurredImage
                               src={glance.thumbnail_url || glance.avatar_url}
                               alt={glance.display_name}
-                              isRevealed={glance.is_mutual}
+                              isRevealed={glance.is_revealed}
                               isThumbnail={true}
                               fallbackInitial={glance.display_name?.charAt(0) || "?"}
                             />
@@ -663,7 +663,7 @@ const Connections = () => {
                             <BlurredImage
                               src={glance.thumbnail_url || glance.avatar_url}
                               alt={glance.display_name}
-                              isRevealed={glance.is_mutual}
+                              isRevealed={glance.is_revealed}
                               isThumbnail={true}
                               fallbackInitial={glance.display_name?.charAt(0) || "?"}
                             />
@@ -1271,7 +1271,11 @@ const Connections = () => {
                   }}
                   isMatched={true}
                   matchType={connection.connection_type}
-                  photoState={connection.reveal_state?.is_mutual ? 'clear' : 'low_blur'}
+                  photoState={
+                    connection.reveal_state?.is_revealed ? 'revealed' :
+                    connection.is_connection_accepted ? 'connection_accepted' :
+                    'unmatched'
+                  }
                   revealState={connection.reveal_state || { iRevealed: false, theyRevealed: false }}
                   onMessage={(userId) => navigate(`/chat/${userId}`)}
                   onReveal={async (userId) => {
