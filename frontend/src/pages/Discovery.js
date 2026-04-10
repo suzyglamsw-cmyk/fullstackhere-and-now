@@ -372,18 +372,6 @@ const Discovery = () => {
   };
 
   // Determine photo state for a user
-  // Get photo state based on connection/reveal status (12px / 6px / 0px)
-  // Uses the API-provided is_connection_accepted and is_revealed flags
-  const getPhotoState = (person) => {
-    if (person.is_blocked) return 'blocked';
-    // REVEALED (0px): ONLY when both users pressed Reveal
-    if (person.is_revealed) return 'revealed';
-    // CONNECTION_ACCEPTED (6px): mutual glance OR accepted icebreaker/chat
-    if (person.is_connection_accepted) return 'connection_accepted';
-    // UNMATCHED (12px): No connection
-    return 'unmatched';
-  };
-
   // ============================================================================
   // RENDER: Mode Selector (Discovery Home)
   // ============================================================================
@@ -597,9 +585,7 @@ const Discovery = () => {
                     key={person.id}
                     user={person}
                     isMatched={person.is_connection_accepted}
-                    matchType={person.match_type}
-                    photoState={getPhotoState(person)}
-                    revealState={person.reveal_state || { iRevealed: false, theyRevealed: false }}
+                    revealState={person.reveal_state}
                     onGlance={handleGlance}
                     onIcebreaker={handleOpenIcebreaker}
                     onChatRequest={handleSendChatRequest}
