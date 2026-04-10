@@ -1,15 +1,18 @@
 /**
  * Unified UserCard Component
- * Used across: Here Now, Not Here, Discovery, Matches, Venue pages
+ * Used across: Here Now (WhosHere.js), Not Here (Discovery.js), and all venue pages
  * 
- * Layout: Icons vertically stacked on right side (matching Not Here layout)
+ * CONSISTENT BEHAVIOR ACROSS ALL CONTEXTS:
+ * - 3-stage blur: high_blur (pre-match) → low_blur (post-match) → clear (post-reveal)
+ * - Name display: Initial only until post-reveal, then full name
+ * - Icon layout: Name+Age left, icons (gender/rainbow/open_to_all) right, flex no-wrap
+ * - Clicking any card navigates to UserProfile.js (clicked-thumb expanded view)
  * 
  * Props:
  * - user: User object with profile data
- * - isSelf: Boolean indicating if this is the current user's card
  * - isMatched: Boolean indicating if users are matched
  * - matchType: Type of match (icebreaker_accepted, chat_request_accepted, mutual_glance, etc.)
- * - photoState: 'high_blur' | 'low_blur' | 'clear' - controls blur level
+ * - photoState: 'high_blur' | 'low_blur' | 'clear' - controls blur level AND name display
  * - revealState: { iRevealed, theyRevealed } - controls reveal logic
  * - onGlance, onIcebreaker, onChatRequest, onMessage, onReveal: Action handlers
  * - onLongPress: Handler for "Not for now" action
@@ -220,8 +223,9 @@ export const UserCard = ({
     }
   };
   
-  // Display name logic
-  const displayName = photoState === 'clear' || isMatched
+  // Display name logic - Only show full name when photoState is 'clear' (post-reveal)
+  // Pre-match and post-match (before reveal) show initial only
+  const displayName = photoState === 'clear'
     ? `${user.display_name}${user.age ? `, ${user.age}` : ""}`
     : `${(user.display_name || "?").charAt(0)}${user.age ? `, ${user.age}` : ""}`;
   
