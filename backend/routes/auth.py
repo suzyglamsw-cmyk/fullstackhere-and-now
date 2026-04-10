@@ -396,3 +396,45 @@ async def reset_password(data: PasswordResetConfirm):
     await db.password_resets.update_one({"token": data.token}, {"$set": {"used": True}})
     
     return {"message": "Password updated successfully"}
+
+
+@router.post("/logout")
+async def logout(current_user: dict = Depends(get_current_user)):
+    """
+    Logout user and clear their venue presence.
+    
+    This endpoint:
+    1. Deactivates any active venue check-in for the user
+    2. Resets the user's presence_status to "not_here"
+    3. The user will no longer appear in any venue's "Here Now" list
+    
+    Note: JWT token invalidation is handled client-side by discarding the token.
+    """
+    user_id = current_user["id"]
+    now = datetime.now(timezone.utc)
+    
+    # Clear any active venue check-in
+    active_checkin = await db.checkins.find_one({"user_id": user_id, "is_active": True})
+    if active_checkin:
+        await db.checkins.update_one(
+            {"id": active_checkin["id"]},
+            {"$set": {
+                "is_active": False,
+                "checked_out_at": now.isoformat(),
+                "checkout_reason": "user_logout"
+            }}
+        )
+        logger.info(f"User {user_id} checked out from venue {active_checkin.get('venue_id')} on logout")
+    
+    # Reset user's presence status to "not_here"
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "presence_status": "not_here",
+            "active_venue_id": None
+        }}
+    )
+    
+    logger.info(f"User {user_id} logged out, presence cleared")
+    
+    return {"message": "Logged out successfully", "presence_cleared": True}
