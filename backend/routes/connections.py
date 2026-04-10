@@ -189,18 +189,68 @@ async def get_remaining_glances(current_user: dict = Depends(get_current_user)):
 
 @router.delete("/glances/{glance_id}")
 async def delete_glance(glance_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a glance (both sender and recipient can delete)"""
-    # Allow deletion if user is either sender OR recipient
-    result = await db.glances.delete_one({
+    """
+    Hide a glance from user's own view (non-destructive).
+    
+    This only affects the current user's view - the other party still sees the interaction.
+    The glance is marked as 'hidden' for the current user rather than deleted.
+    """
+    # Find the glance
+    glance = await db.glances.find_one({
         "id": glance_id,
         "$or": [
             {"from_user_id": current_user["id"]},
             {"to_user_id": current_user["id"]}
         ]
     })
-    if result.deleted_count == 0:
+    
+    if not glance:
         raise HTTPException(status_code=404, detail="Glance not found")
-    return {"message": "Glance removed"}
+    
+    # Determine if user is sender or recipient
+    is_sender = glance["from_user_id"] == current_user["id"]
+    
+    # Mark as hidden for this user (non-destructive)
+    hidden_field = "hidden_by_sender" if is_sender else "hidden_by_recipient"
+    await db.glances.update_one(
+        {"id": glance_id},
+        {"$set": {hidden_field: True, f"{hidden_field}_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Glance removed from your list"}
+
+
+@router.post("/glances/bulk-delete")
+async def bulk_delete_glances(data: dict, current_user: dict = Depends(get_current_user)):
+    """
+    Bulk hide glances from user's own view (non-destructive).
+    
+    Request body: {"glance_ids": ["id1", "id2", ...]}
+    """
+    glance_ids = data.get("glance_ids", [])
+    if not glance_ids:
+        raise HTTPException(status_code=400, detail="No glance IDs provided")
+    
+    hidden_count = 0
+    for glance_id in glance_ids:
+        glance = await db.glances.find_one({
+            "id": glance_id,
+            "$or": [
+                {"from_user_id": current_user["id"]},
+                {"to_user_id": current_user["id"]}
+            ]
+        })
+        
+        if glance:
+            is_sender = glance["from_user_id"] == current_user["id"]
+            hidden_field = "hidden_by_sender" if is_sender else "hidden_by_recipient"
+            await db.glances.update_one(
+                {"id": glance_id},
+                {"$set": {hidden_field: True, f"{hidden_field}_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            hidden_count += 1
+    
+    return {"message": f"Removed {hidden_count} glances from your list", "count": hidden_count}
 
 
 # ============================================================================
@@ -474,14 +524,68 @@ async def respond_to_icebreaker(
 
 @router.delete("/icebreaker/{icebreaker_id}")
 async def delete_icebreaker(icebreaker_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete/withdraw an icebreaker"""
-    result = await db.icebreakers.delete_one({
+    """
+    Hide an icebreaker from user's own view (non-destructive).
+    
+    This only affects the current user's view - the other party still sees the interaction.
+    Premium view history is preserved for the other user.
+    """
+    # Find the icebreaker
+    icebreaker = await db.icebreakers.find_one({
         "id": icebreaker_id,
-        "from_user_id": current_user["id"]
+        "$or": [
+            {"from_user_id": current_user["id"]},
+            {"to_user_id": current_user["id"]}
+        ]
     })
-    if result.deleted_count == 0:
+    
+    if not icebreaker:
         raise HTTPException(status_code=404, detail="Icebreaker not found")
-    return {"message": "Icebreaker withdrawn"}
+    
+    # Determine if user is sender or recipient
+    is_sender = icebreaker["from_user_id"] == current_user["id"]
+    
+    # Mark as hidden for this user (non-destructive)
+    hidden_field = "hidden_by_sender" if is_sender else "hidden_by_recipient"
+    await db.icebreakers.update_one(
+        {"id": icebreaker_id},
+        {"$set": {hidden_field: True, f"{hidden_field}_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Icebreaker removed from your list"}
+
+
+@router.post("/icebreakers/bulk-delete")
+async def bulk_delete_icebreakers(data: dict, current_user: dict = Depends(get_current_user)):
+    """
+    Bulk hide icebreakers from user's own view (non-destructive).
+    
+    Request body: {"icebreaker_ids": ["id1", "id2", ...]}
+    """
+    icebreaker_ids = data.get("icebreaker_ids", [])
+    if not icebreaker_ids:
+        raise HTTPException(status_code=400, detail="No icebreaker IDs provided")
+    
+    hidden_count = 0
+    for icebreaker_id in icebreaker_ids:
+        icebreaker = await db.icebreakers.find_one({
+            "id": icebreaker_id,
+            "$or": [
+                {"from_user_id": current_user["id"]},
+                {"to_user_id": current_user["id"]}
+            ]
+        })
+        
+        if icebreaker:
+            is_sender = icebreaker["from_user_id"] == current_user["id"]
+            hidden_field = "hidden_by_sender" if is_sender else "hidden_by_recipient"
+            await db.icebreakers.update_one(
+                {"id": icebreaker_id},
+                {"$set": {hidden_field: True, f"{hidden_field}_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            hidden_count += 1
+    
+    return {"message": f"Removed {hidden_count} icebreakers from your list", "count": hidden_count}
 
 
 # ============================================================================
@@ -713,9 +817,24 @@ async def get_mutual_glances(current_user: dict = Depends(get_current_user)):
 
 @router.get("/connections/glances")
 async def get_glances(current_user: dict = Depends(get_current_user)):
-    """Get glances sent and received with blur state fields"""
-    sent = await db.glances.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
-    received = await db.glances.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    """Get glances sent and received with blur state fields, excluding hidden items"""
+    # Get sent glances, excluding ones hidden by sender
+    sent = await db.glances.find({
+        "from_user_id": current_user["id"],
+        "$or": [
+            {"hidden_by_sender": {"$exists": False}},
+            {"hidden_by_sender": False}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    # Get received glances, excluding ones hidden by recipient
+    received = await db.glances.find({
+        "to_user_id": current_user["id"],
+        "$or": [
+            {"hidden_by_recipient": {"$exists": False}},
+            {"hidden_by_recipient": False}
+        ]
+    }, {"_id": 0}).to_list(100)
     
     # Check for mutual glances
     sent_to_ids = {g["to_user_id"] for g in sent}
@@ -797,9 +916,24 @@ async def get_glances(current_user: dict = Depends(get_current_user)):
 
 @router.get("/connections/icebreakers")
 async def get_icebreakers(current_user: dict = Depends(get_current_user)):
-    """Get icebreakers sent and received with blur state fields"""
-    sent = await db.icebreakers.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
-    received = await db.icebreakers.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    """Get icebreakers sent and received with blur state fields, excluding hidden items"""
+    # Get sent icebreakers, excluding ones hidden by sender
+    sent = await db.icebreakers.find({
+        "from_user_id": current_user["id"],
+        "$or": [
+            {"hidden_by_sender": {"$exists": False}},
+            {"hidden_by_sender": False}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    # Get received icebreakers, excluding ones hidden by recipient
+    received = await db.icebreakers.find({
+        "to_user_id": current_user["id"],
+        "$or": [
+            {"hidden_by_recipient": {"$exists": False}},
+            {"hidden_by_recipient": False}
+        ]
+    }, {"_id": 0}).to_list(100)
     
     async def get_blur_state(user_id: str) -> dict:
         """Calculate blur state for a user"""
@@ -883,9 +1017,24 @@ async def get_icebreakers(current_user: dict = Depends(get_current_user)):
 
 @router.get("/connections/chat-requests")
 async def get_chat_requests(current_user: dict = Depends(get_current_user)):
-    """Get chat requests sent and received with blur state fields"""
-    sent = await db.chat_requests.find({"from_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
-    received = await db.chat_requests.find({"to_user_id": current_user["id"]}, {"_id": 0}).to_list(100)
+    """Get chat requests sent and received with blur state fields, excluding hidden items"""
+    # Get sent chat requests, excluding ones hidden by sender
+    sent = await db.chat_requests.find({
+        "from_user_id": current_user["id"],
+        "$or": [
+            {"hidden_by_sender": {"$exists": False}},
+            {"hidden_by_sender": False}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    # Get received chat requests, excluding ones hidden by recipient
+    received = await db.chat_requests.find({
+        "to_user_id": current_user["id"],
+        "$or": [
+            {"hidden_by_recipient": {"$exists": False}},
+            {"hidden_by_recipient": False}
+        ]
+    }, {"_id": 0}).to_list(100)
     
     async def get_blur_state(user_id: str) -> dict:
         """Calculate blur state for a user"""
@@ -964,6 +1113,66 @@ async def get_chat_requests(current_user: dict = Depends(get_current_user)):
             })
     
     return {"incoming": incoming_list, "outgoing": outgoing_list}
+
+
+@router.delete("/chat-request/{request_id}")
+async def delete_chat_request(request_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Hide a chat request from user's own view (non-destructive).
+    """
+    chat_request = await db.chat_requests.find_one({
+        "id": request_id,
+        "$or": [
+            {"from_user_id": current_user["id"]},
+            {"to_user_id": current_user["id"]}
+        ]
+    })
+    
+    if not chat_request:
+        raise HTTPException(status_code=404, detail="Chat request not found")
+    
+    is_sender = chat_request["from_user_id"] == current_user["id"]
+    hidden_field = "hidden_by_sender" if is_sender else "hidden_by_recipient"
+    
+    await db.chat_requests.update_one(
+        {"id": request_id},
+        {"$set": {hidden_field: True, f"{hidden_field}_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Chat request removed from your list"}
+
+
+@router.post("/chat-requests/bulk-delete")
+async def bulk_delete_chat_requests(data: dict, current_user: dict = Depends(get_current_user)):
+    """
+    Bulk hide chat requests from user's own view (non-destructive).
+    
+    Request body: {"request_ids": ["id1", "id2", ...]}
+    """
+    request_ids = data.get("request_ids", [])
+    if not request_ids:
+        raise HTTPException(status_code=400, detail="No request IDs provided")
+    
+    hidden_count = 0
+    for request_id in request_ids:
+        chat_request = await db.chat_requests.find_one({
+            "id": request_id,
+            "$or": [
+                {"from_user_id": current_user["id"]},
+                {"to_user_id": current_user["id"]}
+            ]
+        })
+        
+        if chat_request:
+            is_sender = chat_request["from_user_id"] == current_user["id"]
+            hidden_field = "hidden_by_sender" if is_sender else "hidden_by_recipient"
+            await db.chat_requests.update_one(
+                {"id": request_id},
+                {"$set": {hidden_field: True, f"{hidden_field}_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            hidden_count += 1
+    
+    return {"message": f"Removed {hidden_count} chat requests from your list", "count": hidden_count}
 
 
 # ============================================================================

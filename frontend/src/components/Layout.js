@@ -41,7 +41,7 @@ const Layout = ({ children, hideNav = false }) => {
 
   const navItems = [
     { path: "/discover/select", icon: Compass, label: "Discover" },
-    { path: "/connections", icon: Users, label: "Matches" },
+    { path: "/connections", icon: Users, label: "HereHub" },
     { path: "/profile-tab", icon: User, label: "Profile" },
     { path: "/notifications", icon: Bell, label: "Alerts", badge: unreadCount },
     { path: "/settings", icon: Settings, label: "Settings" },

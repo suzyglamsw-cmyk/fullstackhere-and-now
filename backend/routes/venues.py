@@ -14,7 +14,8 @@ from .dependencies import (
     calculate_distance_meters, calculate_distance_miles,
     get_venue_checkin_radius, is_checkin_valid, get_first_name,
     check_dating_compatibility, check_visibility_match,
-    FREE_DAILY_GLANCES, PREMIUM_DAILY_GLANCES, get_photo_url
+    FREE_DAILY_GLANCES, PREMIUM_DAILY_GLANCES, get_photo_url,
+    can_send_interaction_again
 )
 
 router = APIRouter()
@@ -536,10 +537,17 @@ async def get_people_at_venue(
             "to_user_id": current_user["id"]
         }) is not None
         
-        i_glanced_at = await db.glances.find_one({
-            "from_user_id": current_user["id"],
-            "to_user_id": user["id"]
-        }) is not None
+        # Check if current user has glanced at this user today (respecting 5am reset)
+        my_glance = await db.glances.find_one(
+            {"from_user_id": current_user["id"], "to_user_id": user["id"]},
+            sort=[("created_at", -1)]
+        )
+        timezone_offset = current_user.get("timezone_offset", 0)
+        
+        # i_glanced_at is True if glance exists AND 5am reset hasn't passed
+        i_glanced_at = my_glance is not None and not can_send_interaction_again(
+            my_glance.get("created_at"), timezone_offset
+        )
         
         # Check connection status
         is_connected = await db.connections.find_one({
@@ -549,11 +557,14 @@ async def get_people_at_venue(
             ]
         }) is not None
         
-        # Check icebreaker status
-        icebreaker_sent = await db.icebreakers.find_one({
-            "from_user_id": current_user["id"],
-            "to_user_id": user["id"]
-        }) is not None
+        # Check icebreaker status (respecting 5am reset)
+        my_icebreaker = await db.icebreakers.find_one(
+            {"from_user_id": current_user["id"], "to_user_id": user["id"]},
+            sort=[("created_at", -1)]
+        )
+        icebreaker_sent = my_icebreaker is not None and not can_send_interaction_again(
+            my_icebreaker.get("created_at"), timezone_offset
+        )
         
         icebreaker_received = await db.icebreakers.find_one({
             "from_user_id": user["id"],

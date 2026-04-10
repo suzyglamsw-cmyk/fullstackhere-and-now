@@ -253,6 +253,70 @@ def is_checkin_valid(checkin: dict) -> bool:
     return True
 
 
+def get_next_5am_reset(timezone_offset_hours: int = 0) -> datetime:
+    """
+    Get the next 5am reset time in UTC, adjusted for timezone offset.
+    
+    Args:
+        timezone_offset_hours: Hours offset from UTC (e.g., -5 for EST, +1 for CET)
+    
+    Returns:
+        datetime in UTC representing the next 5am in the user's local timezone
+    """
+    now = datetime.now(timezone.utc)
+    # Convert 5am local to UTC
+    local_5am_hour = 5 - timezone_offset_hours
+    if local_5am_hour < 0:
+        local_5am_hour += 24
+    elif local_5am_hour >= 24:
+        local_5am_hour -= 24
+    
+    # Today's 5am in UTC (adjusted for timezone)
+    today_5am = now.replace(hour=local_5am_hour, minute=0, second=0, microsecond=0)
+    
+    # If we're past today's 5am, next reset is tomorrow
+    if now >= today_5am:
+        return today_5am + timedelta(days=1)
+    return today_5am
+
+
+def can_send_interaction_again(last_sent_at: str, timezone_offset_hours: int = 0) -> bool:
+    """
+    Check if a user can send another interaction (glance/icebreaker/chat request)
+    to the same person after the 5am reset.
+    
+    Args:
+        last_sent_at: ISO timestamp of when the last interaction was sent
+        timezone_offset_hours: User's timezone offset from UTC
+    
+    Returns:
+        True if the 5am reset has passed since the last interaction
+    """
+    if not last_sent_at:
+        return True
+    
+    try:
+        last_sent = datetime.fromisoformat(last_sent_at.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        
+        # Get the 5am reset time that would have occurred after the last interaction
+        local_5am_hour = 5 - timezone_offset_hours
+        if local_5am_hour < 0:
+            local_5am_hour += 24
+        elif local_5am_hour >= 24:
+            local_5am_hour -= 24
+        
+        # Calculate the 5am after the last sent time
+        reset_after_last_sent = last_sent.replace(hour=local_5am_hour, minute=0, second=0, microsecond=0)
+        if last_sent >= reset_after_last_sent:
+            reset_after_last_sent += timedelta(days=1)
+        
+        # User can send again if we're past that reset time
+        return now >= reset_after_last_sent
+    except:
+        return True
+
+
 async def validate_and_expire_checkin(checkin: dict) -> bool:
     """
     Validate a check-in and auto-expire it if stale.
@@ -4779,14 +4843,21 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
     if data.to_user_id in current_user.get("blocked_by_users", []):
         raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
-    # Check if already glanced
-    existing = await db.glances.find_one({
-        "from_user_id": current_user["id"],
-        "to_user_id": data.to_user_id,
-        "venue_id": data.venue_id
-    })
+    # Check if already glanced - but allow re-sending after 5am reset
+    # Sort by created_at descending to get the most recent glance
+    existing = await db.glances.find_one(
+        {
+            "from_user_id": current_user["id"],
+            "to_user_id": data.to_user_id,
+        },
+        sort=[("created_at", -1)]
+    )
+    
     if existing:
-        return {"message": "Already glanced", "is_mutual": False}
+        # Check if 5am reset has passed since last glance
+        timezone_offset = current_user.get("timezone_offset", 0)  # User's timezone offset
+        if not can_send_interaction_again(existing.get("created_at"), timezone_offset):
+            return {"message": "Already glanced today", "is_mutual": False, "can_send_again_at": get_next_5am_reset(timezone_offset).isoformat()}
     
     # Track usage (always update counters, even in test mode for UI consistency)
     if use_token:

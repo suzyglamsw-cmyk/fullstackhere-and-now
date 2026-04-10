@@ -48,6 +48,49 @@ PREMIUM_DAILY_ICEBREAKERS = 15
 # Legacy aliases for backward compatibility
 FREE_DAILY_TOKENS = FREE_DAILY_ICEBREAKERS
 PREMIUM_DAILY_TOKENS = PREMIUM_DAILY_ICEBREAKERS
+
+
+def get_next_5am_reset(timezone_offset_hours: int = 0) -> datetime:
+    """
+    Get the next 5am reset time in UTC, adjusted for timezone offset.
+    """
+    now = datetime.now(timezone.utc)
+    local_5am_hour = 5 - timezone_offset_hours
+    if local_5am_hour < 0:
+        local_5am_hour += 24
+    elif local_5am_hour >= 24:
+        local_5am_hour -= 24
+    
+    today_5am = now.replace(hour=local_5am_hour, minute=0, second=0, microsecond=0)
+    if now >= today_5am:
+        return today_5am + timedelta(days=1)
+    return today_5am
+
+
+def can_send_interaction_again(last_sent_at: str, timezone_offset_hours: int = 0) -> bool:
+    """
+    Check if 5am reset has passed since the last interaction was sent.
+    """
+    if not last_sent_at:
+        return True
+    
+    try:
+        last_sent = datetime.fromisoformat(last_sent_at.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        
+        local_5am_hour = 5 - timezone_offset_hours
+        if local_5am_hour < 0:
+            local_5am_hour += 24
+        elif local_5am_hour >= 24:
+            local_5am_hour -= 24
+        
+        reset_after_last_sent = last_sent.replace(hour=local_5am_hour, minute=0, second=0, microsecond=0)
+        if last_sent >= reset_after_last_sent:
+            reset_after_last_sent += timedelta(days=1)
+        
+        return now >= reset_after_last_sent
+    except:
+        return True
 FREE_TOKEN_EXPIRY_HOURS = 24
 
 # Auto-checkout timeout
