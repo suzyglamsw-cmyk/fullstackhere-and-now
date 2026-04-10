@@ -23,7 +23,6 @@ import {
   Filter,
   MapPin,
   User,
-  LogOut,
   RefreshCw,
 } from "lucide-react";
 import {
@@ -218,16 +217,6 @@ const WhosHere = () => {
     }
   };
 
-  const handleCheckOut = async () => {
-    try {
-      await axios.post(`${API}/checkout`);
-      setIsCheckedIn(false);
-      toast.success("Checked out");
-    } catch (error) {
-      toast.error("Failed to check out");
-    }
-  };
-
   const handleGlance = async (userId) => {
     setGlancing(userId);
     try {
@@ -332,32 +321,13 @@ const WhosHere = () => {
                   </div>
                 </div>
                 
-                {/* Check-in button */}
-                {isCheckedIn ? (
-                  <Button
-                    data-testid="checkout-btn"
-                    onClick={handleCheckOut}
-                    variant="outline"
-                    className="border-red-500/50 text-red-400 hover:bg-red-500/10"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Check out
-                  </Button>
-                ) : (
-                  <Button
-                    data-testid="checkin-btn"
-                    onClick={handleCheckIn}
-                    disabled={checkingIn}
-                    className="bg-indigo-500 hover:bg-indigo-600"
-                  >
-                    {checkingIn ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <MapPin className="w-4 h-4 mr-2" />
-                    )}
-                    Check in
-                  </Button>
-                )}
+                {/* People count badge */}
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-500/30">
+                  <Users className="w-4 h-4 text-indigo-400" />
+                  <span className="text-sm text-indigo-300 font-medium">
+                    {people.length} here
+                  </span>
+                </div>
               </div>
             )}
 

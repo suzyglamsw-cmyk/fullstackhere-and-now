@@ -203,6 +203,26 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     if not current_user.get("age") and current_user.get("date_of_birth"):
         current_user["age"] = calculate_age_from_dob(current_user["date_of_birth"])
     
+    # Check for 48-hour "not_here" reset
+    # If user has been in "not_here" for more than 48 hours, reset their presence fully
+    presence_not_here_since = current_user.get("presence_not_here_since")
+    if presence_not_here_since and current_user.get("presence_status") == "not_here":
+        try:
+            not_here_time = datetime.fromisoformat(presence_not_here_since.replace('Z', '+00:00'))
+            hours_in_not_here = (datetime.now(timezone.utc) - not_here_time).total_seconds() / 3600
+            if hours_in_not_here >= 48:
+                # Reset presence fully after 48 hours
+                await db.users.update_one(
+                    {"id": current_user["id"]},
+                    {"$set": {
+                        "presence_not_here_since": None,
+                        "last_discovery_at": None
+                    }}
+                )
+                current_user["presence_not_here_since"] = None
+        except:
+            pass
+    
     # Check for active venue check-in
     checkin = await db.checkins.find_one({
         "user_id": current_user["id"],

@@ -5,7 +5,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
-import { MapPin, Users, LogOut, Loader2, MapPinOff, Star, Clock, Radio, ArrowLeft } from "lucide-react";
+import { MapPin, Users, Loader2, MapPinOff, Star, Clock, Radio, ArrowLeft } from "lucide-react";
 import LiveClock from "../components/LiveClock";
 import useLocationTracker from "../hooks/useLocationTracker";
 
@@ -262,23 +262,6 @@ const Venues = () => {
     }
   };
 
-  const handleCheckOut = async () => {
-    try {
-      await axios.post(`${API}/checkout`);
-      setCurrentCheckin(null);
-      // Refresh user profile to clear active_venue_id
-      if (fetchUser) fetchUser();
-      toast.success("Checked out");
-      if (geoLocation) {
-        fetchNearbyVenues(geoLocation.lat, geoLocation.lng);
-      } else {
-        fetchSeededVenues();
-      }
-    } catch (error) {
-      toast.error("Failed to check out");
-    }
-  };
-
   const displayVenues = nearbyVenues.length > 0 ? nearbyVenues : venues;
 
   // Handle back to discovery - clear discovery_mode
@@ -376,23 +359,13 @@ const Venues = () => {
                 </button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                data-testid="view-whos-here-btn"
-                onClick={() => navigate(`/venue/${currentCheckin.checkin.venue_id}`)}
-                className="rounded-full bg-indigo-500 hover:bg-indigo-600 text-white"
-              >
-                Who's Here
-              </Button>
-              <Button
-                data-testid="checkout-btn"
-                onClick={handleCheckOut}
-                variant="ghost"
-                className="rounded-full text-slate-400 hover:text-white hover:bg-white/10"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
+            <Button
+              data-testid="view-whos-here-btn"
+              onClick={() => navigate(`/venue/${currentCheckin.checkin.venue_id}`)}
+              className="rounded-full bg-indigo-500 hover:bg-indigo-600 text-white"
+            >
+              Who's Here
+            </Button>
           </div>
         )}
 

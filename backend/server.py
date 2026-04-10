@@ -3944,9 +3944,27 @@ async def update_presence_status(request: PresenceStatusRequest, current_user: d
         update_data["lng"] = request.lng
         update_data["location_updated_at"] = now.isoformat()
     
-    # If setting to "not_here", also clear active_venue_id
+    # If setting to "not_here", also clear active_venue_id AND checkout from any venue
     if request.status == "not_here":
         update_data["active_venue_id"] = None
+        update_data["presence_not_here_since"] = now.isoformat()  # Track when they went to "not_here"
+        # Auto-checkout from any active venue
+        active_checkin = await db.checkins.find_one({
+            "user_id": current_user["id"],
+            "is_active": True
+        })
+        if active_checkin:
+            await db.checkins.update_one(
+                {"id": active_checkin["id"]},
+                {"$set": {
+                    "is_active": False,
+                    "checked_out_at": now.isoformat(),
+                    "checkout_reason": "presence_not_here"
+                }}
+            )
+    else:
+        # Setting to "here" - clear the not_here timestamp
+        update_data["presence_not_here_since"] = None
     
     await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
     
