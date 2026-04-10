@@ -8,7 +8,8 @@ import uuid
 from .dependencies import (
     db, get_current_user, hash_password, verify_password, create_token,
     validate_display_name, validate_free_text, handle_premium_expiration,
-    is_checkin_valid, calculate_age_from_dob, validate_dob_minimum_age,
+    is_checkin_valid, validate_and_expire_checkin, ensure_presence_consistency,
+    calculate_age_from_dob, validate_dob_minimum_age,
     UserCreate, UserLogin, UserProfile, UserResponse,
     PasswordResetRequest, PasswordResetConfirm, LocationUpdate,
     FREE_DAILY_GLANCES, FREE_DAILY_TOKENS, PREMIUM_DAILY_GLANCES, PREMIUM_DAILY_TOKENS,
@@ -202,19 +203,38 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     if not current_user.get("age") and current_user.get("date_of_birth"):
         current_user["age"] = calculate_age_from_dob(current_user["date_of_birth"])
     
-    checkin = await db.checkins.find_one({"user_id": current_user["id"], "is_active": True}, {"_id": 0})
+    # Check for active venue check-in
+    checkin = await db.checkins.find_one({
+        "user_id": current_user["id"],
+        "is_active": True
+    }, {"_id": 0})
     
-    if checkin and is_checkin_valid(checkin):
-        current_user["active_venue_id"] = checkin.get("venue_id")
-        current_user["active_venue_timestamp"] = checkin.get("checked_in_at")
+    if checkin:
+        # Skip if checked_out_at is set (explicit checkout)
+        if checkin.get("checked_out_at") is not None:
+            checkin = None
+    
+    if checkin:
+        # Validate and auto-expire if stale
+        is_valid = await validate_and_expire_checkin(checkin)
+        if is_valid:
+            # User has valid active check-in
+            current_user["active_venue_id"] = checkin.get("venue_id")
+            current_user["active_venue_timestamp"] = checkin.get("checked_in_at")
+        else:
+            # Check-in was auto-expired - ensure presence is reset
+            await ensure_presence_consistency(current_user["id"])
+            current_user["active_venue_id"] = None
+            current_user["active_venue_timestamp"] = None
+            current_user["presence_status"] = "not_here"
     else:
-        if checkin:
-            await db.checkins.update_one(
-                {"id": checkin["id"]},
-                {"$set": {"is_active": False, "checked_out_at": datetime.now(timezone.utc).isoformat(), "auto_checkout_reason": "expired"}}
-            )
+        # No active check-in - ensure presence consistency
+        await ensure_presence_consistency(current_user["id"])
         current_user["active_venue_id"] = None
         current_user["active_venue_timestamp"] = None
+        # Force presence_status to "not_here" if no check-in
+        if current_user.get("presence_status") == "here":
+            current_user["presence_status"] = "not_here"
     
     return current_user
 

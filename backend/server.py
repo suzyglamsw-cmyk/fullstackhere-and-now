@@ -357,6 +357,38 @@ async def validate_and_expire_checkin(checkin: dict) -> bool:
     
     return True
 
+
+async def ensure_presence_consistency(user_id: str) -> None:
+    """
+    Safety rule: Ensure presence_status and active_venue_id are consistent with check-in state.
+    
+    If a user has no active check-in:
+      - Set presence_status = "not_here"
+      - Set active_venue_id = None
+    
+    This prevents orphaned presence states where a user appears as "here" without a valid check-in.
+    """
+    # Check if user has any active check-in
+    active_checkin = await db.checkins.find_one({
+        "user_id": user_id,
+        "is_active": True,
+        "$or": [
+            {"checked_out_at": None},
+            {"checked_out_at": {"$exists": False}}
+        ]
+    }, {"_id": 0})
+    
+    if not active_checkin:
+        # No active check-in - ensure user is marked as "not_here"
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": {
+                "presence_status": "not_here",
+                "active_venue_id": None
+            }}
+        )
+
+
 async def check_chat_unlocked(user1_id: str, user2_id: str) -> dict:
     """
     Check if chat is unlocked between two users.
@@ -1193,7 +1225,15 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     current_user = await handle_premium_expiration(current_user["id"], current_user)
     
     # Check for active venue check-in
-    checkin = await db.checkins.find_one({"user_id": current_user["id"], "is_active": True}, {"_id": 0})
+    checkin = await db.checkins.find_one({
+        "user_id": current_user["id"],
+        "is_active": True
+    }, {"_id": 0})
+    
+    if checkin:
+        # Skip if checked_out_at is set (explicit checkout)
+        if checkin.get("checked_out_at") is not None:
+            checkin = None
     
     if checkin:
         # Validate and auto-expire if stale
@@ -1203,12 +1243,19 @@ async def get_me(current_user: dict = Depends(get_current_user)):
             current_user["active_venue_id"] = checkin.get("venue_id")
             current_user["active_venue_timestamp"] = checkin.get("checked_in_at")
         else:
-            # Check-in was auto-expired
+            # Check-in was auto-expired - ensure presence is reset
+            await ensure_presence_consistency(current_user["id"])
             current_user["active_venue_id"] = None
             current_user["active_venue_timestamp"] = None
+            current_user["presence_status"] = "not_here"
     else:
+        # No active check-in - ensure presence consistency
+        await ensure_presence_consistency(current_user["id"])
         current_user["active_venue_id"] = None
         current_user["active_venue_timestamp"] = None
+        # Force presence_status to "not_here" if no check-in
+        if current_user.get("presence_status") == "here":
+            current_user["presence_status"] = "not_here"
     
     return current_user
 
@@ -3779,10 +3826,16 @@ async def check_in(venue_id: str, request: CheckInRequest = None, current_user: 
     }
     await db.checkins.insert_one(checkin)
     
-    # Update user's presence to "here" automatically when checking in
+    # Update user's presence to "here" and set active_venue_id when checking in
     await db.users.update_one(
         {"id": current_user["id"]},
-        {"$set": {"presence_status": "here", "lat": user_lat, "lng": user_lng, "location_updated_at": now.isoformat()}}
+        {"$set": {
+            "presence_status": "here",
+            "active_venue_id": venue_id,
+            "lat": user_lat,
+            "lng": user_lng,
+            "location_updated_at": now.isoformat()
+        }}
     )
     
     # Broadcast to venue
@@ -3811,10 +3864,13 @@ async def check_out(current_user: dict = Depends(get_current_user)):
             "type": "user_checked_out",
             "user_id": current_user["id"]
         })
-        # Reset presence to "not_here" on checkout
+        # Reset presence to "not_here" and clear active_venue_id on checkout
         await db.users.update_one(
             {"id": current_user["id"]},
-            {"$set": {"presence_status": "not_here"}}
+            {"$set": {
+                "presence_status": "not_here",
+                "active_venue_id": None
+            }}
         )
     return {"message": "Checked out successfully"}
 
@@ -3827,12 +3883,56 @@ class PresenceStatusRequest(BaseModel):
 async def update_presence_status(request: PresenceStatusRequest, current_user: dict = Depends(get_current_user)):
     """
     Update user's presence status (Here / Not Here).
-    Setting to "here" requires GPS verification if user has an active check-in.
+    
+    IMPORTANT: Setting to "here" REQUIRES an active check-in.
+    Users cannot appear as "here" without being checked into a venue.
     """
     if request.status not in ["here", "not_here"]:
         raise HTTPException(status_code=400, detail="Invalid status. Must be 'here' or 'not_here'")
     
     now = datetime.now(timezone.utc)
+    
+    # If switching to "here", REQUIRE an active check-in
+    if request.status == "here":
+        current_checkin = await db.checkins.find_one({
+            "user_id": current_user["id"],
+            "is_active": True,
+            "$or": [
+                {"checked_out_at": None},
+                {"checked_out_at": {"$exists": False}}
+            ]
+        }, {"_id": 0})
+        
+        if not current_checkin:
+            raise HTTPException(
+                status_code=403,
+                detail="You must check in to a venue before setting your status to 'Here'."
+            )
+        
+        # Validate the check-in is not expired
+        is_valid = await validate_and_expire_checkin(current_checkin)
+        if not is_valid:
+            raise HTTPException(
+                status_code=403,
+                detail="Your check-in has expired. Please check in again to set status as 'Here'."
+            )
+        
+        # Verify GPS if provided
+        venue = await db.venues.find_one({"id": current_checkin["venue_id"]}, {"_id": 0})
+        if venue and request.lat and request.lng:
+            venue_lat = venue.get("latitude") or venue.get("lat", 0)
+            venue_lng = venue.get("longitude") or venue.get("lng", 0)
+            
+            if venue_lat and venue_lng and venue_lat != 0 and venue_lng != 0:
+                distance_meters = calculate_distance_meters(request.lat, request.lng, venue_lat, venue_lng)
+                allowed_radius = get_venue_checkin_radius(venue.get("type", "venue"))
+                
+                if distance_meters > allowed_radius * 2:  # Allow slightly larger radius for presence
+                    raise HTTPException(
+                        status_code=403,
+                        detail="You're too far from your check-in location to set status as 'Here'."
+                    )
+    
     update_data = {
         "presence_status": request.status,
         "last_active_at": now.isoformat()
@@ -3844,29 +3944,9 @@ async def update_presence_status(request: PresenceStatusRequest, current_user: d
         update_data["lng"] = request.lng
         update_data["location_updated_at"] = now.isoformat()
     
-    # If switching to "here", verify they have an active check-in or valid location
-    if request.status == "here":
-        current_checkin = await db.checkins.find_one({
-            "user_id": current_user["id"],
-            "is_active": True
-        }, {"_id": 0})
-        
-        if current_checkin:
-            # Verify GPS if provided
-            venue = await db.venues.find_one({"id": current_checkin["venue_id"]}, {"_id": 0})
-            if venue and request.lat and request.lng:
-                venue_lat = venue.get("latitude") or venue.get("lat", 0)
-                venue_lng = venue.get("longitude") or venue.get("lng", 0)
-                
-                if venue_lat and venue_lng and venue_lat != 0 and venue_lng != 0:
-                    distance_meters = calculate_distance_meters(request.lat, request.lng, venue_lat, venue_lng)
-                    allowed_radius = get_venue_checkin_radius(venue.get("type", "venue"))
-                    
-                    if distance_meters > allowed_radius * 2:  # Allow slightly larger radius for presence
-                        raise HTTPException(
-                            status_code=403,
-                            detail="You're too far from your check-in location to set status as 'Here'."
-                        )
+    # If setting to "not_here", also clear active_venue_id
+    if request.status == "not_here":
+        update_data["active_venue_id"] = None
     
     await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
     
@@ -4078,32 +4158,18 @@ async def get_people_at_venue(
             # Checkin was expired and updated in DB - skip it
             continue
         
-        # Try to find real user first - check both visibility fields
-        # AND verify presence_status is "here" (not "not_here")
+        # Get user - only check visibility, NOT presence_status
+        # The active check-in is the source of truth for venue presence
         user = await db.users.find_one({
             "id": checkin["user_id"], 
-            "$and": [
-                {"$or": [
-                    {"visibility": "visible"},
-                    {"visibility": {"$exists": False}, "is_visible": True}
-                ]},
-                {"$or": [
-                    {"presence_status": "here"},
-                    {"presence_status": {"$exists": False}}  # Legacy users without presence_status field
-                ]}
+            "$or": [
+                {"visibility": "visible"},
+                {"visibility": {"$exists": False}, "is_visible": True}
             ]
         }, {"_id": 0, "password": 0})
         
-        # If user not found, they either don't exist, are hidden, or have presence_status "not_here"
+        # If user not found or has hidden visibility, skip
         if not user:
-            # Check if user exists but has "not_here" status - skip them silently
-            user_check = await db.users.find_one({"id": checkin["user_id"]}, {"presence_status": 1, "_id": 0})
-            if user_check and user_check.get("presence_status") == "not_here":
-                # User has explicitly set to "not_here" - don't show them
-                continue
-        
-        # Skip users with hidden visibility
-        if user and user.get("visibility") == "hidden":
             continue
         
         # Check fake users for test mode
@@ -7028,6 +7094,24 @@ async def run_auto_checkout():
         },
         {"$set": {"is_active": False, "checked_out_at": now.isoformat(), "auto_checkout_reason": "stale_activity"}}
     )
+    
+    # Reset presence_status for all users who no longer have active check-ins
+    # Find all users with presence_status="here" but no active check-in
+    users_with_here_status = await db.users.find({"presence_status": "here"}, {"id": 1, "_id": 0}).to_list(1000)
+    for user in users_with_here_status:
+        active_checkin = await db.checkins.find_one({
+            "user_id": user["id"],
+            "is_active": True,
+            "$or": [
+                {"checked_out_at": None},
+                {"checked_out_at": {"$exists": False}}
+            ]
+        })
+        if not active_checkin:
+            await db.users.update_one(
+                {"id": user["id"]},
+                {"$set": {"presence_status": "not_here", "active_venue_id": None}}
+            )
     
     total = result1.modified_count + result2.modified_count
     return {"checked_out_count": total, "expired": result1.modified_count, "stale": result2.modified_count}

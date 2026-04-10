@@ -341,6 +341,9 @@ class UserResponse(BaseModel):
     lifestyle_going_out: Optional[str] = ""
     # Food Mood field (optional)
     food_mood: Optional[str] = ""
+    # Venue presence fields
+    active_venue_id: Optional[str] = None
+    active_venue_timestamp: Optional[str] = None
     
     @field_validator('seeking', mode='before')
     @classmethod
@@ -602,6 +605,127 @@ def is_checkin_valid(checkin: dict) -> bool:
         return datetime.now(timezone.utc) < expiry_time
     except:
         return False
+
+
+async def validate_and_expire_checkin(checkin: dict) -> bool:
+    """
+    Validate a check-in and auto-expire it if stale.
+    
+    Returns True if check-in is valid, False if expired/invalid.
+    If expired, the check-in is automatically updated in the database.
+    """
+    if not checkin.get("is_active", False):
+        return False
+    
+    checkin_id = checkin.get("id")
+    if not checkin_id:
+        return False
+    
+    now = datetime.now(timezone.utc)
+    is_expired = False
+    expiry_reason = None
+    
+    # Check 1: expires_at timestamp
+    if checkin.get("expires_at"):
+        try:
+            expires = datetime.fromisoformat(checkin["expires_at"].replace('Z', '+00:00'))
+            if expires < now:
+                is_expired = True
+                expiry_reason = "expires_at_passed"
+        except:
+            pass
+    
+    # Check 2: last_activity_at older than AUTO_CHECKOUT_MINUTES
+    if not is_expired and checkin.get("last_activity_at"):
+        try:
+            last_activity = datetime.fromisoformat(checkin["last_activity_at"].replace('Z', '+00:00'))
+            if last_activity < now - timedelta(minutes=AUTO_CHECKOUT_MINUTES):
+                is_expired = True
+                expiry_reason = "activity_timeout"
+        except:
+            pass
+    
+    # Check 3: If no last_activity_at, check checked_in_at
+    if not is_expired and not checkin.get("last_activity_at") and checkin.get("checked_in_at"):
+        try:
+            checked_in = datetime.fromisoformat(checkin["checked_in_at"].replace('Z', '+00:00'))
+            if checked_in < now - timedelta(minutes=AUTO_CHECKOUT_MINUTES):
+                is_expired = True
+                expiry_reason = "checkin_timeout"
+        except:
+            pass
+    
+    # FALLBACK: ANY check-in older than 2 hours must be expired
+    if not is_expired and checkin.get("checked_in_at"):
+        try:
+            checked_in = datetime.fromisoformat(checkin["checked_in_at"].replace('Z', '+00:00'))
+            if checked_in < now - timedelta(minutes=AUTO_CHECKOUT_MINUTES):
+                is_expired = True
+                expiry_reason = "auto_expired_fallback"
+        except:
+            pass
+    
+    # LEGACY FALLBACK: If check-in has no timestamps at all, expire immediately
+    if not is_expired:
+        has_expires_at = checkin.get("expires_at") is not None
+        has_last_activity = checkin.get("last_activity_at") is not None
+        has_checked_in_at = checkin.get("checked_in_at") is not None
+        has_checked_out_at = checkin.get("checked_out_at") is not None
+        
+        if not has_expires_at and not has_last_activity and not has_checked_in_at and not has_checked_out_at:
+            is_expired = True
+            expiry_reason = "legacy_auto_expired"
+    
+    # If expired, auto-update the database
+    if is_expired:
+        await db.checkins.update_one(
+            {"id": checkin_id},
+            {"$set": {
+                "is_active": False,
+                "checked_out_at": now.isoformat(),
+                "checkout_reason": "auto_expired",
+                "auto_checkout_reason": expiry_reason
+            }}
+        )
+        # Also update user's presence status to "not_here"
+        user_id = checkin.get("user_id")
+        if user_id:
+            await db.users.update_one(
+                {"id": user_id},
+                {"$set": {"presence_status": "not_here", "active_venue_id": None}}
+            )
+        return False
+    
+    return True
+
+
+async def ensure_presence_consistency(user_id: str) -> None:
+    """
+    Ensure presence_status and active_venue_id are consistent with check-in state.
+    
+    If a user has no active check-in:
+      - Set presence_status = "not_here"
+      - Set active_venue_id = None
+    """
+    # Check if user has any active check-in
+    active_checkin = await db.checkins.find_one({
+        "user_id": user_id,
+        "is_active": True,
+        "$or": [
+            {"checked_out_at": None},
+            {"checked_out_at": {"$exists": False}}
+        ]
+    }, {"_id": 0})
+    
+    if not active_checkin:
+        # No active check-in - ensure user is marked as "not_here"
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": {
+                "presence_status": "not_here",
+                "active_venue_id": None
+            }}
+        )
 
 
 def calculate_distance_miles(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
