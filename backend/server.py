@@ -5656,6 +5656,10 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "relationship_status": user.get("relationship_status", ""),
         "seeking": user.get("seeking", ""),
         "profile_theme": user.get("profile_theme"),
+        # Visibility icons (shown in ALL profile states)
+        "show_as": user.get("show_as", ""),
+        "rainbow": user.get("rainbow", False),
+        "open_to_all": user.get("open_to_all", False),
         # Lifestyle fields (visible in ALL profile states)
         "lifestyle_vibe": user.get("lifestyle_vibe", ""),
         "lifestyle_travel": user.get("lifestyle_travel", ""),
