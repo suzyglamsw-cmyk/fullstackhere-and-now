@@ -294,22 +294,22 @@ const UserProfile = () => {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto h-[calc(100vh-80px)] flex flex-col" data-testid="user-profile-page">
-        {/* Header Section - Separated containers to prevent collision */}
-        <div className="flex-shrink-0 px-4 pt-4">
-          {/* Row 1: Close (X) Button - Right aligned, isolated container */}
-          <div className="flex justify-end mb-2">
-            <button
-              data-testid="close-profile-btn"
-              onClick={() => navigate(-1)}
-              className="w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 flex items-center justify-center transition-colors"
-              aria-label="Close profile"
-            >
-              <X className="w-5 h-5 text-slate-300" />
-            </button>
-          </div>
-          
-          {/* Row 2: Back link - Left aligned, isolated container */}
-          <div className="flex justify-start mb-2">
+        {/* Close (X) Button - Top-right, isolated container - shows for ALL profile views */}
+        <div className="flex-shrink-0 absolute top-20 right-4 z-50">
+          <button
+            data-testid="close-profile-btn"
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 flex items-center justify-center transition-colors shadow-lg"
+            aria-label="Close profile"
+          >
+            <X className="w-5 h-5 text-slate-300" />
+          </button>
+        </div>
+
+        {/* Header Section - TWO separate containers */}
+        <div className="flex-shrink-0 px-4 pt-2">
+          {/* Container A: Return link - Left aligned */}
+          <div className="flex justify-start">
             <button
               onClick={() => navigate(-1)}
               className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors p-2 -ml-2 rounded-xl hover:bg-white/5"
@@ -320,13 +320,13 @@ const UserProfile = () => {
             </button>
           </div>
           
-          {/* Row 3: Page Title - Centered, isolated container */}
-          <div className="text-center mb-4">
+          {/* Container B: Page Title - Centered */}
+          <div className="text-center py-2">
             <h1 className="text-xl font-bold text-white">Profile</h1>
           </div>
         </div>
 
-        {/* Scrollable Profile Content */}
+        {/* Scrollable Profile Content - starts immediately after header, no gap */}
         <div className="flex-1 overflow-y-auto px-4 pb-32">
           {/* Profile Card */}
           <div className="glass rounded-3xl overflow-hidden shadow-xl">
