@@ -445,11 +445,11 @@ const UserProfile = () => {
 
                 {/* FOOD MOOD SECTION FRAME - Visible in ALL profile states */}
                 {profile.food_mood && (
-                  <div className="bg-amber-500/10 rounded-2xl p-4 border border-amber-500/15 shadow-sm">
-                    <h3 className="text-xs font-medium text-amber-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
+                  <div className="bg-purple-500/10 rounded-2xl p-4 border border-purple-500/15 shadow-sm">
+                    <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
                     <div>
-                      <p className="text-amber-300/50 text-xs">In the kitchen?</p>
-                      <p className="text-amber-100 text-sm">{profile.food_mood}</p>
+                      <p className="text-purple-300/50 text-xs">In the kitchen?</p>
+                      <p className="text-purple-100 text-sm">{profile.food_mood}</p>
                     </div>
                   </div>
                 )}
