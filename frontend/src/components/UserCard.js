@@ -365,18 +365,7 @@ export const UserCard = ({
             </div>
           </div>
           
-          {/* Intent badge */}
-          {user.intent && (
-            <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full ${
-              user.intent === "dating" ? "bg-pink-500/30 text-pink-300" :
-              user.intent === "friends" ? "bg-emerald-500/30 text-emerald-300" :
-              "bg-purple-500/30 text-purple-300"
-            }`}>
-              {user.intent === "dating" ? "Dating" : 
-               user.intent === "friends" ? "Friends" : 
-               user.intent === "open_to_both" ? "Open to both" : ""}
-            </span>
-          )}
+          {/* Intent labels removed from thumbs - only shown in full profile view */}
           
           {user.presence_note && (
             <p className="text-slate-400 text-xs mt-1 truncate">{user.presence_note}</p>
