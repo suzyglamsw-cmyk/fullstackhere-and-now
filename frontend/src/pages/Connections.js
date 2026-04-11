@@ -10,6 +10,7 @@ import { UserCard } from "../components/UserCard";
 import { NotForNowSheet } from "../components/NotForNowSheet";
 import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Snowflake, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2, Ban, UserMinus, MoreVertical, Wine, Archive, CheckSquare, Square } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
+import { obscureBioText } from "../utils/bioObscure";
 import BlurredImage from "../components/BlurredImage";
 import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 import { dispatchBlockEvent, onUserBlocked } from "../utils/blockEvents";
@@ -1213,7 +1214,9 @@ const Connections = () => {
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white truncate">{request.display_name}</h4>
                           {request.bio && (
-                            <p className="text-slate-400 text-sm truncate">{request.bio}</p>
+                            <p className="text-slate-400 text-sm truncate">
+                              {obscureBioText(request.bio, request.is_connection_accepted)}
+                            </p>
                           )}
                           <p className="text-slate-500 text-xs mt-1">
                             {request.status === "pending" ? "💬 Wants to chat" : request.status === "accepted" ? "✅ Accepted" : "❌ Declined"} • {formatDate(request.created_at)}
@@ -1295,7 +1298,9 @@ const Connections = () => {
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white truncate">{request.display_name}</h4>
                           {request.bio && (
-                            <p className="text-slate-400 text-sm truncate">{request.bio}</p>
+                            <p className="text-slate-400 text-sm truncate">
+                              {obscureBioText(request.bio, request.is_connection_accepted)}
+                            </p>
                           )}
                           <p className="text-slate-500 text-xs mt-1">
                             {request.status === "pending" ? "⏳ Waiting for response" : request.status === "accepted" ? "✅ Accepted" : "❌ Declined"} • {formatDate(request.created_at)}
@@ -1516,7 +1521,9 @@ const Connections = () => {
                   >
                     <h4 className="font-semibold text-white truncate">{friend.display_name}</h4>
                     {friend.bio && (
-                      <p className="text-slate-400 text-sm truncate">{friend.bio}</p>
+                      <p className="text-slate-400 text-sm truncate">
+                        {obscureBioText(friend.bio, true)}
+                      </p>
                     )}
                     <p className="text-slate-500 text-xs mt-1">
                       Friends since {formatDate(friend.friends_since)}

@@ -7,6 +7,7 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflake, MessageSquare, Lock, ShieldOff, AlertTriangle, ArrowLeft } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
+import { obscureBioText } from "../utils/bioObscure";
 import BlurredImage from "../components/BlurredImage";
 import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 import { dispatchBlockEvent } from "../utils/blockEvents";
@@ -396,7 +397,9 @@ const UserProfile = () => {
                 {/* Bio Section Frame */}
                 {profile.bio && (
                   <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
-                    <p className="text-slate-300 text-sm leading-relaxed">{profile.bio}</p>
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                      {obscureBioText(profile.bio, profile.is_connection_accepted)}
+                    </p>
                   </div>
                 )}
                 
