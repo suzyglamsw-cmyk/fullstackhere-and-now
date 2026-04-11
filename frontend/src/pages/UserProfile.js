@@ -320,10 +320,12 @@ const UserProfile = () => {
             </button>
           </div>
           
-          {/* Container B: Page Title - Centered */}
-          <div className="text-center py-2">
-            <h1 className="text-xl font-bold text-white">Profile</h1>
-          </div>
+          {/* Container B: Page Title - Only show for self-profile view */}
+          {userId === user?.id && (
+            <div className="text-center py-2">
+              <h1 className="text-xl font-bold text-white">Profile</h1>
+            </div>
+          )}
         </div>
 
         {/* Scrollable Profile Content - starts immediately after header, no gap */}
