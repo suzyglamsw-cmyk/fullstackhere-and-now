@@ -16,19 +16,18 @@
  * - isSelf: Boolean - if true, always show clear
  * - revealState: { iRevealed, theyRevealed } - controls reveal logic
  * - onGlance, onIcebreaker, onChatRequest, onMessage, onReveal: Action handlers
- * - onLongPress: Handler for "Not for now" action
+ * - onSnooze: Handler for "Snooze" action (replaces long-press)
  * - disabled: Object with action states { glance, icebreaker, chatRequest }
  * - loading: Object with loading states
  * - globalPendingRef: For confirmation hints
  * - context: 'here_now' | 'not_here' | 'discovery' | 'matches' | 'venue'
  */
 
-import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   Eye, Snowflake, MessageSquare, MessageCircle, Crown, 
-  Heart, MapPin, Sparkles, Mic, UserPlus
+  Heart, MapPin, Sparkles, Mic, UserPlus, Clock
 } from "lucide-react";
 import BlurredImage, { getBlurValue } from "./BlurredImage";
 import { ConfirmHint } from "./ConfirmHint";
@@ -195,7 +194,8 @@ export const UserCard = ({
   onMessage,
   onReveal,
   onAddFriend,
-  onLongPress,
+  onSnooze,  // Replaces onLongPress - "Snooze" action
+  onLongPress,  // Deprecated: kept for backward compatibility, maps to onSnooze
   disabled = {},
   loading = {},
   globalPendingRef,
@@ -203,8 +203,15 @@ export const UserCard = ({
   venueId = null
 }) => {
   const navigate = useNavigate();
-  const longPressTimer = useRef(null);
-  const [longPressTriggered, setLongPressTriggered] = useState(false);
+  
+  // Handle snooze action (consolidate onSnooze and legacy onLongPress)
+  const handleSnooze = (e) => {
+    e.stopPropagation();
+    const snoozeHandler = onSnooze || onLongPress;
+    if (snoozeHandler) {
+      snoozeHandler(user);
+    }
+  };
   
   // Determine photo state using ONLY backend flags (12px / 6px / 0px)
   // Priority: blocked → revealed → connection_accepted → unmatched
@@ -242,28 +249,9 @@ export const UserCard = ({
   // Check if we should show silhouette (blocked or hide_photo_in_venues)
   const showSilhouette = effectivePhotoState === 'blocked' || (user.hide_photo_in_venues && context === 'here_now' && effectivePhotoState === 'unmatched');
   
-  // Handle card click
+  // Handle card click - navigate to profile
   const handleClick = () => {
-    if (!longPressTriggered) {
-      navigate(`/profile/${user.id}`);
-    }
-    setLongPressTriggered(false);
-  };
-  
-  // Long press handlers for "Not for now"
-  const handleTouchStart = () => {
-    longPressTimer.current = setTimeout(() => {
-      setLongPressTriggered(true);
-      if (onLongPress) {
-        onLongPress(user);
-      }
-    }, 500);
-  };
-  
-  const handleTouchEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
+    navigate(`/profile/${user.id}`);
   };
   
   // Display name logic - Only show full name when revealed (0px blur)
@@ -279,11 +267,6 @@ export const UserCard = ({
     <div
       data-testid={`user-card-${user.id}`}
       onClick={handleClick}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleTouchStart}
-      onMouseUp={handleTouchEnd}
-      onMouseLeave={handleTouchEnd}
       className={`rounded-2xl overflow-hidden border transition-all group cursor-pointer ${
         isConnected 
           ? "bg-emerald-500/10 border-emerald-500/30 hover:border-emerald-500/50"
@@ -303,6 +286,19 @@ export const UserCard = ({
               style={getBlurStyle()}
             />
           </div>
+        )}
+        
+        {/* Snooze icon - Top-left corner */}
+        {(onSnooze || onLongPress) && (
+          <button
+            data-testid={`snooze-btn-${user.id}`}
+            onClick={handleSnooze}
+            className="absolute top-2 left-2 w-7 h-7 rounded-full bg-slate-900/60 hover:bg-slate-800/80 flex items-center justify-center z-10 transition-all opacity-70 hover:opacity-100"
+            aria-label="Snooze this person"
+            title="Snooze"
+          >
+            <Clock className="w-3.5 h-3.5 text-slate-300" />
+          </button>
         )}
         
         {/* Top-right badges (Premium, Match only) */}

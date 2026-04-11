@@ -1,10 +1,10 @@
 /**
- * NotForNowSheet - Bottom sheet for hiding profiles
- * Long-press action that hides a profile for 90 days without blocking
+ * NotForNowSheet - Bottom sheet for snoozing profiles
+ * Snooze action that hides a profile for 90 days without blocking
  */
 
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { Clock } from "lucide-react";
 
 export const NotForNowSheet = ({ 
   isOpen, 
@@ -26,22 +26,29 @@ export const NotForNowSheet = ({
         {/* Handle bar */}
         <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6" />
         
-        <h2 className="text-xl font-bold text-white mb-2">Not for now</h2>
+        {/* Header with icon */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center">
+            <Clock className="w-5 h-5 text-slate-300" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Snooze</h2>
+        </div>
         <p className="text-slate-400 mb-6">
-          This profile will be hidden from your feed. They won't be notified.
+          Take a break from seeing this profile. They won't be notified, and you can always undo this later.
         </p>
         
         <div className="flex flex-col gap-3">
           <Button
-            data-testid="confirm-not-for-now"
+            data-testid="confirm-snooze"
             onClick={onConfirm}
             className="w-full bg-slate-800 hover:bg-slate-700 text-white py-6"
           >
-            Hide for 90 days
+            <Clock className="w-4 h-4 mr-2" />
+            Snooze for 90 days
           </Button>
           
           <Button
-            data-testid="cancel-not-for-now"
+            data-testid="cancel-snooze"
             variant="ghost"
             onClick={onClose}
             className="w-full text-slate-400 hover:text-white"
