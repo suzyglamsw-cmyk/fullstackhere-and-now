@@ -49,6 +49,7 @@ import {
   Users,
   Target,
   Crown,
+  ArrowLeft,
 } from "lucide-react";
 
 const MAX_BIO_LENGTH = 500;
@@ -786,10 +787,22 @@ const Profile = () => {
         {/* Header with gradient underline */}
         <div className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/80 border-b border-purple-500/20">
           <div className="max-w-lg mx-auto px-5 py-5 flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold text-white tracking-tight">Edit Your Profile</h1>
-              <div className="h-0.5 w-24 mt-1.5 rounded-full bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400" />
+            {/* Left: Back arrow + Title */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate(-1)}
+                className="w-9 h-9 rounded-full bg-slate-800/60 hover:bg-slate-700 flex items-center justify-center transition-colors"
+                data-testid="back-btn"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-5 h-5 text-slate-300" />
+              </button>
+              <div>
+                <h1 className="text-xl font-semibold text-white tracking-tight">Edit Your Profile</h1>
+                <div className="h-0.5 w-24 mt-1.5 rounded-full bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400" />
+              </div>
             </div>
+            {/* Right: Save button */}
             <Button
               onClick={handleSave}
               disabled={saving}
