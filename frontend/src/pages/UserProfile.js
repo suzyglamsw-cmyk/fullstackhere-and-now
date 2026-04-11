@@ -394,12 +394,10 @@ const UserProfile = () => {
 
               {/* Inner Scrollable Sections Container */}
               <div className="space-y-4">
-                {/* Bio Section Frame */}
-                {profile.bio && (
-                  <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
-                    <p className="text-slate-300 text-sm leading-relaxed">
-                      {obscureBioText(profile.bio, profile.is_connection_accepted)}
-                    </p>
+                {/* Presence Note - ALWAYS visible, NEVER obscured */}
+                {profile.presence_note && (
+                  <div className="bg-slate-700/30 rounded-2xl p-4 border border-white/10">
+                    <p className="text-white text-sm">{profile.presence_note}</p>
                   </div>
                 )}
                 
@@ -454,6 +452,16 @@ const UserProfile = () => {
                       <p className="text-purple-300/50 text-xs">In the kitchen?</p>
                       <p className="text-purple-100 text-sm">{profile.food_mood}</p>
                     </div>
+                  </div>
+                )}
+
+                {/* About You (Bio) - obscured until is_connection_accepted === true */}
+                {profile.bio && (
+                  <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
+                    <h3 className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">About You</h3>
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                      {obscureBioText(profile.bio, profile.is_connection_accepted)}
+                    </p>
                   </div>
                 )}
 
