@@ -170,7 +170,17 @@ const BlurredImage = ({
   // Always apply CSS blur when blur is needed - serves as fallback for server blur
   const cssBlurValue = blurValue < 0 ? 0 : blurValue;
   
-  const blurStyle = {
+  // Heavy blur (unmatched) uses enhanced styling for identity protection while showing silhouette
+  // Medium blur (connection_accepted) uses standard blur
+  const isHeavyBlur = effectiveBlurState === 'unmatched' || effectiveBlurState === 'high_blur';
+  
+  const blurStyle = isHeavyBlur ? {
+    // Heavy blur: Identity protected, silhouette + rough colours visible
+    filter: 'blur(10px) brightness(0.6) saturate(0.7)',
+    opacity: 0.9,
+    transition: 'filter 0.3s ease-out, opacity 0.3s ease-out',
+    transform: 'scale(1.08)', // Slightly larger scale to prevent edge artifacts
+  } : {
     filter: cssBlurValue > 0 ? `blur(${cssBlurValue}px)` : 'none',
     transition: 'filter 0.3s ease-out',
     transform: cssBlurValue > 0 ? 'scale(1.05)' : 'scale(1)', // Prevent blur edge artifacts

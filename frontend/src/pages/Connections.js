@@ -647,7 +647,7 @@ const Connections = () => {
                 <div
                   key={thread.user_id}
                   data-testid={`thread-${thread.user_id}`}
-                  className="glass rounded-2xl p-4 flex items-center gap-4"
+                  className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border border-white/10 shadow-md transition-all hover:bg-slate-800/60"
                 >
                   {/* Avatar - tappable to profile */}
                   <div 
@@ -721,7 +721,7 @@ const Connections = () => {
           ) : (
             <div className="space-y-6" data-testid="glances-list">
               {/* Bulk Actions Header */}
-              <div className="glass rounded-2xl p-3 flex items-center justify-between" data-testid="glances-bulk-header">
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between border border-white/10 shadow-lg" data-testid="glances-bulk-header">
                 <div className="flex items-center gap-3">
                   <Checkbox
                     id="select-all-glances"
@@ -772,7 +772,7 @@ const Connections = () => {
                       <div
                         key={glance.id}
                         data-testid={`received-glance-${glance.id}`}
-                        className={`glass rounded-2xl p-4 flex items-center gap-4 ${selectedGlances.has(glance.id) ? 'ring-2 ring-indigo-500/50 bg-indigo-500/10' : ''}`}
+                        className={`bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border border-white/10 shadow-md transition-all ${selectedGlances.has(glance.id) ? 'ring-2 ring-indigo-500/50 bg-indigo-500/10 border-indigo-500/30' : 'hover:bg-slate-800/60'}`}
                       >
                         {/* Selection Checkbox */}
                         <Checkbox
@@ -844,7 +844,7 @@ const Connections = () => {
                       <div
                         key={glance.id}
                         data-testid={`sent-glance-${glance.id}`}
-                        className={`glass rounded-2xl p-4 flex items-center gap-4 ${selectedGlances.has(glance.id) ? 'ring-2 ring-indigo-500/50 bg-indigo-500/10' : ''}`}
+                        className={`bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border border-white/10 shadow-md transition-all ${selectedGlances.has(glance.id) ? 'ring-2 ring-indigo-500/50 bg-indigo-500/10 border-indigo-500/30' : 'hover:bg-slate-800/60'}`}
                       >
                         {/* Selection Checkbox */}
                         <Checkbox
@@ -909,7 +909,7 @@ const Connections = () => {
           ) : (
             <div className="space-y-6" data-testid="icebreakers-list">
               {/* Bulk Actions Header */}
-              <div className="glass rounded-2xl p-3 flex items-center justify-between" data-testid="icebreakers-bulk-header">
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between border border-white/10 shadow-lg" data-testid="icebreakers-bulk-header">
                 <div className="flex items-center gap-3">
                   <Checkbox
                     id="select-all-icebreakers"
@@ -960,7 +960,7 @@ const Connections = () => {
                       <div
                         key={ib.id}
                         data-testid={`received-icebreaker-${ib.id}`}
-                        className={`glass rounded-2xl p-4 flex items-center gap-4 ${ib.is_new ? 'border border-cyan-500/30 bg-cyan-500/5' : ''} ${selectedIcebreakers.has(ib.id) ? 'ring-2 ring-cyan-500/50 bg-cyan-500/10' : ''}`}
+                        className={`bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border shadow-md transition-all ${ib.is_new ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-white/10'} ${selectedIcebreakers.has(ib.id) ? 'ring-2 ring-cyan-500/50 bg-cyan-500/10 border-cyan-500/30' : 'hover:bg-slate-800/60'}`}
                       >
                         {/* Selection Checkbox */}
                         <Checkbox
@@ -1052,7 +1052,7 @@ const Connections = () => {
                       <div
                         key={ib.id}
                         data-testid={`sent-icebreaker-${ib.id}`}
-                        className={`glass rounded-2xl p-4 flex items-center gap-4 ${selectedIcebreakers.has(ib.id) ? 'ring-2 ring-cyan-500/50 bg-cyan-500/10' : ''}`}
+                        className={`bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border border-white/10 shadow-md transition-all ${selectedIcebreakers.has(ib.id) ? 'ring-2 ring-cyan-500/50 bg-cyan-500/10 border-cyan-500/30' : 'hover:bg-slate-800/60'}`}
                       >
                         {/* Selection Checkbox */}
                         <Checkbox
@@ -1136,7 +1136,7 @@ const Connections = () => {
           ) : (
             <div className="space-y-6" data-testid="chat-requests-list">
               {/* Bulk Actions Header */}
-              <div className="glass rounded-2xl p-3 flex items-center justify-between" data-testid="chat-requests-bulk-header">
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between border border-white/10 shadow-lg" data-testid="chat-requests-bulk-header">
                 <div className="flex items-center gap-3">
                   <Checkbox
                     id="select-all-chat-requests"
@@ -1187,7 +1187,7 @@ const Connections = () => {
                       <div
                         key={request.id}
                         data-testid={`received-chat-${request.id}`}
-                        className={`glass rounded-2xl p-4 flex items-center gap-4 ${selectedChatRequests.has(request.id) ? 'ring-2 ring-pink-500/50 bg-pink-500/10' : ''}`}
+                        className={`bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border border-white/10 shadow-md transition-all ${selectedChatRequests.has(request.id) ? 'ring-2 ring-pink-500/50 bg-pink-500/10 border-pink-500/30' : 'hover:bg-slate-800/60'}`}
                       >
                         {/* Selection Checkbox */}
                         <Checkbox
@@ -1269,7 +1269,7 @@ const Connections = () => {
                       <div
                         key={request.id}
                         data-testid={`sent-chat-${request.id}`}
-                        className={`glass rounded-2xl p-4 flex items-center gap-4 ${selectedChatRequests.has(request.id) ? 'ring-2 ring-pink-500/50 bg-pink-500/10' : ''}`}
+                        className={`bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border border-white/10 shadow-md transition-all ${selectedChatRequests.has(request.id) ? 'ring-2 ring-pink-500/50 bg-pink-500/10 border-pink-500/30' : 'hover:bg-slate-800/60'}`}
                       >
                         {/* Selection Checkbox */}
                         <Checkbox
@@ -1358,7 +1358,7 @@ const Connections = () => {
                       <div
                         key={request.id}
                         data-testid={`incoming-request-${request.id}`}
-                        className="glass rounded-2xl p-4 flex items-center gap-4"
+                        className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border border-white/10 shadow-md transition-all hover:bg-slate-800/60"
                       >
                         <div 
                           className="cursor-pointer"
@@ -1425,7 +1425,7 @@ const Connections = () => {
                       <div
                         key={request.id}
                         data-testid={`outgoing-request-${request.id}`}
-                        className="glass rounded-2xl p-4 flex items-center gap-4"
+                        className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border border-white/10 shadow-md transition-all hover:bg-slate-800/60"
                       >
                         <div 
                           className="cursor-pointer"
@@ -1488,7 +1488,7 @@ const Connections = () => {
                 <div
                   key={friend.id}
                   data-testid={`friend-${friend.id}`}
-                  className="glass rounded-2xl p-4 flex items-center gap-4"
+                  className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 border border-white/10 shadow-md transition-all hover:bg-slate-800/60"
                 >
                   <div 
                     className="cursor-pointer"

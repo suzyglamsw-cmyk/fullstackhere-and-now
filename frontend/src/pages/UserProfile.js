@@ -294,199 +294,218 @@ const UserProfile = () => {
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto px-4 py-6 pb-32" data-testid="user-profile-page">
-        {/* Page Header with Back Button */}
-        <PageHeader title="Profile" />
+      <div className="max-w-2xl mx-auto h-[calc(100vh-80px)] flex flex-col" data-testid="user-profile-page">
+        {/* Fixed Header with Close Button */}
+        <div className="flex-shrink-0 px-4 py-4 flex items-center justify-between">
+          <PageHeader title="Profile" />
+          <button
+            data-testid="close-profile-btn"
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 flex items-center justify-center transition-colors"
+            aria-label="Close profile"
+          >
+            <X className="w-5 h-5 text-slate-300" />
+          </button>
+        </div>
 
-        {/* Profile Card */}
-        <div className="glass rounded-3xl overflow-hidden">
-          {/* Main Photo - 3-stage blur based on match/reveal status */}
-          <div className="aspect-square w-full max-h-96 overflow-hidden">
-            <BlurredImage
-              src={mainPhoto}
-              alt={profile.display_name}
-              blurState={getPhotoState()}
-              isThumbnail={false}
-              fallbackInitial={profile.display_name?.charAt(0) || "?"}
-            />
-          </div>
-
-          {/* Profile Info */}
-          <div className="p-6">
-            {/* Name + Age row with icons right-aligned */}
-            <div className="flex justify-between items-center flex-nowrap mb-4">
-              {/* Left: Name + Age */}
-              <div className="min-w-0 flex-shrink">
-                <h1 className="text-2xl font-bold text-white truncate">
-                  {getPhotoState() === 'revealed' ? profile.display_name : (profile.display_name || "?").charAt(0)}
-                  {profile.age && <span className="text-slate-400 ml-2">{profile.age}</span>}
-                </h1>
-              </div>
-              
-              {/* Right: Icon group (gender, rainbow, open_to_all) */}
-              <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
-                {/* Gender indicator */}
-                {profile.show_as && (
-                  <div 
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${
-                      profile.show_as === "male" 
-                        ? "bg-blue-400/90 text-white" 
-                        : "bg-pink-400/90 text-white"
-                    }`}
-                  >
-                    {profile.show_as === "male" ? "M" : "F"}
-                  </div>
-                )}
-                
-                {/* Rainbow indicator */}
-                {profile.rainbow && (
-                  <div 
-                    className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
-                    style={{ 
-                      background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
-                    }}
-                  >
-                    <div className="w-4 h-4 rounded-full bg-slate-900/50" />
-                  </div>
-                )}
-                
-                {/* Open to all indicator */}
-                {profile.open_to_all && (
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg bg-amber-400/90">
-                    <span className="text-xs">🤗</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Bio - always visible */}
-            {profile.bio && (
-              <p className="text-slate-400 mb-4">{profile.bio}</p>
-            )}
-            
-            {/* Glance Status Badge */}
-            <div className="mb-4">
-              {profile.is_connection_accepted && (
-                <div className="inline-flex items-center gap-1 bg-pink-500/20 text-pink-400 px-3 py-1 rounded-full text-sm">
-                  <Heart className="w-4 h-4" />
-                  Mutual
-                </div>
-              )}
-              {profile.they_glanced_at_me && !profile.i_glanced_at_them && (
-                <div className="inline-flex items-center gap-1 bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-sm">
-                  <Eye className="w-4 h-4" />
-                  Glanced at you
-                </div>
-              )}
+        {/* Scrollable Profile Content */}
+        <div className="flex-1 overflow-y-auto px-4 pb-32">
+          {/* Profile Card */}
+          <div className="glass rounded-3xl overflow-hidden shadow-xl">
+            {/* Main Photo - 3-stage blur based on match/reveal status */}
+            <div className="aspect-square w-full max-h-96 overflow-hidden">
+              <BlurredImage
+                src={mainPhoto}
+                alt={profile.display_name}
+                blurState={getPhotoState()}
+                isThumbnail={false}
+                fallbackInitial={profile.display_name?.charAt(0) || "?"}
+              />
             </div>
 
-            {/* LIFESTYLE SECTION - Visible in ALL profile states */}
-            {(profile.lifestyle_vibe || profile.lifestyle_travel || profile.lifestyle_going_out) && (
-              <div className="mb-6 bg-purple-500/10 rounded-xl p-4">
-                <h3 className="text-xs font-medium text-purple-300/60 mb-3 uppercase tracking-wide">Lifestyle</h3>
-                <div className="space-y-2">
-                  {profile.lifestyle_vibe && (
-                    <div>
-                      <p className="text-purple-300/50 text-xs">Lively or laid-back?</p>
-                      <p className="text-purple-100 text-sm">{profile.lifestyle_vibe}</p>
-                    </div>
-                  )}
-                  {profile.lifestyle_travel && (
-                    <div>
-                      <p className="text-purple-300/50 text-xs">Explorer or sunbed-snoozer?</p>
-                      <p className="text-purple-100 text-sm">{profile.lifestyle_travel}</p>
-                    </div>
-                  )}
-                  {profile.lifestyle_going_out && (
-                    <div>
-                      <p className="text-purple-300/50 text-xs">Going out or staying in?</p>
-                      <p className="text-purple-100 text-sm">{profile.lifestyle_going_out}</p>
-                    </div>
-                  )}
+            {/* Profile Info - Inner Scroll Container */}
+            <div className="p-4">
+              {/* Name + Age row with icons right-aligned */}
+              <div className="flex justify-between items-center flex-nowrap mb-4">
+                {/* Left: Name + Age */}
+                <div className="min-w-0 flex-shrink">
+                  <h1 className="text-2xl font-bold text-white truncate">
+                    {getPhotoState() === 'revealed' ? profile.display_name : (profile.display_name || "?").charAt(0)}
+                    {profile.age && <span className="text-slate-400 ml-2">{profile.age}</span>}
+                  </h1>
                 </div>
-              </div>
-            )}
-
-            {/* FOOD MOOD SECTION - Visible in ALL profile states */}
-            {profile.food_mood && (
-              <div className="mb-6 bg-purple-500/10 rounded-xl p-4">
-                <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
-                <div>
-                  <p className="text-purple-300/50 text-xs">In the kitchen?</p>
-                  <p className="text-purple-100 text-sm">{profile.food_mood}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Profile Details (gender, orientation, relationship, seeking) - Only shown after reveal */}
-            {profile.is_revealed && (profile.gender || profile.orientation || profile.relationship_status || profile.seeking) && (
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                {profile.gender && (
-                  <div className="bg-white/5 rounded-xl px-3 py-2">
-                    <p className="text-slate-500 text-xs">Gender</p>
-                    <p className="text-white text-sm capitalize">{profile.gender}</p>
-                  </div>
-                )}
-                {profile.orientation && (
-                  <div className="bg-white/5 rounded-xl px-3 py-2">
-                    <p className="text-slate-500 text-xs">Orientation</p>
-                    <p className="text-white text-sm capitalize">{profile.orientation}</p>
-                  </div>
-                )}
-                {profile.relationship_status && (
-                  <div className="bg-white/5 rounded-xl px-3 py-2">
-                    <p className="text-slate-500 text-xs">Status</p>
-                    <p className="text-white text-sm capitalize">{profile.relationship_status}</p>
-                  </div>
-                )}
-                {profile.seeking && (
-                  <div className="bg-white/5 rounded-xl px-3 py-2">
-                    <p className="text-slate-500 text-xs">Looking for</p>
-                    <p className="text-white text-sm capitalize">{profile.seeking}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Interests - Only shown after reveal */}
-            {profile.is_revealed && profile.interests && profile.interests.length > 0 && (
-              <div className="mb-6">
-                <p className="text-slate-500 text-xs mb-2">Interests</p>
-                <div className="flex flex-wrap gap-2">
-                  {profile.interests.map((interest) => (
-                    <span
-                      key={interest}
-                      className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-sm"
+                
+                {/* Right: Icon group (gender, rainbow, open_to_all) */}
+                <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
+                  {/* Gender indicator */}
+                  {profile.show_as && (
+                    <div 
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${
+                        profile.show_as === "male" 
+                          ? "bg-blue-400/90 text-white" 
+                          : "bg-pink-400/90 text-white"
+                      }`}
                     >
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Additional Photos - Uses same 3-stage blur logic */}
-            {profile.photos && profile.photos.filter((p, i) => i > 0 && p).length > 0 && (
-              <div className="mb-6">
-                <p className="text-slate-500 text-xs mb-2">More Photos</p>
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {profile.photos.slice(1).filter(p => p).map((photo, index) => (
-                    <div key={index} className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
-                      <BlurredImage
-                        src={photo}
-                        alt={`Photo ${index + 2}`}
-                        blurState={getPhotoState()}
-                        isThumbnail={true}
-                        fallbackInitial={profile.display_name?.charAt(0) || "?"}
-                      />
+                      {profile.show_as === "male" ? "M" : "F"}
                     </div>
-                  ))}
+                  )}
+                  
+                  {/* Rainbow indicator */}
+                  {profile.rainbow && (
+                    <div 
+                      className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg overflow-hidden"
+                      style={{ 
+                        background: 'linear-gradient(135deg, #ef4444 0%, #f97316 20%, #eab308 40%, #22c55e 60%, #3b82f6 80%, #8b5cf6 100%)'
+                      }}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-slate-900/50" />
+                    </div>
+                  )}
+                  
+                  {/* Open to all indicator */}
+                  {profile.open_to_all && (
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg bg-amber-400/90">
+                      <span className="text-xs">🤗</span>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
 
-            {/* Action Buttons */}
-            <div className="space-y-3">
+              {/* Inner Scrollable Sections Container */}
+              <div className="space-y-4">
+                {/* Bio Section Frame */}
+                {profile.bio && (
+                  <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
+                    <p className="text-slate-300 text-sm leading-relaxed">{profile.bio}</p>
+                  </div>
+                )}
+                
+                {/* Glance Status Badge */}
+                <div>
+                  {profile.is_connection_accepted && (
+                    <div className="inline-flex items-center gap-1 bg-pink-500/20 text-pink-400 px-3 py-1 rounded-full text-sm">
+                      <Heart className="w-4 h-4" />
+                      Mutual
+                    </div>
+                  )}
+                  {profile.they_glanced_at_me && !profile.i_glanced_at_them && (
+                    <div className="inline-flex items-center gap-1 bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-sm">
+                      <Eye className="w-4 h-4" />
+                      Glanced at you
+                    </div>
+                  )}
+                </div>
+
+                {/* LIFESTYLE SECTION FRAME - Visible in ALL profile states */}
+                {(profile.lifestyle_vibe || profile.lifestyle_travel || profile.lifestyle_going_out) && (
+                  <div className="bg-purple-500/10 rounded-2xl p-4 border border-purple-500/15 shadow-sm">
+                    <h3 className="text-xs font-medium text-purple-300/60 mb-3 uppercase tracking-wide">Lifestyle</h3>
+                    <div className="space-y-2">
+                      {profile.lifestyle_vibe && (
+                        <div>
+                          <p className="text-purple-300/50 text-xs">Lively or laid-back?</p>
+                          <p className="text-purple-100 text-sm">{profile.lifestyle_vibe}</p>
+                        </div>
+                      )}
+                      {profile.lifestyle_travel && (
+                        <div>
+                          <p className="text-purple-300/50 text-xs">Explorer or sunbed-snoozer?</p>
+                          <p className="text-purple-100 text-sm">{profile.lifestyle_travel}</p>
+                        </div>
+                      )}
+                      {profile.lifestyle_going_out && (
+                        <div>
+                          <p className="text-purple-300/50 text-xs">Going out or staying in?</p>
+                          <p className="text-purple-100 text-sm">{profile.lifestyle_going_out}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* FOOD MOOD SECTION FRAME - Visible in ALL profile states */}
+                {profile.food_mood && (
+                  <div className="bg-amber-500/10 rounded-2xl p-4 border border-amber-500/15 shadow-sm">
+                    <h3 className="text-xs font-medium text-amber-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
+                    <div>
+                      <p className="text-amber-300/50 text-xs">In the kitchen?</p>
+                      <p className="text-amber-100 text-sm">{profile.food_mood}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Profile Details Section Frame (gender, orientation, relationship, seeking) - Only shown after reveal */}
+                {profile.is_revealed && (profile.gender || profile.orientation || profile.relationship_status || profile.seeking) && (
+                  <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
+                    <h3 className="text-xs font-medium text-slate-400 mb-3 uppercase tracking-wide">About</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {profile.gender && (
+                        <div className="bg-white/5 rounded-xl px-3 py-2">
+                          <p className="text-slate-500 text-xs">Gender</p>
+                          <p className="text-white text-sm capitalize">{profile.gender}</p>
+                        </div>
+                      )}
+                      {profile.orientation && (
+                        <div className="bg-white/5 rounded-xl px-3 py-2">
+                          <p className="text-slate-500 text-xs">Orientation</p>
+                          <p className="text-white text-sm capitalize">{profile.orientation}</p>
+                        </div>
+                      )}
+                      {profile.relationship_status && (
+                        <div className="bg-white/5 rounded-xl px-3 py-2">
+                          <p className="text-slate-500 text-xs">Status</p>
+                          <p className="text-white text-sm capitalize">{profile.relationship_status}</p>
+                        </div>
+                      )}
+                      {profile.seeking && (
+                        <div className="bg-white/5 rounded-xl px-3 py-2">
+                          <p className="text-slate-500 text-xs">Looking for</p>
+                          <p className="text-white text-sm capitalize">{profile.seeking}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Interests Section Frame - Only shown after reveal */}
+                {profile.is_revealed && profile.interests && profile.interests.length > 0 && (
+                  <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
+                    <h3 className="text-xs font-medium text-slate-400 mb-3 uppercase tracking-wide">Interests</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.interests.map((interest) => (
+                        <span
+                          key={interest}
+                          className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-sm"
+                        >
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Photos Section Frame - Uses same 3-stage blur logic */}
+                {profile.photos && profile.photos.filter((p, i) => i > 0 && p).length > 0 && (
+                  <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
+                    <h3 className="text-xs font-medium text-slate-400 mb-3 uppercase tracking-wide">More Photos</h3>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {profile.photos.slice(1).filter(p => p).map((photo, index) => (
+                        <div key={index} className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+                          <BlurredImage
+                            src={photo}
+                            alt={`Photo ${index + 2}`}
+                            blurState={getPhotoState()}
+                            isThumbnail={true}
+                            fallbackInitial={profile.display_name?.charAt(0) || "?"}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons Section Frame */}
+                <div className="bg-slate-800/30 rounded-2xl p-4 border border-white/10 shadow-sm space-y-3">
               {/* MATCHED USER UI */}
               {isMatched && (
                 <>
@@ -818,7 +837,6 @@ const UserProfile = () => {
               )}
                 </>
               )}
-            </div>
 
             {profile.i_glanced_at_them && !profile.is_connection_accepted && (
               <p className="text-center text-slate-500 text-sm mt-4">
@@ -841,9 +859,12 @@ const UserProfile = () => {
                 Blocking removes all visibility and messaging between you.
               </p>
             </div>
-          </div>
-        </div>
-      </div>
+                </div>{/* End Action Buttons Section Frame */}
+              </div>{/* End Inner Scrollable Sections Container */}
+            </div>{/* End Profile Info */}
+          </div>{/* End Profile Card */}
+        </div>{/* End Scrollable Content */}
+      </div>{/* End user-profile-page */}
 
       {/* Block Confirmation Modal */}
       <AlertDialog open={showBlockModal} onOpenChange={setShowBlockModal}>
