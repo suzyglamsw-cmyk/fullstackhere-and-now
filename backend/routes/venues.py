@@ -32,7 +32,14 @@ FAKE_TEST_USERS = []  # Will be populated from server.py if needed
 async def get_venues(current_user: dict = Depends(get_current_user)):
     venues = await db.venues.find({}, {"_id": 0}).to_list(100)
     for venue in venues:
-        checkins = await db.checkins.find({"venue_id": venue["id"], "is_active": True}, {"_id": 0}).to_list(100)
+        checkins = await db.checkins.find({
+            "venue_id": venue["id"], 
+            "is_active": True,
+            "$or": [
+                {"checked_out_at": None},
+                {"checked_out_at": {"$exists": False}}
+            ]
+        }, {"_id": 0}).to_list(100)
         valid_count = 0
         for checkin in checkins:
             if not is_checkin_valid(checkin):
@@ -64,7 +71,14 @@ async def get_venue(venue_id: str, current_user: dict = Depends(get_current_user
         await db.venues.insert_one(new_venue)
         venue = await db.venues.find_one({"id": venue_id}, {"_id": 0})
     
-    checkins = await db.checkins.find({"venue_id": venue_id, "is_active": True}, {"_id": 0}).to_list(100)
+    checkins = await db.checkins.find({
+        "venue_id": venue_id, 
+        "is_active": True,
+        "$or": [
+            {"checked_out_at": None},
+            {"checked_out_at": {"$exists": False}}
+        ]
+    }, {"_id": 0}).to_list(100)
     valid_count = 0
     for checkin in checkins:
         if not is_checkin_valid(checkin):
@@ -129,7 +143,14 @@ async def update_venue(venue_id: str, data: dict, current_user: dict = Depends(g
 @router.get("/venues/{venue_id}/count")
 async def get_venue_checkin_count(venue_id: str, current_user: dict = Depends(get_current_user)):
     """Get the number of people checked into a venue."""
-    all_checkins = await db.checkins.find({"venue_id": venue_id, "is_active": True}, {"_id": 0}).to_list(100)
+    all_checkins = await db.checkins.find({
+        "venue_id": venue_id, 
+        "is_active": True,
+        "$or": [
+            {"checked_out_at": None},
+            {"checked_out_at": {"$exists": False}}
+        ]
+    }, {"_id": 0}).to_list(100)
     
     valid_count = 0
     for c in all_checkins:
@@ -291,7 +312,14 @@ async def get_current_checkin(current_user: dict = Depends(get_current_user)):
     venue = await db.venues.find_one({"id": checkin["venue_id"]}, {"_id": 0})
     
     if venue:
-        all_checkins = await db.checkins.find({"venue_id": checkin["venue_id"], "is_active": True}, {"_id": 0}).to_list(100)
+        all_checkins = await db.checkins.find({
+            "venue_id": checkin["venue_id"], 
+            "is_active": True,
+            "$or": [
+                {"checked_out_at": None},
+                {"checked_out_at": {"$exists": False}}
+            ]
+        }, {"_id": 0}).to_list(100)
         valid_count = 0
         for c in all_checkins:
             if not is_checkin_valid(c):
@@ -416,7 +444,15 @@ async def get_people_at_venue(
         raise HTTPException(status_code=403, detail="You must be checked in at this venue to see who's here")
     
     # Get all active checkins for this venue
-    checkins = await db.checkins.find({"venue_id": venue_id, "is_active": True}, {"_id": 0}).to_list(100)
+    # Must be is_active: True AND checked_out_at: None (aligned with server.py)
+    checkins = await db.checkins.find({
+        "venue_id": venue_id, 
+        "is_active": True,
+        "$or": [
+            {"checked_out_at": None},
+            {"checked_out_at": {"$exists": False}}
+        ]
+    }, {"_id": 0}).to_list(100)
     
     now = datetime.now(timezone.utc)
     await db.users.update_one(
