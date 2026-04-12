@@ -45,6 +45,7 @@ const MATCH_FILTER_OPTIONS = [
   { value: "unmatched", label: "Unmatched" },
   { value: "all", label: "All" },
   { value: "mutual", label: "Mutual" },
+  { value: "hidden", label: "Hidden Matches" },
 ];
 
 const ACTIVITY_FILTER_OPTIONS = [
@@ -85,6 +86,12 @@ const WhosHere = () => {
   // Not for now
   const [notForNowUser, setNotForNowUser] = useState(null);
   const [hiddenUsers, setHiddenUsers] = useState([]);
+  const [hiddenFromMatches, setHiddenFromMatches] = useState([]); // Users hidden from Mutual Matches
+  const [showHiddenMatchesSection, setShowHiddenMatchesSection] = useState(() => {
+    // Load preference from localStorage (same key as Connections.js)
+    const saved = localStorage.getItem('showHiddenMatchesSection');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   
   // Global ref for confirmation hints
   const confirmHintRef = useConfirmHintGlobal();
@@ -109,6 +116,19 @@ const WhosHere = () => {
       }
     };
     fetchHiddenUsers();
+  }, []);
+
+  // Fetch hidden from matches (for the Hidden Matches filter)
+  useEffect(() => {
+    const fetchHiddenFromMatches = async () => {
+      try {
+        const response = await axios.get(`${API}/connections/hidden-from-matches`);
+        setHiddenFromMatches(response.data.map(h => h.user_id));
+      } catch (error) {
+        console.error("Failed to fetch hidden from matches:", error);
+      }
+    };
+    fetchHiddenFromMatches();
   }, []);
 
   // Fetch venue and people
@@ -156,10 +176,20 @@ const WhosHere = () => {
 
       // Apply match filter (but NOT to self)
       if (matchFilter === "unmatched") {
+        // Show unmatched users (exclude hidden from matches from mutual)
         fetchedPeople = fetchedPeople.filter(p => p.is_self || !p.is_connection_accepted);
       } else if (matchFilter === "mutual") {
-        fetchedPeople = fetchedPeople.filter(p => p.is_self || p.is_connection_accepted);
+        // Show mutual matches EXCLUDING those hidden from matches
+        fetchedPeople = fetchedPeople.filter(p => 
+          p.is_self || (p.is_connection_accepted && !hiddenFromMatches.includes(p.id))
+        );
+      } else if (matchFilter === "hidden") {
+        // Show ONLY users that are hidden from matches AND are mutual matches at this venue
+        fetchedPeople = fetchedPeople.filter(p => 
+          p.is_self || (p.is_connection_accepted && hiddenFromMatches.includes(p.id))
+        );
       }
+      // matchFilter === "all" shows everyone (including hidden from matches)
 
       // Apply activity filter (but NOT to self)
       if (activityFilter !== "all") {
@@ -371,9 +401,11 @@ const WhosHere = () => {
                 className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
                 data-testid="match-filter"
               >
-                {MATCH_FILTER_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value} className="bg-slate-900">{opt.label}</option>
-                ))}
+                {MATCH_FILTER_OPTIONS
+                  .filter(opt => opt.value !== "hidden" || showHiddenMatchesSection)
+                  .map(opt => (
+                    <option key={opt.value} value={opt.value} className="bg-slate-900">{opt.label}</option>
+                  ))}
               </select>
 
               <select

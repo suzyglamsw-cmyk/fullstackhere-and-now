@@ -41,6 +41,11 @@ const Connections = () => {
   const { user } = useAuth();
   const [connections, setConnections] = useState([]);
   const [hiddenMatches, setHiddenMatches] = useState([]); // Hidden from Mutual Matches
+  const [showHiddenMatchesSection, setShowHiddenMatchesSection] = useState(() => {
+    // Load preference from localStorage, default to true (show)
+    const saved = localStorage.getItem('showHiddenMatchesSection');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [mutualGlances, setMutualGlances] = useState([]);
   const [messageThreads, setMessageThreads] = useState([]);
   const [friendRequests, setFriendRequests] = useState({ incoming: [], outgoing: [] });
@@ -529,6 +534,13 @@ const Connections = () => {
     } catch (error) {
       toast.error("Failed to unhide from matches");
     }
+  };
+
+  // Toggle visibility of Hidden Matches section (UI-only, no backend changes)
+  const toggleShowHiddenMatches = () => {
+    const newValue = !showHiddenMatchesSection;
+    setShowHiddenMatchesSection(newValue);
+    localStorage.setItem('showHiddenMatchesSection', JSON.stringify(newValue));
   };
 
   // Sort helper - most recent first
@@ -1660,87 +1672,118 @@ const Connections = () => {
         {/* ============================================
             HIDDEN MATCHES SECTION
             Shows users hidden from Mutual Matches
+            Includes toggle to show/hide the section (UI-only)
             ============================================ */}
         {tab === "connections" && (
           <div className="mt-8" data-testid="hidden-matches-section">
-            <h3 className="text-lg font-semibold text-slate-400 mb-4 flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              Hidden Matches
-              {hiddenMatches.length > 0 && (
-                <span className="text-sm text-slate-500">({hiddenMatches.length})</span>
-              )}
-            </h3>
+            {/* Header with toggle */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-400 flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Hidden Matches
+                {hiddenMatches.length > 0 && (
+                  <span className="text-sm text-slate-500">({hiddenMatches.length})</span>
+                )}
+              </h3>
+              
+              {/* Visibility Toggle */}
+              <button
+                data-testid="toggle-hidden-matches-visibility"
+                onClick={toggleShowHiddenMatches}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  showHiddenMatchesSection 
+                    ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30' 
+                    : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700/70'
+                }`}
+              >
+                <Eye className={`w-3.5 h-3.5 ${showHiddenMatchesSection ? '' : 'opacity-50'}`} />
+                {showHiddenMatchesSection ? 'Showing' : 'Hidden'}
+              </button>
+            </div>
             
-            {hiddenMatches.length === 0 ? (
-              <div className="text-center py-10 bg-white/5 rounded-2xl border border-white/10">
-                <div className="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3">
-                  <Eye className="w-7 h-7 text-slate-600" />
+            {/* Content - only show if toggle is ON */}
+            {showHiddenMatchesSection ? (
+              hiddenMatches.length === 0 ? (
+                <div className="text-center py-10 bg-white/5 rounded-2xl border border-white/10">
+                  <div className="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                    <Eye className="w-7 h-7 text-slate-600" />
+                  </div>
+                  <p className="text-slate-500 text-sm">
+                    You haven't hidden anyone.
+                  </p>
+                  <p className="text-slate-600 text-xs mt-1">
+                    Mutual matches you hide will appear here.
+                  </p>
                 </div>
-                <p className="text-slate-500 text-sm">
-                  You haven't hidden anyone.
-                </p>
-                <p className="text-slate-600 text-xs mt-1">
-                  Mutual matches you hide will appear here.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {hiddenMatches.map((hidden) => (
-                  <div 
-                    key={hidden.user_id}
-                    className="bg-white/5 rounded-xl p-3 border border-white/10 flex items-center gap-3"
-                    data-testid={`hidden-match-${hidden.user_id}`}
-                  >
-                    {/* Profile Photo */}
+              ) : (
+                <div className="space-y-2">
+                  {hiddenMatches.map((hidden) => (
                     <div 
-                      className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
-                      onClick={() => navigate(`/profile/${hidden.user_id}`)}
+                      key={hidden.user_id}
+                      className="bg-white/5 rounded-xl p-3 border border-white/10 flex items-center gap-3"
+                      data-testid={`hidden-match-${hidden.user_id}`}
                     >
-                      {hidden.avatar_url ? (
-                        <img
-                          src={hidden.thumbnail_url || hidden.avatar_url}
-                          alt={hidden.display_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <SilhouetteAvatar />
-                      )}
-                    </div>
-                    
-                    {/* Name, Age, Presence */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-white font-medium truncate">
-                          {hidden.display_name}
-                          {hidden.age ? `, ${hidden.age}` : ""}
-                        </p>
-                        {/* Presence dot */}
-                        {hidden.presence_status === "here" ? (
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" title="Here Now" />
-                        ) : hidden.presence_status === "not_here" ? (
-                          <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" title="Not Here" />
-                        ) : null}
-                        {hidden.is_premium && (
-                          <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                      {/* Profile Photo */}
+                      <div 
+                        className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
+                        onClick={() => navigate(`/profile/${hidden.user_id}`)}
+                      >
+                        {hidden.avatar_url ? (
+                          <img
+                            src={hidden.thumbnail_url || hidden.avatar_url}
+                            alt={hidden.display_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <SilhouetteAvatar />
                         )}
                       </div>
-                      <p className="text-slate-500 text-xs">
-                        Hidden {hidden.hidden_at ? formatDate(hidden.hidden_at) : ""}
-                      </p>
+                      
+                      {/* Name, Age, Presence */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-white font-medium truncate">
+                            {hidden.display_name}
+                            {hidden.age ? `, ${hidden.age}` : ""}
+                          </p>
+                          {/* Presence dot */}
+                          {hidden.presence_status === "here" ? (
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" title="Here Now" />
+                          ) : hidden.presence_status === "not_here" ? (
+                            <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" title="Not Here" />
+                          ) : null}
+                          {hidden.is_premium && (
+                            <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-slate-500 text-xs">
+                          Hidden {hidden.hidden_at ? formatDate(hidden.hidden_at) : ""}
+                        </p>
+                      </div>
+                      
+                      {/* Unhide Button */}
+                      <Button
+                        data-testid={`unhide-btn-${hidden.user_id}`}
+                        size="sm"
+                        className="h-8 text-xs bg-indigo-500/80 hover:bg-indigo-600 text-white px-3 flex-shrink-0"
+                        onClick={() => handleUnhideFromMatches(hidden.user_id, hidden.display_name)}
+                      >
+                        <Eye className="w-3 h-3 mr-1" />
+                        Unhide
+                      </Button>
                     </div>
-                    
-                    {/* Unhide Button */}
-                    <Button
-                      data-testid={`unhide-btn-${hidden.user_id}`}
-                      size="sm"
-                      className="h-8 text-xs bg-indigo-500/80 hover:bg-indigo-600 text-white px-3 flex-shrink-0"
-                      onClick={() => handleUnhideFromMatches(hidden.user_id, hidden.display_name)}
-                    >
-                      <Eye className="w-3 h-3 mr-1" />
-                      Unhide
-                    </Button>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )
+            ) : (
+              /* Toggle is OFF - show minimal info */
+              <div className="text-center py-6 bg-white/5 rounded-2xl border border-white/10 border-dashed">
+                <p className="text-slate-500 text-sm">
+                  Hidden matches section is turned off.
+                </p>
+                <p className="text-slate-600 text-xs mt-1">
+                  Tap "Hidden" above to show your {hiddenMatches.length > 0 ? `${hiddenMatches.length} hidden match${hiddenMatches.length > 1 ? 'es' : ''}` : 'hidden matches'}.
+                </p>
               </div>
             )}
           </div>
