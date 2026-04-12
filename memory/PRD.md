@@ -1011,3 +1011,56 @@ Replaced Friends horizontal row layout with grid layout matching Mutual Matches:
 
 ---
 *Last Updated: April 12, 2026 - HereHub UI Consistency Fix*
+
+---
+
+## Friends Flow Unified with Mutual Matches (April 2026)
+
+### Overview
+Made the Friends flow match the Mutual Matches flow EXACTLY — same UI, modals, button layout, outcomes, and emotional safety model — just with "Friend" wording.
+
+### Changes Implemented
+
+#### 1. Friends Grid Card (Match Mutual Matches)
+- Green "Chat" button (same as Mutual Matches)
+- Grey "X" icon on the card (NOT menu, NOT eye)
+- Tapping card opens profile (same as Mutual Matches)
+- **Removed:** Action sheet pattern for Friends
+
+#### 2. Hide Friend Flow (Match "Hide from Matches?" Modal)
+New modal with Friend wording:
+- Title: "Hide Friend?"
+- Body: "Hide [Name] from your Friends list?"
+- Bullets: Move to Hidden Friends, Remove from Venues/Discovery
+- NOT bullets: Unfriend, Delete messages, Notify, Block
+- Buttons: Grey "Hide Friend" + Cancel
+
+#### 3. Hidden Friends Section (Match Hidden Matches Layout)
+Changed from grid cards to row layout matching Hidden Matches:
+- Blurred photo (12x12 rounded-xl)
+- Name inline
+- "Hidden [time ago]" subtext
+- Purple "Unhide" button
+- Grey trash icon → opens Remove Friend modal
+
+#### 4. Remove Friend Flow (Match "Remove Match?" Modal)
+Updated modal with Friend wording:
+- Title: "Remove Friend?"
+- Body: "Remove [Name] from your Friends?"
+- Bullets: Remove from Friends list, Turn into unmatched person, Can friend again
+- NOT bullets: Delete messages, Notify, Block
+- Buttons: Red "Remove Friend" + Cancel
+
+### Components Removed
+- `friendActionSheet` state
+- Friend Action Sheet modal (entire component)
+
+### Components Added
+- `hideFriendConfirm` state
+- Hide Friend Confirmation modal
+
+### Files Modified
+- `/app/frontend/src/pages/Connections.js`
+
+---
+*Last Updated: April 12, 2026 - Friends Flow Unified with Mutual Matches*

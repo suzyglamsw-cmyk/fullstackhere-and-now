@@ -58,7 +58,7 @@ const Connections = () => {
   const [chatActionSheet, setChatActionSheet] = useState(null); // For chat request actions
   const [clearConfirmUser, setClearConfirmUser] = useState(null); // For clear from matches confirmation
   const [hideConfirmUser, setHideConfirmUser] = useState(null); // For hide from mutual matches confirmation
-  const [friendActionSheet, setFriendActionSheet] = useState(null); // For friend actions (hide/remove)
+  const [hideFriendConfirm, setHideFriendConfirm] = useState(null); // For hide friend confirmation
   const [removeFriendConfirm, setRemoveFriendConfirm] = useState(null); // For remove friend confirmation
   const [tab, setTab] = useState(searchParams.get("tab") || "messages"); // "messages" | "glances" | "icebreakers" | "chats" | "requests" | "friends" | "connections"
   
@@ -1591,17 +1591,17 @@ const Connections = () => {
                             Chat
                           </Button>
                           <Button
-                            data-testid={`friend-actions-${friend.id}`}
+                            data-testid={`hide-friend-btn-${friend.id}`}
                             size="sm"
                             variant="ghost"
-                            className="h-7 w-7 p-0 text-slate-400 hover:text-white hover:bg-white/10"
+                            className="h-7 w-7 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setFriendActionSheet({ ...friend, isHidden: false });
+                              setHideFriendConfirm({ id: friend.id, display_name: friend.display_name });
                             }}
-                            title="More actions"
+                            title="Hide Friend"
                           >
-                            <MoreVertical className="w-3 h-3" />
+                            <X className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
@@ -1609,26 +1609,23 @@ const Connections = () => {
                   </div>
                 )}
 
-                {/* Hidden Friends Section - Grid Layout with amber styling */}
+                {/* Hidden Friends Section - Row Layout matching Hidden Matches */}
                 {hiddenFriends.length > 0 && showHiddenMatchesSection && (
                   <div data-testid="hidden-friends-section">
                     <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
                       <Eye className="w-4 h-4" />
                       Hidden Friends ({hiddenFriends.length})
                     </h3>
-                    <p className="text-slate-500 text-xs mb-3">
-                      Hidden from Venues & Discovery. Still visible here, in Messages & Chat.
-                    </p>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    <div className="space-y-2">
                       {hiddenFriends.map((friend) => (
                         <div 
                           key={friend.id}
+                          className="bg-white/5 rounded-xl p-3 border border-white/10 flex items-center gap-3"
                           data-testid={`hidden-friend-${friend.id}`}
-                          className="bg-white/5 rounded-xl overflow-hidden border border-amber-500/30 hover:border-amber-500/50 transition-all cursor-pointer group opacity-80"
                         >
-                          {/* Photo - Square */}
+                          {/* Profile Photo */}
                           <div 
-                            className="relative aspect-square"
+                            className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
                             onClick={() => navigate(`/profile/${friend.id}`)}
                           >
                             <BlurredImage
@@ -1638,47 +1635,43 @@ const Connections = () => {
                               isThumbnail={true}
                               fallbackInitial={friend.display_name?.charAt(0) || "?"}
                             />
-                            
-                            {/* Name overlay */}
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-2">
-                              <p className="text-white/80 text-xs font-medium truncate">
-                                {friend.display_name}
-                              </p>
-                              <p className="text-amber-400/70 text-[10px]">Hidden</p>
-                            </div>
-                            
-                            {/* Hidden badge */}
-                            <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-amber-500/90 flex items-center justify-center">
-                              <Eye className="w-2.5 h-2.5 text-white" />
-                            </div>
                           </div>
                           
-                          {/* Actions */}
-                          <div className="p-1.5 flex gap-1">
+                          {/* Name, Age */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-white font-medium truncate">
+                                {friend.display_name}
+                              </p>
+                            </div>
+                            <p className="text-slate-500 text-xs">
+                              Hidden {friend.hidden_at ? formatDate(friend.hidden_at) : ""}
+                            </p>
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 flex-shrink-0">
+                            {/* Unhide Button */}
                             <Button
-                              data-testid={`message-hidden-friend-${friend.id}`}
+                              data-testid={`unhide-friend-btn-${friend.id}`}
                               size="sm"
-                              className="flex-1 h-7 text-xs bg-indigo-500/70 hover:bg-indigo-600 text-white px-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/chat/${friend.id}`);
-                              }}
+                              className="h-8 text-xs bg-indigo-500/80 hover:bg-indigo-600 text-white px-3"
+                              onClick={() => handleUnhideFromMatches(friend.id, friend.display_name)}
                             >
-                              <MessageCircle className="w-3 h-3 mr-1" />
-                              Chat
+                              <Eye className="w-3 h-3 mr-1" />
+                              Unhide
                             </Button>
+                            
+                            {/* Remove Friend Button */}
                             <Button
-                              data-testid={`hidden-friend-actions-${friend.id}`}
+                              data-testid={`remove-friend-btn-${friend.id}`}
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 text-slate-400 hover:text-white hover:bg-white/10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFriendActionSheet({ ...friend, isHidden: true });
-                              }}
-                              title="More actions"
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                              onClick={() => setRemoveFriendConfirm({ id: friend.id, display_name: friend.display_name })}
+                              title="Remove Friend"
                             >
-                              <MoreVertical className="w-3 h-3" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>
@@ -2043,6 +2036,67 @@ const Connections = () => {
         </div>
       )}
 
+      {/* Hide Friend Confirmation Modal */}
+      {hideFriendConfirm && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" 
+          onClick={() => setHideFriendConfirm(null)}
+          data-testid="hide-friend-confirm-modal"
+        >
+          <div 
+            className="w-full max-w-sm bg-slate-900 rounded-2xl p-6 mx-4 border border-white/10 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-4">
+                <Eye className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Hide Friend?</h3>
+              <p className="text-slate-400 text-sm">
+                Hide <span className="text-white font-medium">{hideFriendConfirm.display_name}</span> from your Friends list?
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* What this does */}
+              <div className="bg-slate-800/50 rounded-xl p-3 text-xs text-slate-400">
+                <p className="font-medium text-slate-300 mb-1">This will:</p>
+                <p>• Move them to your Hidden Friends section</p>
+                <p>• Remove them from Venues and Discovery</p>
+                <p className="mt-2 font-medium text-slate-300 mb-1">This will NOT:</p>
+                <p>• Unfriend them</p>
+                <p>• Delete your messages</p>
+                <p>• Notify them</p>
+                <p>• Block them</p>
+              </div>
+              
+              {/* Hide button */}
+              <Button
+                data-testid="confirm-hide-friend-btn"
+                onClick={() => {
+                  handleHideFromMatches(hideFriendConfirm.id, hideFriendConfirm.display_name);
+                  setHideFriendConfirm(null);
+                }}
+                className="w-full h-12 rounded-xl bg-slate-600 hover:bg-slate-500 text-white font-semibold"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Hide Friend
+              </Button>
+              
+              {/* Cancel */}
+              <Button
+                data-testid="cancel-hide-friend-btn"
+                onClick={() => setHideFriendConfirm(null)}
+                variant="ghost"
+                className="w-full h-12 rounded-xl text-slate-300 hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bin Confirmation Modal (Quiet Unmatch) */}
       {binConfirmUser && (
         <div 
@@ -2263,120 +2317,6 @@ const Connections = () => {
         </div>
       )}
 
-      {/* Friend Action Sheet */}
-      {friendActionSheet && (
-        <div 
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" 
-          onClick={() => setFriendActionSheet(null)}
-          data-testid="friend-action-sheet"
-        >
-          <div 
-            className="w-full max-w-md bg-slate-900 rounded-t-3xl p-6 pb-10 border-t border-white/10 animate-in slide-in-from-bottom duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Handle bar */}
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-6" />
-            
-            {/* User info */}
-            <div className="text-center mb-6">
-              <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 ring-2 ring-emerald-500/50">
-                <BlurredImage
-                  src={friendActionSheet.photo_url || friendActionSheet.avatar_url}
-                  alt={friendActionSheet.display_name}
-                  blurState={getPhotoState(friendActionSheet)}
-                  isThumbnail={true}
-                  fallbackInitial={friendActionSheet.display_name?.charAt(0)}
-                />
-              </div>
-              <h3 className="text-xl font-bold text-white">{friendActionSheet.display_name}</h3>
-              <div className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                <UserCheck className="w-4 h-4 text-emerald-400" />
-                <p className="text-emerald-300 text-sm">Friend</p>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-2">
-              {/* View Profile */}
-              <Button
-                data-testid="view-friend-profile-btn"
-                onClick={() => {
-                  navigate(`/profile/${friendActionSheet.id}`);
-                  setFriendActionSheet(null);
-                }}
-                className="w-full h-12 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold"
-              >
-                <User className="w-4 h-4 mr-2" />
-                View Profile
-              </Button>
-
-              {/* Chat */}
-              <Button
-                data-testid="chat-with-friend-btn"
-                onClick={() => {
-                  navigate(`/chat/${friendActionSheet.id}`);
-                  setFriendActionSheet(null);
-                }}
-                className="w-full h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
-              >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Send Message
-              </Button>
-
-              {/* Hide/Unhide Friend */}
-              {friendActionSheet.isHidden ? (
-                <Button
-                  data-testid="unhide-friend-btn"
-                  onClick={() => {
-                    handleUnhideFromMatches(friendActionSheet.id, friendActionSheet.display_name);
-                    setFriendActionSheet(null);
-                  }}
-                  className="w-full h-12 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-semibold border border-amber-500/30"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  Unhide Friend
-                </Button>
-              ) : (
-                <Button
-                  data-testid="hide-friend-btn"
-                  onClick={() => {
-                    handleHideFromMatches(friendActionSheet.id, friendActionSheet.display_name);
-                    setFriendActionSheet(null);
-                  }}
-                  className="w-full h-12 rounded-xl bg-slate-600 hover:bg-slate-500 text-white font-semibold"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  Hide from Discovery
-                </Button>
-              )}
-
-              {/* Remove Friend */}
-              <Button
-                data-testid="remove-friend-btn"
-                onClick={() => {
-                  setRemoveFriendConfirm(friendActionSheet);
-                  setFriendActionSheet(null);
-                }}
-                variant="ghost"
-                className="w-full h-12 rounded-xl text-red-400 hover:bg-red-500/10 font-semibold"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Remove Friend
-              </Button>
-
-              {/* Cancel */}
-              <Button
-                onClick={() => setFriendActionSheet(null)}
-                variant="ghost"
-                className="w-full h-12 rounded-xl text-slate-400 hover:bg-white/5"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Remove Friend Confirmation Modal */}
       {removeFriendConfirm && (
         <div 
@@ -2394,7 +2334,7 @@ const Connections = () => {
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Remove Friend?</h3>
               <p className="text-slate-400 text-sm">
-                Remove <span className="text-white font-medium">{removeFriendConfirm.display_name}</span> from your friends?
+                Remove <span className="text-white font-medium">{removeFriendConfirm.display_name}</span> from your Friends?
               </p>
             </div>
 
@@ -2402,12 +2342,12 @@ const Connections = () => {
               {/* What this does */}
               <div className="bg-slate-800/50 rounded-xl p-3 text-xs text-slate-400">
                 <p className="font-medium text-slate-300 mb-1">This will:</p>
-                <p>• Remove the friendship connection</p>
-                <p>• They can still see you in venues</p>
-                <p>• You can become friends again later</p>
+                <p>• Remove them from your Friends list</p>
+                <p>• Turn them into a normal unmatched person</p>
+                <p>• Allow you to friend them again in the future</p>
                 <p className="mt-2 font-medium text-slate-300 mb-1">This will NOT:</p>
                 <p>• Delete your chat messages</p>
-                <p>• Notify them in any way</p>
+                <p>• Notify them</p>
                 <p>• Block them</p>
               </div>
               
@@ -2420,7 +2360,6 @@ const Connections = () => {
                 }}
                 className="w-full h-12 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold"
               >
-                <UserMinus className="w-4 h-4 mr-2" />
                 Remove Friend
               </Button>
               
