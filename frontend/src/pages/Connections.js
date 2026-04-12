@@ -40,6 +40,7 @@ const Connections = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [connections, setConnections] = useState([]);
+  const [hiddenMatches, setHiddenMatches] = useState([]); // Hidden from Mutual Matches
   const [mutualGlances, setMutualGlances] = useState([]);
   const [messageThreads, setMessageThreads] = useState([]);
   const [friendRequests, setFriendRequests] = useState({ incoming: [], outgoing: [] });
@@ -114,8 +115,9 @@ const Connections = () => {
 
   const fetchAllData = async () => {
     try {
-      const [connectionsRes, mutualRes, threadsRes, requestsRes, friendsRes, glancesRes, icebreakersRes, chatRequestsRes] = await Promise.all([
+      const [connectionsRes, hiddenRes, mutualRes, threadsRes, requestsRes, friendsRes, glancesRes, icebreakersRes, chatRequestsRes] = await Promise.all([
         axios.get(`${API}/connections`),
+        axios.get(`${API}/connections/hidden-from-matches`),
         axios.get(`${API}/connections/mutual-glances`),
         axios.get(`${API}/messages/threads`),
         axios.get(`${API}/friends/requests`),
@@ -125,6 +127,7 @@ const Connections = () => {
         axios.get(`${API}/connections/chat-requests`)
       ]);
       setConnections(connectionsRes.data);
+      setHiddenMatches(hiddenRes.data);
       setMutualGlances(mutualRes.data);
       setMessageThreads(threadsRes.data);
       setFriendRequests(requestsRes.data);
@@ -514,6 +517,17 @@ const Connections = () => {
       fetchAllData();
     } catch (error) {
       toast.error("Failed to hide from matches");
+    }
+  };
+
+  // Unhide a user from Mutual Matches (restore them to the list)
+  const handleUnhideFromMatches = async (userId, displayName) => {
+    try {
+      await axios.delete(`${API}/connections/${userId}/unhide-from-matches`);
+      toast.success(`${displayName} restored to Mutual Matches`);
+      fetchAllData();
+    } catch (error) {
+      toast.error("Failed to unhide from matches");
     }
   };
 
@@ -1641,6 +1655,95 @@ const Connections = () => {
               ))}
             </div>
           )
+        )}
+
+        {/* ============================================
+            HIDDEN MATCHES SECTION
+            Shows users hidden from Mutual Matches
+            ============================================ */}
+        {tab === "connections" && (
+          <div className="mt-8" data-testid="hidden-matches-section">
+            <h3 className="text-lg font-semibold text-slate-400 mb-4 flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Hidden Matches
+              {hiddenMatches.length > 0 && (
+                <span className="text-sm text-slate-500">({hiddenMatches.length})</span>
+              )}
+            </h3>
+            
+            {hiddenMatches.length === 0 ? (
+              <div className="text-center py-10 bg-white/5 rounded-2xl border border-white/10">
+                <div className="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                  <Eye className="w-7 h-7 text-slate-600" />
+                </div>
+                <p className="text-slate-500 text-sm">
+                  You haven't hidden anyone.
+                </p>
+                <p className="text-slate-600 text-xs mt-1">
+                  Mutual matches you hide will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {hiddenMatches.map((hidden) => (
+                  <div 
+                    key={hidden.user_id}
+                    className="bg-white/5 rounded-xl p-3 border border-white/10 flex items-center gap-3"
+                    data-testid={`hidden-match-${hidden.user_id}`}
+                  >
+                    {/* Profile Photo */}
+                    <div 
+                      className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
+                      onClick={() => navigate(`/profile/${hidden.user_id}`)}
+                    >
+                      {hidden.avatar_url ? (
+                        <img
+                          src={hidden.thumbnail_url || hidden.avatar_url}
+                          alt={hidden.display_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <SilhouetteAvatar />
+                      )}
+                    </div>
+                    
+                    {/* Name, Age, Presence */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-white font-medium truncate">
+                          {hidden.display_name}
+                          {hidden.age ? `, ${hidden.age}` : ""}
+                        </p>
+                        {/* Presence dot */}
+                        {hidden.presence_status === "here" ? (
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" title="Here Now" />
+                        ) : hidden.presence_status === "not_here" ? (
+                          <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" title="Not Here" />
+                        ) : null}
+                        {hidden.is_premium && (
+                          <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-slate-500 text-xs">
+                        Hidden {hidden.hidden_at ? formatDate(hidden.hidden_at) : ""}
+                      </p>
+                    </div>
+                    
+                    {/* Unhide Button */}
+                    <Button
+                      data-testid={`unhide-btn-${hidden.user_id}`}
+                      size="sm"
+                      className="h-8 text-xs bg-indigo-500/80 hover:bg-indigo-600 text-white px-3 flex-shrink-0"
+                      onClick={() => handleUnhideFromMatches(hidden.user_id, hidden.display_name)}
+                    >
+                      <Eye className="w-3 h-3 mr-1" />
+                      Unhide
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

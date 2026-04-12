@@ -847,12 +847,32 @@ async def unhide_from_matches(user_id: str, current_user: dict = Depends(get_cur
 
 @router.get("/connections/hidden-from-matches")
 async def get_hidden_from_matches(current_user: dict = Depends(get_current_user)):
-    """Get list of users hidden from Mutual Matches"""
+    """Get list of users hidden from Mutual Matches with full user details"""
     hidden = await db.hidden_from_matches.find({
         "user_id": current_user["id"]
     }, {"_id": 0}).to_list(100)
     
-    return [h["hidden_user_id"] for h in hidden]
+    # Fetch full user details for each hidden user
+    hidden_users = []
+    for hidden_record in hidden:
+        user = await db.users.find_one(
+            {"id": hidden_record["hidden_user_id"]}, 
+            {"_id": 0, "password": 0}
+        )
+        if user:
+            hidden_users.append({
+                "user_id": user["id"],
+                "display_name": user.get("display_name", "Unknown"),
+                "avatar_url": user.get("avatar_url", ""),
+                "thumbnail_url": user.get("thumbnail_url", ""),
+                "age": user.get("age"),
+                "presence_status": user.get("presence_status"),
+                "last_active_at": user.get("last_active_at"),
+                "hidden_at": hidden_record.get("hidden_at"),
+                "is_premium": user.get("is_premium", False),
+            })
+    
+    return hidden_users
 
 
 @router.get("/connections/mutual-glances")
