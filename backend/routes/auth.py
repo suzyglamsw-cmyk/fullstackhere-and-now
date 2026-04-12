@@ -466,12 +466,13 @@ async def logout(current_user: dict = Depends(get_current_user)):
         )
         logger.info(f"User {user_id} checked out from venue {active_checkin.get('venue_id')} on logout")
     
-    # Reset user's presence status to "not_here"
+    # Clear presence entirely on logout (do NOT switch to "not_here" mode)
     await db.users.update_one(
         {"id": user_id},
         {"$set": {
-            "presence_status": "not_here",
-            "active_venue_id": None
+            "presence_status": None,  # Remove from ALL presence states
+            "active_venue_id": None,
+            "presence_not_here_since": None  # Clear "Not Here" timestamp
         }}
     )
     
