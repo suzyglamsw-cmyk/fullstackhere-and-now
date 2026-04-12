@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { useState, useEffect, createContext, useContext } from "react";
 import axios from "axios";
+import { dispatchPresenceEvent, PRESENCE_EVENTS } from "./utils/presenceEvents";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -91,6 +92,9 @@ export const AuthProvider = ({ children }) => {
       console.error("Logout API error:", error);
       // Continue with client-side logout even if API fails
     }
+    
+    // Dispatch presence event so venue/discovery lists refresh
+    dispatchPresenceEvent(PRESENCE_EVENTS.LOGOUT);
     
     // Clear client-side auth state
     localStorage.removeItem("token");

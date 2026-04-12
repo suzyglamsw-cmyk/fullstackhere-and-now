@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth, API } from "@/App";
@@ -10,6 +10,7 @@ import { NotForNowSheet } from "../components/NotForNowSheet";
 import { useConfirmHintGlobal } from "../components/ConfirmHint";
 import { getErrorMessage } from "../utils/errorUtils";
 import { onUserBlocked } from "../utils/blockEvents";
+import { onPresenceChange, onPageVisible } from "../utils/presenceEvents";
 import {
   Eye,
   Snowflake,
@@ -202,6 +203,37 @@ const WhosHere = () => {
       fetchPeople();
     }
   }, [matchFilter, activityFilter, ageFilter, hiddenUsers]);
+
+  // Auto-refresh: Poll every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (fetchPeopleRef.current) {
+        fetchPeopleRef.current();
+      }
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [venueId]);
+
+  // Auto-refresh: When page becomes visible/focused
+  useEffect(() => {
+    const cleanup = onPageVisible(() => {
+      if (fetchPeopleRef.current) {
+        fetchPeopleRef.current();
+      }
+    });
+    return cleanup;
+  }, []);
+
+  // Auto-refresh: When presence changes (logout, checkin, etc.)
+  useEffect(() => {
+    const cleanup = onPresenceChange(() => {
+      if (fetchPeopleRef.current) {
+        fetchPeopleRef.current();
+      }
+    });
+    return cleanup;
+  }, []);
 
   const handleCheckIn = async () => {
     setCheckingIn(true);

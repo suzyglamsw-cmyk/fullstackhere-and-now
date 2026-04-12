@@ -8,6 +8,7 @@ import Layout from "../components/Layout";
 import { MapPin, Users, Loader2, MapPinOff, Star, Clock, Radio, ArrowLeft } from "lucide-react";
 import LiveClock from "../components/LiveClock";
 import useLocationTracker from "../hooks/useLocationTracker";
+import { onPresenceChange, onPageVisible } from "../utils/presenceEvents";
 
 const Venues = () => {
   const navigate = useNavigate();
@@ -226,6 +227,43 @@ const Venues = () => {
       console.error("Failed to fetch current checkin");
     }
   };
+
+  // Ref to hold fetchSeededVenues for auto-refresh
+  const fetchVenuesRef = useRef(fetchSeededVenues);
+  fetchVenuesRef.current = fetchSeededVenues;
+
+  // Auto-refresh: Poll venue counts every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (fetchVenuesRef.current) {
+        fetchVenuesRef.current();
+      }
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-refresh: When page becomes visible/focused
+  useEffect(() => {
+    const cleanup = onPageVisible(() => {
+      if (fetchVenuesRef.current) {
+        fetchVenuesRef.current();
+      }
+      fetchCurrentCheckin();
+    });
+    return cleanup;
+  }, []);
+
+  // Auto-refresh: When presence changes (logout, checkin, etc.)
+  useEffect(() => {
+    const cleanup = onPresenceChange(() => {
+      if (fetchVenuesRef.current) {
+        fetchVenuesRef.current();
+      }
+      fetchCurrentCheckin();
+    });
+    return cleanup;
+  }, []);
 
   const handleCheckIn = async (venueId, venue) => {
     setCheckingIn(venueId);

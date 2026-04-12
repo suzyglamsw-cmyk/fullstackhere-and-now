@@ -10,6 +10,7 @@ import { NotForNowSheet } from "../components/NotForNowSheet";
 import { getErrorMessage } from "../utils/errorUtils";
 import { useConfirmHintGlobal } from "../components/ConfirmHint";
 import { onUserBlocked } from "../utils/blockEvents";
+import { onPresenceChange, onPageVisible } from "../utils/presenceEvents";
 import {
   MapPin,
   Loader2,
@@ -295,6 +296,39 @@ const Discovery = () => {
   };
 
   fetchPeopleRef.current = fetchPeople;
+
+  // Auto-refresh: Poll every 30 seconds (for Not Here mode)
+  useEffect(() => {
+    if (mode !== "not-here" || locationStatus !== "granted") return;
+    
+    const interval = setInterval(() => {
+      if (fetchPeopleRef.current) {
+        fetchPeopleRef.current();
+      }
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [mode, locationStatus]);
+
+  // Auto-refresh: When page becomes visible/focused
+  useEffect(() => {
+    const cleanup = onPageVisible(() => {
+      if (mode === "not-here" && locationStatus === "granted" && fetchPeopleRef.current) {
+        fetchPeopleRef.current();
+      }
+    });
+    return cleanup;
+  }, [mode, locationStatus]);
+
+  // Auto-refresh: When presence changes (logout, checkin, etc.)
+  useEffect(() => {
+    const cleanup = onPresenceChange(() => {
+      if (mode === "not-here" && locationStatus === "granted" && fetchPeopleRef.current) {
+        fetchPeopleRef.current();
+      }
+    });
+    return cleanup;
+  }, [mode, locationStatus]);
 
   // Action handlers
   const handleGlance = async (userId, venueId) => {
