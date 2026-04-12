@@ -845,6 +845,76 @@ async def unhide_from_matches(user_id: str, current_user: dict = Depends(get_cur
     return {"message": "User will appear in Mutual Matches again"}
 
 
+@router.delete("/connections/{user_id}/bin")
+async def bin_hidden_match(user_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    BIN ACTION (Quiet Unmatch) - Remove mutual connection silently.
+    
+    This action:
+    - Removes the user from Hidden Matches
+    - Removes the mutual connection (one-sided, quiet)
+    - Does NOT delete chat history
+    - Does NOT notify the other user
+    - Does NOT block
+    
+    After binning:
+    - They appear as a normal unmatched person
+    - They can match again in the future
+    - The other user sees no change (they still see mutual from their side until they interact)
+    """
+    # 1. Remove from hidden_from_matches
+    await db.hidden_from_matches.delete_one({
+        "user_id": current_user["id"],
+        "hidden_user_id": user_id
+    })
+    
+    # 2. Remove mutual glances (only current user's glance to them)
+    # This breaks the mutual state from our side
+    await db.glances.delete_many({
+        "from_user_id": current_user["id"],
+        "to_user_id": user_id
+    })
+    
+    # 3. Remove any icebreakers we sent (not theirs to us)
+    await db.icebreakers.update_many(
+        {
+            "from_user_id": current_user["id"],
+            "to_user_id": user_id
+        },
+        {"$set": {"status": "withdrawn"}}
+    )
+    
+    # 4. Remove any chat requests we sent (not theirs to us)
+    await db.chat_requests.update_many(
+        {
+            "from_user_id": current_user["id"],
+            "to_user_id": user_id
+        },
+        {"$set": {"status": "withdrawn"}}
+    )
+    
+    # 5. Remove from explicit connections collection (one-sided)
+    await db.connections.delete_many({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": user_id},
+            {"user1_id": user_id, "user2_id": current_user["id"]}
+        ]
+    })
+    
+    # 6. Remove reveal state (one-sided)
+    await db.reveals.delete_many({
+        "from_user_id": current_user["id"],
+        "to_user_id": user_id
+    })
+    
+    # Note: We do NOT delete:
+    # - Chat messages (preserved)
+    # - Their glance/icebreaker/chat request to us (they still see mutual from their side)
+    # - Any notifications they received (already sent)
+    
+    return {"message": "Connection removed. They can still see you as a match until they interact again."}
+
+
 @router.get("/connections/hidden-from-matches")
 async def get_hidden_from_matches(current_user: dict = Depends(get_current_user)):
     """Get list of users hidden from Mutual Matches with full user details"""

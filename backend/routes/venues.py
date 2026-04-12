@@ -550,6 +550,16 @@ async def get_people_at_venue(
         if not check_visibility_match(current_user, user):
             continue
         
+        # Check if this user is hidden from matches by current user
+        # Hidden matches should NOT appear in venue lists (except in Hidden Matches section)
+        is_hidden_from_matches = await db.hidden_from_matches.find_one({
+            "user_id": current_user["id"],
+            "hidden_user_id": user["id"]
+        }) is not None
+        
+        if is_hidden_from_matches:
+            continue  # Skip hidden matches - they only appear in Hidden Matches section
+        
         # Apply last_active filter
         if last_active_filter:
             last_activity = checkin.get("last_activity_at") or checkin.get("checked_in_at")

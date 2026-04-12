@@ -4295,6 +4295,16 @@ async def get_people_at_venue(
         if not check_visibility_match(current_user, user):
             continue
         
+        # Check if this user is hidden from matches by current user
+        # Hidden matches should NOT appear in venue lists (except in Hidden Matches section)
+        is_hidden_from_matches = await db.hidden_from_matches.find_one({
+            "user_id": current_user["id"],
+            "hidden_user_id": user["id"]
+        }) is not None
+        
+        if is_hidden_from_matches:
+            continue  # Skip hidden matches - they only appear in Hidden Matches section
+        
         # Apply last_active filter
         user_last_active = user.get("last_active_at")
         if last_active_filter and user_last_active:
@@ -4538,6 +4548,17 @@ async def get_people_not_here(
         if not is_self and not check_visibility_match(current_user, user):
             continue
         
+        # Check if this user is hidden from matches by current user (skip for self)
+        # Hidden matches should NOT appear in discovery (except in Hidden Matches section)
+        if not is_self:
+            is_hidden_from_matches = await db.hidden_from_matches.find_one({
+                "user_id": current_user["id"],
+                "hidden_user_id": user["id"]
+            }) is not None
+            
+            if is_hidden_from_matches:
+                continue  # Skip hidden matches
+        
         # For self, mark as revealed and set special flags
         if is_self:
             has_glanced_at_me = False
@@ -4706,6 +4727,16 @@ async def get_people_here(
         # Visibility check using new system (gender, seeking, rainbow, openToAll)
         if not check_visibility_match(current_user, user):
             continue
+        
+        # Check if this user is hidden from matches by current user
+        # Hidden matches should NOT appear in discovery (except in Hidden Matches section)
+        is_hidden_from_matches = await db.hidden_from_matches.find_one({
+            "user_id": current_user["id"],
+            "hidden_user_id": user["id"]
+        }) is not None
+        
+        if is_hidden_from_matches:
+            continue  # Skip hidden matches
         
         # Check glance status
         has_glanced_at_me = await db.glances.find_one({

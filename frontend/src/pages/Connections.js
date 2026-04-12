@@ -536,6 +536,20 @@ const Connections = () => {
     }
   };
 
+  // Bin a hidden match (quiet unmatch - removes mutual connection silently)
+  const [binConfirmUser, setBinConfirmUser] = useState(null);
+  
+  const handleBinHiddenMatch = async (userId, displayName) => {
+    try {
+      await axios.delete(`${API}/connections/${userId}/bin`);
+      toast.success(`${displayName} removed from matches. They can still find you as a new person.`);
+      setBinConfirmUser(null);
+      fetchAllData();
+    } catch (error) {
+      toast.error("Failed to remove from matches");
+    }
+  };
+
   // Toggle visibility of Hidden Matches section (UI-only, no backend changes)
   const toggleShowHiddenMatches = () => {
     const newValue = !showHiddenMatchesSection;
@@ -1761,16 +1775,31 @@ const Connections = () => {
                         </p>
                       </div>
                       
-                      {/* Unhide Button */}
-                      <Button
-                        data-testid={`unhide-btn-${hidden.user_id}`}
-                        size="sm"
-                        className="h-8 text-xs bg-indigo-500/80 hover:bg-indigo-600 text-white px-3 flex-shrink-0"
-                        onClick={() => handleUnhideFromMatches(hidden.user_id, hidden.display_name)}
-                      >
-                        <Eye className="w-3 h-3 mr-1" />
-                        Unhide
-                      </Button>
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 flex-shrink-0">
+                        {/* Unhide Button */}
+                        <Button
+                          data-testid={`unhide-btn-${hidden.user_id}`}
+                          size="sm"
+                          className="h-8 text-xs bg-indigo-500/80 hover:bg-indigo-600 text-white px-3"
+                          onClick={() => handleUnhideFromMatches(hidden.user_id, hidden.display_name)}
+                        >
+                          <Eye className="w-3 h-3 mr-1" />
+                          Unhide
+                        </Button>
+                        
+                        {/* Bin Button (Quiet Unmatch) */}
+                        <Button
+                          data-testid={`bin-btn-${hidden.user_id}`}
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                          onClick={() => setBinConfirmUser({ user_id: hidden.user_id, display_name: hidden.display_name })}
+                          title="Remove match (quiet unmatch)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1910,6 +1939,64 @@ const Connections = () => {
               <Button
                 data-testid="cancel-hide-btn"
                 onClick={() => setHideConfirmUser(null)}
+                variant="ghost"
+                className="w-full h-12 rounded-xl text-slate-300 hover:bg-white/5"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bin Confirmation Modal (Quiet Unmatch) */}
+      {binConfirmUser && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" 
+          onClick={() => setBinConfirmUser(null)}
+          data-testid="bin-confirm-modal"
+        >
+          <div 
+            className="w-full max-w-sm bg-slate-900 rounded-2xl p-6 mx-4 border border-white/10 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Remove Match?</h3>
+              <p className="text-slate-400 text-sm">
+                Remove <span className="text-white font-medium">{binConfirmUser.display_name}</span> from your matches?
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* What this does */}
+              <div className="bg-slate-800/50 rounded-xl p-3 text-xs text-slate-400">
+                <p className="font-medium text-slate-300 mb-1">This will:</p>
+                <p>• Remove the mutual connection</p>
+                <p>• They become a normal unmatched person</p>
+                <p>• You can match again in the future</p>
+                <p className="mt-2 font-medium text-slate-300 mb-1">This will NOT:</p>
+                <p>• Delete your chat messages</p>
+                <p>• Notify them in any way</p>
+                <p>• Block them</p>
+              </div>
+              
+              {/* Bin button */}
+              <Button
+                data-testid="confirm-bin-btn"
+                onClick={() => handleBinHiddenMatch(binConfirmUser.user_id, binConfirmUser.display_name)}
+                className="w-full h-12 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Remove Match
+              </Button>
+              
+              {/* Cancel */}
+              <Button
+                data-testid="cancel-bin-btn"
+                onClick={() => setBinConfirmUser(null)}
                 variant="ghost"
                 className="w-full h-12 rounded-xl text-slate-300 hover:bg-white/5"
               >
