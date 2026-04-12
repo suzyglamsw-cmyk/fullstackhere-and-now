@@ -1426,15 +1426,13 @@ const Connections = () => {
                           onClick={() => navigate(`/profile/${request.from_user_id}`)}
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-amber-500 transition-all">
-                            {request.avatar_url ? (
-                              <img
-                                src={request.thumbnail_url || request.avatar_url}
-                                alt={request.display_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <SilhouetteAvatar />
-                            )}
+                            <BlurredImage
+                              src={request.photo_url || request.avatar_url}
+                              alt={request.display_name}
+                              blurState={getPhotoState(request)}
+                              isThumbnail={true}
+                              fallbackInitial={request.display_name?.charAt(0) || "?"}
+                            />
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1489,15 +1487,13 @@ const Connections = () => {
                           onClick={() => navigate(`/profile/${request.to_user_id}`)}
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-amber-500 transition-all">
-                            {request.avatar_url ? (
-                              <img
-                                src={request.thumbnail_url || request.avatar_url}
-                                alt={request.display_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <SilhouetteAvatar />
-                            )}
+                            <BlurredImage
+                              src={request.photo_url || request.avatar_url}
+                              alt={request.display_name}
+                              blurState={getPhotoState(request)}
+                              isThumbnail={true}
+                              fallbackInitial={request.display_name?.charAt(0) || "?"}
+                            />
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1557,15 +1553,13 @@ const Connections = () => {
                           onClick={() => navigate(`/profile/${friend.id}`)}
                         >
                           <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-emerald-500 transition-all">
-                            {friend.avatar_url ? (
-                              <img
-                                src={friend.thumbnail_url || friend.avatar_url}
-                                alt={friend.display_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <SilhouetteAvatar />
-                            )}
+                            <BlurredImage
+                              src={friend.photo_url || friend.avatar_url}
+                              alt={friend.display_name}
+                              blurState={getPhotoState(friend)}
+                              isThumbnail={true}
+                              fallbackInitial={friend.display_name?.charAt(0) || "?"}
+                            />
                           </div>
                         </div>
                         <div 
@@ -1643,15 +1637,13 @@ const Connections = () => {
                             onClick={() => navigate(`/profile/${friend.id}`)}
                           >
                             <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-amber-500 transition-all opacity-70">
-                              {friend.avatar_url ? (
-                                <img
-                                  src={friend.thumbnail_url || friend.avatar_url}
-                                  alt={friend.display_name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <SilhouetteAvatar />
-                              )}
+                              <BlurredImage
+                                src={friend.photo_url || friend.avatar_url}
+                                alt={friend.display_name}
+                                blurState={getPhotoState(friend)}
+                                isThumbnail={true}
+                                fallbackInitial={friend.display_name?.charAt(0) || "?"}
+                              />
                             </div>
                           </div>
                           <div 
@@ -1733,19 +1725,13 @@ const Connections = () => {
                     className="relative aspect-square"
                     onClick={() => navigate(`/profile/${connection.user_id}`)}
                   >
-                    {connection.avatar_url ? (
-                      <img
-                        src={connection.thumbnail_url || connection.avatar_url}
-                        alt={connection.display_name}
-                        className="w-full h-full object-cover"
-                        style={{
-                          filter: connection.reveal_state?.is_revealed ? 'none' : 'blur(6px)',
-                          transition: 'filter 0.3s ease-out'
-                        }}
-                      />
-                    ) : (
-                      <SilhouetteAvatar />
-                    )}
+                    <BlurredImage
+                      src={connection.photo_url || connection.avatar_url}
+                      alt={connection.display_name}
+                      blurState={getPhotoState(connection)}
+                      isThumbnail={true}
+                      fallbackInitial={connection.display_name?.charAt(0) || "?"}
+                    />
                     
                     {/* Name overlay */}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5">
@@ -1858,15 +1844,13 @@ const Connections = () => {
                         className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
                         onClick={() => navigate(`/profile/${hidden.user_id}`)}
                       >
-                        {hidden.avatar_url ? (
-                          <img
-                            src={hidden.thumbnail_url || hidden.avatar_url}
-                            alt={hidden.display_name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <SilhouetteAvatar />
-                        )}
+                        <BlurredImage
+                          src={hidden.photo_url || hidden.avatar_url}
+                          alt={hidden.display_name}
+                          blurState={getPhotoState(hidden)}
+                          isThumbnail={true}
+                          fallbackInitial={hidden.display_name?.charAt(0) || "?"}
+                        />
                       </div>
                       
                       {/* Name, Age, Presence */}

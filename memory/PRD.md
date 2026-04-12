@@ -936,3 +936,37 @@ Extended the connection management system to support Friends with Hide/Unhide/Re
 
 ---
 *Last Updated: April 12, 2026 - Friends Management Feature Implementation*
+
+---
+
+## Unified Blur Logic Implementation (April 2026)
+
+### Overview
+Standardized blur logic across ALL request surfaces in Connections.js to ensure consistency with the expanded profile view.
+
+### Components Updated
+All components now use `BlurredImage` with `getPhotoState()` instead of direct `<img>` tags:
+
+| Component | Previous | After |
+|-----------|----------|-------|
+| Incoming Friend Requests | Direct `<img>` | `BlurredImage` + `getPhotoState()` |
+| Outgoing Friend Requests | Direct `<img>` | `BlurredImage` + `getPhotoState()` |
+| Visible Friends List | Direct `<img>` | `BlurredImage` + `getPhotoState()` |
+| Hidden Friends List | Direct `<img>` | `BlurredImage` + `getPhotoState()` |
+| Mutual Connections Grid | `<img>` with CSS blur | `BlurredImage` + `getPhotoState()` |
+| Hidden Matches Section | Direct `<img>` | `BlurredImage` + `getPhotoState()` |
+| Icebreaker Action Sheet | Already correct | `BlurredImage` + `getPhotoState()` |
+| Chat Request Action Sheet | Already correct | `BlurredImage` + `getPhotoState()` |
+
+### Blur Rules (Unchanged)
+Uses existing `getPhotoState()` helper (lines 24-29):
+- `blocked` → Full silhouette
+- `revealed` → Clear (0px blur)  
+- `connection_accepted` → Medium blur (6px)
+- `unmatched` → Heavy blur (12px/8px)
+
+### Files Modified
+- `/app/frontend/src/pages/Connections.js` - All request/friend/match cards now use unified blur logic
+
+---
+*Last Updated: April 12, 2026 - Unified Blur Logic Implementation*
