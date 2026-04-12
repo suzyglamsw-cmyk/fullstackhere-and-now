@@ -664,8 +664,15 @@ async def get_people_at_venue(
         
         # Get photo URL - blur is handled client-side based on is_connection_accepted/is_revealed
         # Server returns blurred version for non-revealed users (security layer)
+        # If user has hide_photo_in_venues enabled, return placeholder instead of real photo
         blur_photos = not is_revealed
-        avatar_url = get_photo_url(user.get("avatar_url", ""), blur=blur_photos)
+        if hide_photo and not is_connection_accepted:
+            # Return placeholder for users who want to hide their photo
+            avatar_url = None  # Client will show silhouette
+            thumbnail_url = None
+        else:
+            avatar_url = get_photo_url(user.get("avatar_url", ""), blur=blur_photos)
+            thumbnail_url = get_photo_url(user.get("thumbnail_url", "") or user.get("avatar_url", ""), blur=blur_photos)
         
         people.append({
             "id": user["id"],
@@ -673,6 +680,7 @@ async def get_people_at_venue(
             "first_name": first_name,
             "age": user_age,
             "avatar_url": avatar_url,
+            "thumbnail_url": thumbnail_url,
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
             "checked_in_at": checkin.get("checked_in_at"),
