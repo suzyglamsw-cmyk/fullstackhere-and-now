@@ -575,8 +575,20 @@ const UserProfile = () => {
 
                 {/* Action Buttons Section Frame */}
                 <div className="bg-slate-800/30 rounded-2xl p-4 border border-white/10 shadow-sm space-y-3">
-              {/* MUTUAL MATCH UI - When is_connection_accepted === true */}
-              {isMutualMatch && (
+              
+              {/* ================================================================
+                  SINGLE CONDITION: is_connection_accepted
+                  When TRUE  → Show mutual match UI (messaging unlocked)
+                  When FALSE → Show pre-match prompts (glance/icebreaker/chat request)
+                  ================================================================ */}
+              
+              {isMutualMatch ? (
+                /* ============================================
+                   MUTUAL MATCH UI (is_connection_accepted === true)
+                   - Messaging UNLOCKED
+                   - NO glance/icebreaker/chat request prompts
+                   - NO "waiting" messages
+                   ============================================ */
                 <>
                   {/* Matched Banner */}
                   <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl p-4 mb-4">
@@ -585,16 +597,7 @@ const UserProfile = () => {
                     </p>
                   </div>
                   
-                  {/* Reveal Banner (if they revealed but I haven't) */}
-                  {profile.they_revealed && !profile.i_revealed && (
-                    <div className="bg-indigo-500/20 border border-indigo-500/30 rounded-xl p-4 mb-4">
-                      <p className="text-indigo-300 text-center text-sm">
-                        They've revealed their photo. Reveal yours when you're ready.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Primary: Message Button - UNLOCKED when mutual match */}
+                  {/* Primary: Message Button - ALWAYS AVAILABLE when mutual */}
                   <Button
                     data-testid="message-btn"
                     onClick={() => navigate(`/chat/${userId}`)}
@@ -604,7 +607,7 @@ const UserProfile = () => {
                     Message
                   </Button>
                   
-                  {/* Reveal Button (if not yet revealed by me) */}
+                  {/* Reveal Button (optional - for photo clarity) */}
                   {!profile.i_revealed && (
                     <Button
                       data-testid="reveal-btn"
@@ -621,7 +624,7 @@ const UserProfile = () => {
                     </Button>
                   )}
                   
-                  {/* Add Friend (does not consume tokens) */}
+                  {/* Add Friend */}
                   <div className="flex gap-2">
                     {profile.is_friend ? (
                       <Button
@@ -641,6 +644,21 @@ const UserProfile = () => {
                         <Heart className="w-4 h-4 mr-2" />
                         Requested
                       </Button>
+                    ) : profile.friend_request_received ? (
+                      <ConfirmHint
+                        hint="Accept friend request?"
+                        onConfirm={handleAcceptFriendRequest}
+                        globalPendingRef={confirmHintRef}
+                        className="flex-1"
+                      >
+                        <Button
+                          data-testid="accept-friend-btn"
+                          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white h-12"
+                        >
+                          <Heart className="w-4 h-4 mr-2" />
+                          Accept Friend
+                        </Button>
+                      </ConfirmHint>
                     ) : (
                       <Button
                         data-testid="add-friend-btn"
@@ -658,234 +676,133 @@ const UserProfile = () => {
                     )}
                   </div>
                 </>
-              )}
-              
-              {/* NON-MATCHED UI - Pre-match Actions (when is_connection_accepted === false) */}
-              {!isMutualMatch && (
+              ) : (
+                /* ============================================
+                   PRE-MATCH UI (is_connection_accepted === false)
+                   - Messaging LOCKED
+                   - Show glance/icebreaker/chat request prompts
+                   ============================================ */
                 <>
-              {/* Primary Actions - Glance/Icebreaker prompts shown only when NOT mutual match */}
-              <div className="flex gap-2 justify-start flex-wrap">
-                {/* Glance Button */}
-                {profile.can_glance_back ? (
-                  <ConfirmHint
-                    hint="Send a glance?"
-                    onConfirm={handleGlance}
-                    disabled={glancing}
-                    globalPendingRef={confirmHintRef}
-                    compact
-                  >
-                    <Button
-                      data-testid="glance-back-btn"
-                      disabled={glancing}
-                      className="rounded-full bg-gradient-to-r from-pink-500 to-indigo-500 text-white font-medium hover:opacity-90 h-10 px-4 inline-flex items-center gap-2"
-                    >
-                      {glancing ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Eye className="w-4 h-4" />
-                          <span className="text-xs">Glance Back</span>
-                        </>
-                      )}
-                    </Button>
-                  </ConfirmHint>
-                ) : !profile.i_glanced_at_them ? (
-                  <ConfirmHint
-                    hint="Send a glance?"
-                    onConfirm={handleGlance}
-                    disabled={glancing}
-                    globalPendingRef={confirmHintRef}
-                    compact
-                  >
-                    <Button
-                      data-testid="glance-btn"
-                      disabled={glancing}
-                      className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:opacity-90 h-10 px-4 inline-flex items-center gap-2"
-                    >
-                      {glancing ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Eye className="w-4 h-4" />
-                          <span className="text-xs">Glance</span>
-                        </>
-                      )}
-                    </Button>
-                  </ConfirmHint>
-                ) : (
-                  <Button
-                    disabled
-                    className="rounded-full bg-indigo-500/20 text-indigo-300 h-10 px-4 cursor-default inline-flex items-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span className="text-xs">Glanced</span>
-                  </Button>
-                )}
+                  {/* Pre-match action buttons */}
+                  <div className="flex gap-2 justify-start flex-wrap">
+                    {/* Glance Button */}
+                    {profile.i_glanced_at_them ? (
+                      <Button
+                        disabled
+                        className="rounded-full bg-indigo-500/20 text-indigo-300 h-10 px-4 cursor-default inline-flex items-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span className="text-xs">Glanced</span>
+                      </Button>
+                    ) : (
+                      <ConfirmHint
+                        hint={profile.they_glanced_at_me ? "Glance back?" : "Send a glance?"}
+                        onConfirm={handleGlance}
+                        disabled={glancing}
+                        globalPendingRef={confirmHintRef}
+                        compact
+                      >
+                        <Button
+                          data-testid={profile.they_glanced_at_me ? "glance-back-btn" : "glance-btn"}
+                          disabled={glancing}
+                          className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:opacity-90 h-10 px-4 inline-flex items-center gap-2"
+                        >
+                          {glancing ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4" />
+                              <span className="text-xs">{profile.they_glanced_at_me ? "Glance Back" : "Glance"}</span>
+                            </>
+                          )}
+                        </Button>
+                      </ConfirmHint>
+                    )}
 
-                {/* Icebreaker Button */}
-                {profile.icebreaker_sent ? (
-                  <Button
-                    disabled
-                    className="rounded-full bg-amber-500/20 text-amber-300 h-10 px-4 cursor-default inline-flex items-center gap-2"
-                  >
-                    <Snowflake className="w-4 h-4" />
-                    <span className="text-xs">Sent</span>
-                  </Button>
-                ) : (
-                  <ConfirmHint
-                    hint="Send an icebreaker?"
-                    onConfirm={() => setShowIcebreakerModal(true)}
-                    globalPendingRef={confirmHintRef}
-                    compact
-                  >
-                    <Button
-                      data-testid="icebreaker-btn"
-                      className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium hover:opacity-90 h-10 px-4 inline-flex items-center gap-2"
-                    >
-                      <Snowflake className="w-4 h-4" />
-                      <span className="text-xs">Icebreaker</span>
-                    </Button>
-                  </ConfirmHint>
-                )}
+                    {/* Icebreaker Button */}
+                    {profile.icebreaker_sent ? (
+                      <Button
+                        disabled
+                        className="rounded-full bg-amber-500/20 text-amber-300 h-10 px-4 cursor-default inline-flex items-center gap-2"
+                      >
+                        <Snowflake className="w-4 h-4" />
+                        <span className="text-xs">Sent</span>
+                      </Button>
+                    ) : (
+                      <ConfirmHint
+                        hint="Send an icebreaker?"
+                        onConfirm={() => setShowIcebreakerModal(true)}
+                        globalPendingRef={confirmHintRef}
+                        compact
+                      >
+                        <Button
+                          data-testid="icebreaker-btn"
+                          className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium hover:opacity-90 h-10 px-4 inline-flex items-center gap-2"
+                        >
+                          <Snowflake className="w-4 h-4" />
+                          <span className="text-xs">Icebreaker</span>
+                        </Button>
+                      </ConfirmHint>
+                    )}
 
-                {/* Chat Request Button */}
-                {profile.chat_request_sent ? (
-                  <Button
-                    disabled
-                    className="rounded-full bg-emerald-500/20 text-emerald-300 h-10 px-4 cursor-default inline-flex items-center gap-2"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    <span className="text-xs">Requested</span>
-                  </Button>
-                ) : (
-                  <ConfirmHint
-                    hint="Send a chat request?"
-                    onConfirm={() => setShowChatRequestModal(true)}
-                    globalPendingRef={confirmHintRef}
-                    compact
-                  >
-                    <Button
-                      data-testid="chat-request-btn"
-                      className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:opacity-90 h-10 px-4 inline-flex items-center gap-2"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span className="text-xs">Chat Request</span>
-                    </Button>
-                  </ConfirmHint>
-                )}
-              </div>
+                    {/* Chat Request Button */}
+                    {profile.chat_request_sent ? (
+                      <Button
+                        disabled
+                        className="rounded-full bg-emerald-500/20 text-emerald-300 h-10 px-4 cursor-default inline-flex items-center gap-2"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span className="text-xs">Requested</span>
+                      </Button>
+                    ) : (
+                      <ConfirmHint
+                        hint="Send a chat request?"
+                        onConfirm={() => setShowChatRequestModal(true)}
+                        globalPendingRef={confirmHintRef}
+                        compact
+                      >
+                        <Button
+                          data-testid="chat-request-btn"
+                          className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:opacity-90 h-10 px-4 inline-flex items-center gap-2"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          <span className="text-xs">Chat Request</span>
+                        </Button>
+                      </ConfirmHint>
+                    )}
+                  </div>
 
-              {/* Locked Actions - Unlock after icebreaker/chat accepted */}
-              <div className="flex gap-2">
-                {/* Message Button */}
-                {profile.can_message ? (
-                  <Button
-                    data-testid="message-btn"
-                    onClick={() => navigate(`/chat/${userId}`)}
-                    className="flex-1 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white h-12"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Message
-                  </Button>
-                ) : (
-                  <Button
-                    data-testid="message-locked-btn"
-                    disabled
-                    className="flex-1 rounded-xl bg-slate-800/50 text-slate-500 cursor-not-allowed h-12"
-                  >
-                    <Lock className="w-3 h-3 mr-1" />
-                    <MessageCircle className="w-4 h-4 mr-1" />
-                    Message
-                  </Button>
-                )}
-                
-                {/* Add Friend Button */}
-                {profile.is_friend ? (
-                  <Button
-                    data-testid="friends-btn"
-                    disabled
-                    className="flex-1 rounded-xl bg-emerald-500/20 text-emerald-400 cursor-default h-12"
-                  >
-                    <Heart className="w-4 h-4 mr-2" />
-                    Friends
-                  </Button>
-                ) : profile.friend_request_sent ? (
-                  <Button
-                    data-testid="request-sent-btn"
-                    disabled
-                    className="flex-1 rounded-xl bg-amber-500/20 text-amber-400 cursor-default h-12"
-                  >
-                    <Heart className="w-4 h-4 mr-2" />
-                    Requested
-                  </Button>
-                ) : profile.friend_request_received ? (
-                  <ConfirmHint
-                    hint="Add as a friend?"
-                    onConfirm={handleAcceptFriendRequest}
-                    globalPendingRef={confirmHintRef}
-                    className="flex-1"
-                  >
+                  {/* Locked Message/Add Friend - Pre-match */}
+                  <div className="flex gap-2">
                     <Button
-                      data-testid="accept-friend-btn"
-                      className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white h-12"
+                      data-testid="message-locked-btn"
+                      disabled
+                      className="flex-1 rounded-xl bg-slate-800/50 text-slate-500 cursor-not-allowed h-12"
                     >
-                      <Heart className="w-4 h-4 mr-2" />
-                      Accept
+                      <Lock className="w-3 h-3 mr-1" />
+                      <MessageCircle className="w-4 h-4 mr-1" />
+                      Message
                     </Button>
-                  </ConfirmHint>
-                ) : profile.can_add_friend ? (
-                  <ConfirmHint
-                    hint="Send friend request?"
-                    onConfirm={handleAddFriend}
-                    disabled={addingFriend}
-                    globalPendingRef={confirmHintRef}
-                    className="flex-1"
-                  >
+                    
                     <Button
-                      data-testid="add-friend-btn"
-                      disabled={addingFriend}
-                      className="w-full rounded-xl bg-pink-500 hover:bg-pink-600 text-white h-12"
+                      data-testid="add-friend-locked-btn"
+                      disabled
+                      className="flex-1 rounded-xl bg-slate-800/50 text-slate-500 cursor-not-allowed h-12"
                     >
-                      {addingFriend ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : (
-                        <UserPlus className="w-4 h-4 mr-2" />
-                      )}
+                      <Lock className="w-3 h-3 mr-1" />
+                      <UserPlus className="w-4 h-4 mr-1" />
                       Add Friend
                     </Button>
-                  </ConfirmHint>
-                ) : (
-                  <Button
-                    data-testid="add-friend-locked-btn"
-                    disabled
-                    className="flex-1 rounded-xl bg-slate-800/50 text-slate-500 cursor-not-allowed h-12"
-                  >
-                    <Lock className="w-3 h-3 mr-1" />
-                    <UserPlus className="w-4 h-4 mr-1" />
-                    Add Friend
-                  </Button>
-                )}
-              </div>
-              
-              {/* Locked Features Info */}
-              {(!profile.can_message || !profile.can_add_friend) && !profile.is_friend && (
-                <p className="text-center text-slate-500 text-xs px-4">
-                  {!profile.is_revealed 
-                    ? "Reveal via mutual glance or responded icebreaker to unlock messaging."
-                    : "Unlocks after an icebreaker or chat request is accepted."
-                  }
-                </p>
-              )}
+                  </div>
+                  
+                  {/* Info text */}
+                  <p className="text-center text-slate-500 text-xs px-4">
+                    Send a glance, icebreaker, or chat request to connect. Messaging unlocks when they respond.
+                  </p>
                 </>
               )}
-
-            {profile.i_glanced_at_them && !profile.is_connection_accepted && (
-              <p className="text-center text-slate-500 text-sm mt-4">
-                You've glanced at {profile.display_name}. Waiting for them to glance back...
-              </p>
-            )}
             
-            {/* Block User Button - Available both pre-reveal and post-reveal */}
+            {/* Block User Button - Always available */}
             <div className="mt-6 pt-4 border-t border-white/10">
               <Button
                 data-testid="block-user-btn"
