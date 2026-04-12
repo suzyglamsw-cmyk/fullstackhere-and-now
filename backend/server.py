@@ -2681,11 +2681,17 @@ async def unmatch_user(data: BlockUserRequest, current_user: dict = Depends(get_
 # ============================================
 # Admin Inbox
 # ============================================
+# Admin access restricted to: suzyglam.sw@googlemail.com
+
+ADMIN_EMAIL = "suzyglam.sw@googlemail.com"
 
 @api_router.get("/admin/reports")
 async def get_admin_reports(current_user: dict = Depends(get_current_user)):
     """Get all reports (admin only)"""
-    # In production, check admin status
+    # Admin check - only suzyglam.sw@googlemail.com
+    if current_user.get("email") != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
     reports = await db.reports.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
     
     result = []
@@ -2707,6 +2713,10 @@ async def get_admin_reports(current_user: dict = Depends(get_current_user)):
 @api_router.post("/admin/block-user/{user_id}")
 async def admin_block_user(user_id: str, current_user: dict = Depends(get_current_user)):
     """Admin blocks a user"""
+    # Admin check - only suzyglam.sw@googlemail.com
+    if current_user.get("email") != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
     await db.users.update_one({"id": user_id}, {"$set": {"is_banned": True}})
     return {"message": "User banned"}
 

@@ -526,22 +526,25 @@ const Settings = () => {
               <ChevronRight className="w-5 h-5 text-slate-400" />
             </button>
 
-            <button
-              data-testid="admin-reports-link"
-              onClick={() => navigate("/admin/reports")}
-              className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-red-400" />
+            {/* Admin Inbox - Only visible for suzyglam.sw@googlemail.com */}
+            {user?.email === "suzyglam.sw@googlemail.com" && (
+              <button
+                data-testid="admin-reports-link"
+                onClick={() => navigate("/admin/reports")}
+                className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-medium">Admin Inbox</p>
+                    <p className="text-slate-400 text-sm">View user reports</p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p className="text-white font-medium">Admin Inbox</p>
-                  <p className="text-slate-400 text-sm">View user reports</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-slate-400" />
-            </button>
+                <ChevronRight className="w-5 h-5 text-slate-400" />
+              </button>
+            )}
           </div>
         </div>
 

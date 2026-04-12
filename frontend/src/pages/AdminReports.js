@@ -18,9 +18,21 @@ const AdminReports = () => {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
 
+  // Admin access check - only suzyglam.sw@googlemail.com
+  const isAdmin = user?.email === "suzyglam.sw@googlemail.com";
+
   useEffect(() => {
+    if (!isAdmin) {
+      navigate("/settings");
+      return;
+    }
     fetchReports();
-  }, []);
+  }, [isAdmin, navigate]);
+
+  // If not admin, don't render anything
+  if (!isAdmin) {
+    return null;
+  }
 
   const fetchReports = async () => {
     try {
