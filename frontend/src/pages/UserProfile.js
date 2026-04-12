@@ -48,25 +48,14 @@ const UserProfile = () => {
   const [blocking, setBlocking] = useState(false);
   const [revealing, setRevealing] = useState(false);
   
-  // Match and reveal state
-  const [matchStatus, setMatchStatus] = useState(null);
-  
   // Global ref for confirmation hints (only one visible at a time)
   const confirmHintRef = useConfirmHintGlobal();
 
-  // Unified refresh function to get fresh connection state from backend
+  // Unified refresh function to get fresh is_connection_accepted state from backend
   const refreshConnectionState = async () => {
     try {
-      // Fetch both profile and match status in parallel for latest state
-      const [profileRes, matchRes] = await Promise.all([
-        axios.get(`${API}/users/${userId}/profile`),
-        axios.get(`${API}/match/status/${userId}`).catch(() => ({ data: null }))
-      ]);
-      
-      setProfile(profileRes.data);
-      if (matchRes.data) {
-        setMatchStatus(matchRes.data);
-      }
+      const response = await axios.get(`${API}/users/${userId}/profile`);
+      setProfile(response.data);
     } catch (error) {
       console.error("Failed to refresh connection state:", error);
     }
@@ -74,7 +63,6 @@ const UserProfile = () => {
 
   useEffect(() => {
     fetchProfile();
-    fetchMatchStatus();
   }, [userId]);
 
   // Re-fetch connection state when user returns to this profile (visibility change)
@@ -114,15 +102,6 @@ const UserProfile = () => {
     }
   };
 
-  const fetchMatchStatus = async () => {
-    try {
-      const response = await axios.get(`${API}/match/status/${userId}`);
-      setMatchStatus(response.data);
-    } catch (error) {
-      console.error("Failed to fetch match status:", error);
-    }
-  };
-
   const handleRevealPhoto = async () => {
     setRevealing(true);
     try {
@@ -137,26 +116,27 @@ const UserProfile = () => {
     }
   };
 
-  // Helper: Check connection status from API
-  // connection_accepted = mutual glance OR accepted icebreaker/chat request
-  const isConnectionAccepted = profile?.is_connection_accepted || false;
+  // ============================================================================
+  // SINGLE SOURCE OF TRUTH: is_connection_accepted from backend
+  // ============================================================================
+  // When is_connection_accepted = true:
+  // - Messaging is unlocked
+  // - Glance/icebreaker prompts are hidden
+  // - Mutual match UI is shown
+  // ============================================================================
+  const isMutualMatch = profile?.is_connection_accepted === true;
   
-  // Helper: Legacy alias for isMatched (used in UI conditions)
-  const isMatched = isConnectionAccepted;
+  // Photo reveal state (for blur level only - separate from match state)
+  const isRevealed = profile?.is_revealed === true;
   
-  // Helper: Check if revealed (BOTH users pressed Reveal)
-  // This is the ONLY way to get 0px blur
-  const isRevealed = profile?.is_revealed || false;
+  // Blocked state
+  const isBlocked = profile?.is_blocked === true;
   
-  // Helper: Check if blocked
-  const isBlocked = profile?.is_blocked;
-  
-  // Helper: Get photo state based on connection/reveal status
-  // States: 'unmatched' (12px) | 'connection_accepted' (6px) | 'revealed' (0px) | 'blocked'
+  // Get photo blur state (12px / 6px / 0px)
   const getPhotoState = () => {
     if (isBlocked) return 'blocked';
     if (isRevealed) return 'revealed';           // 0px - ONLY when both pressed Reveal
-    if (isConnectionAccepted) return 'connection_accepted'; // 6px - mutual glance/accepted icebreaker/chat
+    if (isMutualMatch) return 'connection_accepted'; // 6px - mutual match
     return 'unmatched';                          // 12px - no connection
   };
 
@@ -165,17 +145,16 @@ const UserProfile = () => {
   const handleGlance = async () => {
     setGlancing(true);
     try {
-      // We need a venue_id for glancing - use a generic one for now
       const response = await axios.post(`${API}/glance`, {
         to_user_id: userId,
         venue_id: "profile_view"
       });
       
-      const isMutual = response.data.is_connection_accepted;
-      toast.success(isMutual ? "It's mutual! You can now message each other." : "Glance sent!");
+      // Check if this created a mutual match
+      const nowMutual = response.data.is_connection_accepted === true;
+      toast.success(nowMutual ? "It's mutual! You can now message each other." : "Glance sent!");
       
-      // Always refresh both profile AND match status to get latest connection state
-      // This ensures mutual match UI updates immediately
+      // Refresh to get latest is_connection_accepted state
       await refreshConnectionState();
     } catch (error) {
       if (error.response?.status === 429 || error.response?.data?.detail === "no_glances_remaining") {
@@ -390,7 +369,7 @@ const UserProfile = () => {
             {/* Main Photo - 3-stage blur based on match/reveal status */}
             {/* Show silhouette when hide_photo_in_venues is enabled and photo is null (not connected) */}
             <div className="aspect-square w-full max-h-96 overflow-hidden">
-              {!mainPhoto && profile.hide_photo_in_venues && !isConnectionAccepted ? (
+              {!mainPhoto && profile.hide_photo_in_venues && !isMutualMatch ? (
                 <SilhouetteAvatar />
               ) : (
                 <BlurredImage
@@ -596,8 +575,8 @@ const UserProfile = () => {
 
                 {/* Action Buttons Section Frame */}
                 <div className="bg-slate-800/30 rounded-2xl p-4 border border-white/10 shadow-sm space-y-3">
-              {/* MATCHED USER UI */}
-              {isMatched && (
+              {/* MUTUAL MATCH UI - When is_connection_accepted === true */}
+              {isMutualMatch && (
                 <>
                   {/* Matched Banner */}
                   <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl p-4 mb-4">
@@ -607,7 +586,7 @@ const UserProfile = () => {
                   </div>
                   
                   {/* Reveal Banner (if they revealed but I haven't) */}
-                  {matchStatus?.reveal_state?.they_revealed && !matchStatus?.reveal_state?.i_revealed && (
+                  {profile.they_revealed && !profile.i_revealed && (
                     <div className="bg-indigo-500/20 border border-indigo-500/30 rounded-xl p-4 mb-4">
                       <p className="text-indigo-300 text-center text-sm">
                         They've revealed their photo. Reveal yours when you're ready.
@@ -615,7 +594,7 @@ const UserProfile = () => {
                     </div>
                   )}
                   
-                  {/* Primary: Message Button */}
+                  {/* Primary: Message Button - UNLOCKED when mutual match */}
                   <Button
                     data-testid="message-btn"
                     onClick={() => navigate(`/chat/${userId}`)}
@@ -626,7 +605,7 @@ const UserProfile = () => {
                   </Button>
                   
                   {/* Reveal Button (if not yet revealed by me) */}
-                  {!matchStatus?.reveal_state?.i_revealed && (
+                  {!profile.i_revealed && (
                     <Button
                       data-testid="reveal-btn"
                       onClick={handleRevealPhoto}
@@ -681,10 +660,10 @@ const UserProfile = () => {
                 </>
               )}
               
-              {/* NON-MATCHED USER UI - Pre-match Actions */}
-              {!isMatched && (
+              {/* NON-MATCHED UI - Pre-match Actions (when is_connection_accepted === false) */}
+              {!isMutualMatch && (
                 <>
-              {/* Primary Actions - Always Available Pre-Reveal */}
+              {/* Primary Actions - Glance/Icebreaker prompts shown only when NOT mutual match */}
               <div className="flex gap-2 justify-start flex-wrap">
                 {/* Glance Button */}
                 {profile.can_glance_back ? (
