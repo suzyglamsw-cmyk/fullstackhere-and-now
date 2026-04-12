@@ -17,6 +17,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
+import SilhouetteAvatar from "../components/SilhouetteAvatar";
 import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, Eye, MapPin, Shield, ShieldOff, UserX } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, isSubscribedToPush } from "../utils/pushNotifications";
@@ -456,7 +457,7 @@ const Settings = () => {
                             className="w-full h-full object-cover filter blur-sm"
                           />
                         ) : (
-                          <span className="text-slate-400">{blockedUser.display_name?.charAt(0) || '?'}</span>
+                          <SilhouetteAvatar />
                         )}
                       </div>
                       <span className="text-white">{blockedUser.display_name}</span>

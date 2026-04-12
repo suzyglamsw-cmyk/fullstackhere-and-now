@@ -12,6 +12,7 @@ import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Snowflake,
 import { getErrorMessage } from "../utils/errorUtils";
 import { obscureBioText } from "../utils/bioObscure";
 import BlurredImage from "../components/BlurredImage";
+import SilhouetteAvatar from "../components/SilhouetteAvatar";
 import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 import { dispatchBlockEvent, onUserBlocked } from "../utils/blockEvents";
 
@@ -1377,11 +1378,7 @@ const Connections = () => {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                                <span className="text-xl text-slate-400">
-                                  {request.display_name?.charAt(0) || "?"}
-                                </span>
-                              </div>
+                              <SilhouetteAvatar />
                             )}
                           </div>
                         </div>
@@ -1444,11 +1441,7 @@ const Connections = () => {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                                <span className="text-xl text-slate-400">
-                                  {request.display_name?.charAt(0) || "?"}
-                                </span>
-                              </div>
+                              <SilhouetteAvatar />
                             )}
                           </div>
                         </div>
@@ -1507,11 +1500,7 @@ const Connections = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                          <span className="text-xl text-slate-400">
-                            {friend.display_name?.charAt(0) || "?"}
-                          </span>
-                        </div>
+                        <SilhouetteAvatar />
                       )}
                     </div>
                   </div>

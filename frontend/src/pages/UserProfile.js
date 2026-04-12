@@ -9,6 +9,7 @@ import { Eye, MessageCircle, Loader2, Heart, Crown, Coins, X, UserPlus, Snowflak
 import { getErrorMessage } from "../utils/errorUtils";
 import { obscureBioText } from "../utils/bioObscure";
 import BlurredImage from "../components/BlurredImage";
+import SilhouetteAvatar from "../components/SilhouetteAvatar";
 import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 import { dispatchBlockEvent } from "../utils/blockEvents";
 import {
@@ -337,12 +338,7 @@ const UserProfile = () => {
             {/* Show silhouette when hide_photo_in_venues is enabled and photo is null (not connected) */}
             <div className="aspect-square w-full max-h-96 overflow-hidden">
               {!mainPhoto && profile.hide_photo_in_venues && !isConnectionAccepted ? (
-                <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
-                  <svg viewBox="0 0 100 100" className="w-1/2 h-1/2 text-slate-600">
-                    <circle cx="50" cy="35" r="20" fill="currentColor" />
-                    <ellipse cx="50" cy="85" rx="35" ry="25" fill="currentColor" />
-                  </svg>
-                </div>
+                <SilhouetteAvatar />
               ) : (
                 <BlurredImage
                   src={mainPhoto}

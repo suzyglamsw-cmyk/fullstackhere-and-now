@@ -8,6 +8,7 @@ import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
+import SilhouetteAvatar from "../components/SilhouetteAvatar";
 import { getErrorMessage } from "../utils/errorUtils";
 
 // Helper function to construct photo URL from photo ID
@@ -1737,7 +1738,7 @@ const Profile = () => {
                         {viewer.avatar_url ? (
                           <img src={getPhotoUrl(viewer.avatar_url)} alt={viewer.display_name} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-white text-sm font-medium">{viewer.display_name?.charAt(0) || "?"}</span>
+                          <SilhouetteAvatar />
                         )}
                       </div>
                       <div className="flex-1 text-left">

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
+import SilhouetteAvatar from "../components/SilhouetteAvatar";
 import { Users, UserPlus, UserMinus, MessageCircle, Loader2, Check, X } from "lucide-react";
 
 const Friends = () => {
@@ -133,9 +134,7 @@ const Friends = () => {
                     {friend.avatar_url ? (
                       <img src={friend.avatar_url} alt={friend.display_name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-xl font-bold text-white">
-                        {friend.display_name?.charAt(0) || "?"}
-                      </span>
+                      <SilhouetteAvatar />
                     )}
                   </div>
 
@@ -195,9 +194,7 @@ const Friends = () => {
                     {request.avatar_url ? (
                       <img src={request.avatar_url} alt={request.display_name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-xl font-bold text-white">
-                        {request.display_name?.charAt(0) || "?"}
-                      </span>
+                      <SilhouetteAvatar />
                     )}
                   </div>
 

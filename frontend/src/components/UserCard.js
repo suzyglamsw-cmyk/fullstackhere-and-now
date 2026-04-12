@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import BlurredImage, { getBlurValue } from "./BlurredImage";
 import { ConfirmHint } from "./ConfirmHint";
+import SilhouetteAvatar from "./SilhouetteAvatar";
 
 // Convert photo ID/URL to full URL
 // Handles multiple formats:
@@ -52,16 +53,6 @@ const getPhotoUrl = (photoIdOrUrl, apiBase = '') => {
   // Just a UUID -> construct serve URL
   return `/api/photos/serve/${photoIdOrUrl}`;
 };
-
-// Silhouette Avatar for hidden photos
-const SilhouetteAvatar = () => (
-  <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
-    <svg viewBox="0 0 100 100" className="w-2/3 h-2/3 text-slate-600">
-      <circle cx="50" cy="35" r="20" fill="currentColor" />
-      <ellipse cx="50" cy="85" rx="35" ry="25" fill="currentColor" />
-    </svg>
-  </div>
-);
 
 // ============================================================================
 // SELF CARD - For current user only

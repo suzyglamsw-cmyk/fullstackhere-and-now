@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { analyzeImageType, getBlurStrength, getBlurStyle } from '../utils/imageBlur';
 import { API } from '../App';
+import SilhouetteAvatar from './SilhouetteAvatar';
 
 /**
  * BLUR STATES - Consistent across the entire app
@@ -187,30 +188,14 @@ const BlurredImage = ({
     transform: cssBlurValue > 0 ? 'scale(1.05)' : 'scale(1)', // Prevent blur edge artifacts
   };
 
-  // If blocked, hide photo entirely (show placeholder)
+  // If blocked, hide photo entirely (show silhouette)
   if (effectiveBlurState === 'blocked') {
-    return (
-      <div 
-        className={`w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center ${className}`}
-        {...props}
-      >
-        <span className="text-slate-600 text-sm">Photo hidden</span>
-      </div>
-    );
+    return <SilhouetteAvatar className={className} />;
   }
 
-  // If no src or error, show fallback
+  // If no src or error, show silhouette (consistent with hide_photo_in_venues)
   if (!src || error) {
-    return (
-      <div 
-        className={`w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-end justify-center pb-2 ${className}`}
-        {...props}
-      >
-        <span className="text-xl text-slate-500/70 font-medium">
-          {fallbackInitial}
-        </span>
-      </div>
-    );
+    return <SilhouetteAvatar className={className} />;
   }
 
   return (
