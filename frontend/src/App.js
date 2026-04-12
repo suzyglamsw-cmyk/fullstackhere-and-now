@@ -96,9 +96,22 @@ export const AuthProvider = ({ children }) => {
     // Dispatch presence event so venue/discovery lists refresh
     dispatchPresenceEvent(PRESENCE_EVENTS.LOGOUT);
     
-    // Clear client-side auth state
-    localStorage.removeItem("token");
+    // Clear ALL localStorage to ensure no admin/user-specific flags persist
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      // Keep only non-user-specific items if needed in future
+      keysToRemove.push(key);
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    // Clear sessionStorage as well
+    sessionStorage.clear();
+    
+    // Clear axios auth header
     delete axios.defaults.headers.common["Authorization"];
+    
+    // Reset auth state
     setToken(null);
     setUser(null);
   };

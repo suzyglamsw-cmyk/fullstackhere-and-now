@@ -29,10 +29,25 @@ const TestTools = () => {
     balance: 0
   });
 
+  // Admin access check - only suzyglam.sw@googlemail.com
+  const isAdmin = user?.email === "suzyglam.sw@googlemail.com";
+
   useEffect(() => {
-    checkTestMode();
-    fetchBalance();
-  }, []);
+    // Redirect non-admin users
+    if (user && !isAdmin) {
+      navigate("/settings");
+      return;
+    }
+    if (isAdmin) {
+      checkTestMode();
+      fetchBalance();
+    }
+  }, [user, isAdmin, navigate]);
+
+  // If not admin, don't render anything
+  if (!isAdmin) {
+    return null;
+  }
 
   const fetchBalance = async () => {
     try {

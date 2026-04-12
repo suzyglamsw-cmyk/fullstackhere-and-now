@@ -506,29 +506,29 @@ const Settings = () => {
           </button>
         </div>
 
-        {/* 7. Developer Section */}
-        <div className="glass rounded-2xl p-6 mb-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Developer</h2>
-          <div className="space-y-3">
-            <button
-              data-testid="test-tools-link"
-              onClick={() => navigate("/test-tools")}
-              className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                  <Wrench className="w-5 h-5 text-amber-400" />
+        {/* 7. Developer Section - Only visible for suzyglam.sw@googlemail.com */}
+        {user?.email === "suzyglam.sw@googlemail.com" && (
+          <div className="glass rounded-2xl p-6 mb-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Developer</h2>
+            <div className="space-y-3">
+              <button
+                data-testid="test-tools-link"
+                onClick={() => navigate("/test-tools")}
+                className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                    <Wrench className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-medium">Test Tools</p>
+                    <p className="text-slate-400 text-sm">Generate test events</p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p className="text-white font-medium">Test Tools</p>
-                  <p className="text-slate-400 text-sm">Generate test events</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-slate-400" />
-            </button>
+                <ChevronRight className="w-5 h-5 text-slate-400" />
+              </button>
 
-            {/* Admin Inbox - Only visible for suzyglam.sw@googlemail.com */}
-            {user?.email === "suzyglam.sw@googlemail.com" && (
+              {/* Admin Inbox */}
               <button
                 data-testid="admin-reports-link"
                 onClick={() => navigate("/admin/reports")}
@@ -545,9 +545,9 @@ const Settings = () => {
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-400" />
               </button>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 8. Account Section */}
         <div className="glass rounded-2xl p-6">

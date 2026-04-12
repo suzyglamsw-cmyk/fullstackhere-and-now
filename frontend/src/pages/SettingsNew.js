@@ -203,17 +203,21 @@ const SettingsNew = () => {
             </div>
           </div>
 
-          {/* App Preferences */}
+          {/* App Preferences - Test Tools only for admin */}
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider px-4">App</h2>
             <div className="bg-white/5 rounded-2xl overflow-hidden">
-              <SettingRow
-                icon={Wrench}
-                title="Test Tools"
-                subtitle="Developer testing options"
-                onClick={() => navigate("/test-tools")}
-              />
-              <div className="h-px bg-white/5 mx-4" />
+              {user?.email === "suzyglam.sw@googlemail.com" && (
+                <>
+                  <SettingRow
+                    icon={Wrench}
+                    title="Test Tools"
+                    subtitle="Developer testing options"
+                    onClick={() => navigate("/test-tools")}
+                  />
+                  <div className="h-px bg-white/5 mx-4" />
+                </>
+              )}
               <SettingRow
                 icon={HelpCircle}
                 title="Help & Support"
