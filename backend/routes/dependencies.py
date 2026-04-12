@@ -897,7 +897,7 @@ class WhoIsHereUser(BaseModel):
     display_name: str
     first_name: Optional[str] = None
     age: Optional[int] = None
-    avatar_url: str
+    avatar_url: Optional[str] = ""  # Can be None for users with hide_photo_in_venues enabled
     bio: str = ""
     interests: List[str] = []
     checked_in_at: Optional[str] = None

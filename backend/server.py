@@ -959,7 +959,7 @@ class WhoIsHereUser(BaseModel):
     display_name: str
     first_name: Optional[str] = None
     age: Optional[int] = None
-    avatar_url: str
+    avatar_url: Optional[str] = ""  # Can be None for users with hide_photo_in_venues enabled
     bio: str = ""
     interests: List[str] = []
     checked_in_at: Optional[str] = None
@@ -4365,15 +4365,23 @@ async def get_people_at_venue(
         is_revealed = i_revealed_to_them and they_revealed_to_me
         
         # Always show first name and age
-        # Always send avatar_url so frontend can show blurred version before reveal
         first_name = get_first_name(user.get("display_name", "Someone"))
+        
+        # Check if user wants to hide their photo in venues (silhouette mode)
+        hide_photo = user.get("hide_photo_in_venues", False)
+        
+        # Determine avatar_url: hide if user toggled hide_photo_in_venues AND not connection_accepted
+        if hide_photo and not is_connection_accepted:
+            avatar_url = None  # Client will show silhouette placeholder
+        else:
+            avatar_url = user.get("avatar_url", "")  # Send avatar for blur effect client-side
         
         people.append({
             "id": user["id"],
             "display_name": user["display_name"] if is_revealed else first_name,
             "first_name": first_name,
             "age": user.get("age"),
-            "avatar_url": user.get("avatar_url", ""),  # Always send avatar for blur effect
+            "avatar_url": avatar_url,
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
             "checked_in_at": checkin["checked_in_at"],
@@ -4394,6 +4402,8 @@ async def get_people_at_venue(
             "rainbow": user.get("rainbow", False),
             "open_to_all": user.get("open_to_all", False),
             "intent": user.get("intent", ""),
+            # Privacy toggle
+            "hide_photo_in_venues": hide_photo,
             # Only shown after reveal
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
         })
@@ -4559,12 +4569,24 @@ async def get_people_not_here(
         
         first_name = get_first_name(user.get("display_name", "Someone"))
         
+        # Check if user wants to hide their photo in venues (silhouette mode)
+        # For discovery/not-here, apply same logic for consistency
+        hide_photo = user.get("hide_photo_in_venues", False)
+        
+        # Determine avatar_url: hide if user toggled hide_photo_in_venues AND not revealed (self always shows)
+        if is_self:
+            avatar_url = user.get("avatar_url", "")
+        elif hide_photo and not is_revealed:
+            avatar_url = None  # Client will show silhouette placeholder
+        else:
+            avatar_url = user.get("avatar_url", "")
+        
         entry = {
             "id": user["id"],
             "display_name": user["display_name"] if is_revealed else first_name,
             "first_name": first_name,
             "age": user.get("age"),
-            "avatar_url": user.get("avatar_url", ""),
+            "avatar_url": avatar_url,
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
             "checked_in_at": None,  # Not at a venue
@@ -4580,6 +4602,7 @@ async def get_people_not_here(
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
             "distance_miles": round(distance, 1),
             "is_self": is_self,  # Flag to identify current user in feed
+            "hide_photo_in_venues": hide_photo,
         }
         
         if is_self:
@@ -4708,12 +4731,21 @@ async def get_people_here(
         
         first_name = get_first_name(user.get("display_name", "Someone"))
         
+        # Check if user wants to hide their photo in venues (silhouette mode)
+        hide_photo = user.get("hide_photo_in_venues", False)
+        
+        # Determine avatar_url: hide if user toggled hide_photo_in_venues AND not revealed
+        if hide_photo and not is_revealed:
+            avatar_url = None  # Client will show silhouette placeholder
+        else:
+            avatar_url = user.get("avatar_url", "")
+        
         people.append({
             "id": user["id"],
             "display_name": user["display_name"] if is_revealed else first_name,
             "first_name": first_name,
             "age": user.get("age"),
-            "avatar_url": user.get("avatar_url", ""),
+            "avatar_url": avatar_url,
             "bio": user.get("bio", "") if is_revealed else "",
             "interests": user.get("interests", []) if is_revealed else [],
             "checked_in_at": None,
@@ -4728,7 +4760,8 @@ async def get_people_here(
             "shy_indicator": user.get("shy_indicator", False),
             "voice_intro_url": user.get("voice_intro_url", "") if is_revealed else "",
             "distance_miles": round(distance, 1),
-            "presence_status": "here"
+            "presence_status": "here",
+            "hide_photo_in_venues": hide_photo,
         })
     
     # Sort: Premium first, then by distance
@@ -5990,15 +6023,25 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
             "unavailable_message": "Sorry, this user is unavailable right now."
         }
     
+    # Check if user wants to hide their photo in venues (silhouette mode)
+    # Apply hide_photo_in_venues: if enabled AND not connection_accepted, hide photo
+    hide_photo = user.get("hide_photo_in_venues", False)
+    if hide_photo and not is_connection_accepted and current_user["id"] != user_id:
+        avatar_url = None
+        photos = []
+    else:
+        avatar_url = user.get("avatar_url", "")
+        photos = user.get("photos", [])
+    
     # Return full profile data
     return {
         "id": user.get("id"),
         "display_name": user.get("display_name"),
-        "avatar_url": user.get("avatar_url", ""),
+        "avatar_url": avatar_url,
         "bio": user.get("bio", ""),
         "age": user.get("age"),
         "interests": user.get("interests", []),
-        "photos": user.get("photos", []),
+        "photos": photos,
         "gender": user.get("gender", ""),
         "orientation": user.get("orientation", ""),
         "relationship_status": user.get("relationship_status", ""),
@@ -6035,7 +6078,9 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "icebreaker_sent": icebreaker_sent,
         "icebreaker_received": icebreaker_received,
         "chat_request_sent": chat_request_sent,
-        "is_blocked": is_blocked
+        "is_blocked": is_blocked,
+        # Privacy toggle
+        "hide_photo_in_venues": hide_photo,
     }
 
 @api_router.get("/profile/viewers")

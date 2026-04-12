@@ -334,14 +334,24 @@ const UserProfile = () => {
           {/* Profile Card */}
           <div className="glass rounded-3xl overflow-hidden shadow-xl">
             {/* Main Photo - 3-stage blur based on match/reveal status */}
+            {/* Show silhouette when hide_photo_in_venues is enabled and photo is null (not connected) */}
             <div className="aspect-square w-full max-h-96 overflow-hidden">
-              <BlurredImage
-                src={mainPhoto}
-                alt={profile.display_name}
-                blurState={getPhotoState()}
-                isThumbnail={false}
-                fallbackInitial={profile.display_name?.charAt(0) || "?"}
-              />
+              {!mainPhoto && profile.hide_photo_in_venues && !isConnectionAccepted ? (
+                <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
+                  <svg viewBox="0 0 100 100" className="w-1/2 h-1/2 text-slate-600">
+                    <circle cx="50" cy="35" r="20" fill="currentColor" />
+                    <ellipse cx="50" cy="85" rx="35" ry="25" fill="currentColor" />
+                  </svg>
+                </div>
+              ) : (
+                <BlurredImage
+                  src={mainPhoto}
+                  alt={profile.display_name}
+                  blurState={getPhotoState()}
+                  isThumbnail={false}
+                  fallbackInitial={profile.display_name?.charAt(0) || "?"}
+                />
+              )}
             </div>
 
             {/* Profile Info - Inner Scroll Container */}

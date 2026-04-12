@@ -861,4 +861,37 @@ Each section shows:
 **Test Results:** 100% pass rate on both backend (9/9 tests) and frontend (empty state verification)
 
 ---
-*Last Updated: April 10, 2026 - Select All / Multi-Delete Feature*
+
+## April 12, 2026 - Hide Photo in Venues Server-Side Enforcement
+
+**Feature:** Server-side enforcement of `hide_photo_in_venues` privacy toggle.
+
+**Problem:** The `hide_photo_in_venues` toggle was only being applied client-side based on the flag. The actual photo URLs were still being sent from the backend, potentially allowing data leaks via API inspection.
+
+**Solution:** Implemented server-side privacy enforcement across all venue/discovery endpoints:
+
+1. **Backend Changes:**
+   - `/venues/{venue_id}/people` - Sets `avatar_url = null` when `hide_photo_in_venues=true` AND `is_connection_accepted=false`
+   - `/discovery/not-here` - Same logic (excludes self)
+   - `/discovery/here` - Same logic
+   - `/users/{user_id}/profile` - Hides `avatar_url` and `photos[]` when toggle is enabled and not connected
+   - Made `avatar_url` field Optional in `WhoIsHereUser` Pydantic model
+
+2. **Frontend Changes:**
+   - `UserCard.js` - Updated silhouette logic to show silhouette when `avatar_url` is null from server
+   - `UserProfile.js` - Added conditional silhouette rendering for expanded profile view
+
+**Files Modified:**
+- `/app/backend/server.py` - Multiple endpoints updated
+- `/app/backend/routes/dependencies.py` - WhoIsHereUser model updated
+- `/app/backend/routes/venues.py` - Already had the logic
+- `/app/frontend/src/components/UserCard.js` - Silhouette logic updated
+- `/app/frontend/src/pages/UserProfile.js` - Silhouette rendering added
+
+**Privacy Rules:**
+- When `hide_photo_in_venues=true` AND user is NOT connected → Server returns `avatar_url: null`
+- Self-photos are NEVER hidden (user can always see their own photo)
+- Once connection is accepted (mutual glance, accepted icebreaker/chat), photo URL is revealed
+
+---
+*Last Updated: April 12, 2026 - Hide Photo in Venues Server-Side Enforcement*

@@ -231,8 +231,14 @@ export const UserCard = ({
     };
   };
   
-  // Check if we should show silhouette (blocked or hide_photo_in_venues)
-  const showSilhouette = effectivePhotoState === 'blocked' || (user.hide_photo_in_venues && context === 'here_now' && effectivePhotoState === 'unmatched');
+  // Check if we should show silhouette:
+  // 1. Blocked users
+  // 2. User has hide_photo_in_venues enabled AND not yet connected (avatar_url is null from server)
+  // 3. avatar_url is explicitly null (server-side privacy enforcement)
+  const serverHiddenPhoto = user.avatar_url === null || user.avatar_url === undefined;
+  const showSilhouette = effectivePhotoState === 'blocked' || 
+    (user.hide_photo_in_venues && effectivePhotoState === 'unmatched') ||
+    (serverHiddenPhoto && !user.is_self);
   
   // Handle card click - navigate to profile
   const handleClick = () => {
