@@ -1989,6 +1989,19 @@ const Profile = () => {
                 <div className="text-center text-purple-300/40 text-xs">
                   No reveal button visible before matching
                 </div>
+                
+                {/* Based in - Town, Country */}
+                {(formData.home_country || formData.home_area) && (
+                  <div className="rounded-xl p-4 max-w-xs mx-auto" style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
+                    <h4 className="text-xs font-medium text-purple-300/60 mb-1.5 uppercase tracking-wide">Based in</h4>
+                    <p className="text-purple-100 text-sm flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-teal-400" />
+                      {formData.home_area && formData.home_country 
+                        ? `${formData.home_area}, ${formData.home_country}` 
+                        : formData.home_area || formData.home_country}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             
@@ -2110,11 +2123,11 @@ const Profile = () => {
                 
                 {/* FOOD MOOD SECTION - Visible in ALL states */}
                 {formData.food_mood && (
-                  <div className="bg-amber-500/10 rounded-xl p-4 max-w-xs mx-auto">
-                    <h3 className="text-xs font-medium text-amber-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
+                  <div className="bg-purple-500/10 rounded-xl p-4 max-w-xs mx-auto">
+                    <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
                     <div>
-                      <p className="text-amber-300/50 text-xs">In the kitchen?</p>
-                      <p className="text-amber-100 text-sm">{formData.food_mood}</p>
+                      <p className="text-purple-300/50 text-xs">In the kitchen?</p>
+                      <p className="text-purple-100 text-sm">{formData.food_mood}</p>
                     </div>
                   </div>
                 )}
@@ -2144,6 +2157,19 @@ const Profile = () => {
                     Bio hidden
                   </div>
                 </div>
+                
+                {/* Based in - Town, Country */}
+                {(formData.home_country || formData.home_area) && (
+                  <div className="rounded-xl p-4 max-w-xs mx-auto" style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
+                    <h4 className="text-xs font-medium text-purple-300/60 mb-1.5 uppercase tracking-wide">Based in</h4>
+                    <p className="text-purple-100 text-sm flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-teal-400" />
+                      {formData.home_area && formData.home_country 
+                        ? `${formData.home_area}, ${formData.home_country}` 
+                        : formData.home_area || formData.home_country}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             
