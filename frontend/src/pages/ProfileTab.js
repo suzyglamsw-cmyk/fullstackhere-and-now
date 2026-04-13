@@ -1697,7 +1697,7 @@ const Profile = () => {
                 }}
                 data-testid="home-area-input"
               />
-              <p className="text-purple-300/50 text-xs">Set this to your home town. Here & Now uses your real-time location wherever you are.</p>
+              <p className="text-purple-300/70 text-xs">Set this to your home town. Here & Now uses your real-time location wherever you are.</p>
             </div>
           </section>
 
@@ -1938,19 +1938,19 @@ const Profile = () => {
                     <div className="space-y-2">
                       {formData.lifestyle_vibe && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Lively or laid-back?</p>
+                          <p className="text-purple-300/70 text-xs">Lively or laid-back?</p>
                           <p className="text-purple-100 text-sm">{formData.lifestyle_vibe}</p>
                         </div>
                       )}
                       {formData.lifestyle_travel && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Explorer or sunbed-snoozer?</p>
+                          <p className="text-purple-300/70 text-xs">Explorer or sunbed-snoozer?</p>
                           <p className="text-purple-100 text-sm">{formData.lifestyle_travel}</p>
                         </div>
                       )}
                       {formData.lifestyle_going_out && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Going out or staying in?</p>
+                          <p className="text-purple-300/70 text-xs">Going out or staying in?</p>
                           <p className="text-purple-100 text-sm">{formData.lifestyle_going_out}</p>
                         </div>
                       )}
@@ -1963,7 +1963,7 @@ const Profile = () => {
                   <div className="bg-purple-500/10 rounded-xl p-4">
                     <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
                     <div>
-                      <p className="text-purple-300/50 text-xs">In the kitchen?</p>
+                      <p className="text-purple-300/70 text-xs">In the kitchen?</p>
                       <p className="text-purple-100 text-sm">{formData.food_mood}</p>
                     </div>
                   </div>
@@ -2101,19 +2101,19 @@ const Profile = () => {
                     <div className="space-y-2">
                       {formData.lifestyle_vibe && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Lively or laid-back?</p>
+                          <p className="text-purple-300/70 text-xs">Lively or laid-back?</p>
                           <p className="text-purple-100 text-sm">{formData.lifestyle_vibe}</p>
                         </div>
                       )}
                       {formData.lifestyle_travel && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Explorer or sunbed-snoozer?</p>
+                          <p className="text-purple-300/70 text-xs">Explorer or sunbed-snoozer?</p>
                           <p className="text-purple-100 text-sm">{formData.lifestyle_travel}</p>
                         </div>
                       )}
                       {formData.lifestyle_going_out && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Going out or staying in?</p>
+                          <p className="text-purple-300/70 text-xs">Going out or staying in?</p>
                           <p className="text-purple-100 text-sm">{formData.lifestyle_going_out}</p>
                         </div>
                       )}
@@ -2126,7 +2126,7 @@ const Profile = () => {
                   <div className="bg-purple-500/10 rounded-xl p-4 max-w-xs mx-auto">
                     <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
                     <div>
-                      <p className="text-purple-300/50 text-xs">In the kitchen?</p>
+                      <p className="text-purple-300/70 text-xs">In the kitchen?</p>
                       <p className="text-purple-100 text-sm">{formData.food_mood}</p>
                     </div>
                   </div>
@@ -2302,19 +2302,19 @@ const Profile = () => {
                     <div className="space-y-2">
                       {formData.lifestyle_vibe && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Lively or laid-back?</p>
+                          <p className="text-purple-300/70 text-xs">Lively or laid-back?</p>
                           <p className="text-purple-100 text-sm">{formData.lifestyle_vibe}</p>
                         </div>
                       )}
                       {formData.lifestyle_travel && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Explorer or sunbed-snoozer?</p>
+                          <p className="text-purple-300/70 text-xs">Explorer or sunbed-snoozer?</p>
                           <p className="text-purple-100 text-sm">{formData.lifestyle_travel}</p>
                         </div>
                       )}
                       {formData.lifestyle_going_out && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Going out or staying in?</p>
+                          <p className="text-purple-300/70 text-xs">Going out or staying in?</p>
                           <p className="text-purple-100 text-sm">{formData.lifestyle_going_out}</p>
                         </div>
                       )}
@@ -2327,7 +2327,7 @@ const Profile = () => {
                   <div className="bg-purple-500/10 rounded-xl p-4">
                     <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
                     <div>
-                      <p className="text-purple-300/50 text-xs">In the kitchen?</p>
+                      <p className="text-purple-300/70 text-xs">In the kitchen?</p>
                       <p className="text-purple-100 text-sm">{formData.food_mood}</p>
                     </div>
                   </div>
