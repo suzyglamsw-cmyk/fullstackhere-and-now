@@ -1000,7 +1000,7 @@ const Profile = () => {
                     <p className={`font-medium transition-colors ${formData.shy_indicator ? 'text-pink-200' : 'text-purple-200/70'}`}>
                       I'm feeling shy today
                     </p>
-                    <p className="text-xs mt-0.5 text-purple-300/60">
+                    <p className="text-xs mt-0.5 text-purple-300/70">
                       Shows "May be shy to start" on your profile
                     </p>
                   </div>
@@ -1047,7 +1047,7 @@ const Profile = () => {
                     <p className={`font-medium transition-colors ${!user?.is_visible ? 'text-amber-200' : 'text-purple-200/70'}`}>
                       Hide me from discovery
                     </p>
-                    <p className="text-xs mt-0.5 text-purple-300/60">
+                    <p className="text-xs mt-0.5 text-purple-300/70">
                       {user?.is_visible ? "You're visible to others" : "You won't appear in discovery"}
                     </p>
                   </div>
@@ -1090,7 +1090,7 @@ const Profile = () => {
                     <p className={`font-medium transition-colors ${hidePhotoInVenues ? 'text-emerald-200' : 'text-purple-200/70'}`}>
                       Hide my photo in venues
                     </p>
-                    <p className="text-xs mt-0.5 text-purple-300/60">
+                    <p className="text-xs mt-0.5 text-purple-300/70">
                       Shows a silhouette instead of your photo in venue lists
                     </p>
                   </div>
@@ -1143,7 +1143,7 @@ const Profile = () => {
               }}
               data-testid="presence-note-input"
             />
-            <div className="text-right text-xs pr-1 text-purple-300/60">
+            <div className="text-right text-xs pr-1 text-purple-300/70">
               {formData.presence_note.length}/{MAX_PRESENCE_NOTE_LENGTH}
             </div>
           </section>
@@ -1152,7 +1152,7 @@ const Profile = () => {
           <section className="space-y-3">
             <div>
               <h2 className="text-lg font-medium text-purple-100">About You</h2>
-              <p className="text-base pl-1 text-purple-300/60 mt-1">Information visible after mutual reveal</p>
+              <p className="text-base pl-1 text-purple-300/70 mt-1">Information visible after mutual reveal</p>
             </div>
             <Textarea
               value={formData.bio}
@@ -1166,7 +1166,7 @@ const Profile = () => {
               }}
               data-testid="bio-textarea"
             />
-            <div className="flex justify-between text-xs px-1 text-purple-300/60">
+            <div className="flex justify-between text-xs px-1 text-purple-300/70">
               <span>Minimum {MIN_BIO_LENGTH} characters</span>
               <span>{formData.bio.length}/{MAX_BIO_LENGTH}</span>
             </div>
@@ -1176,7 +1176,7 @@ const Profile = () => {
           <section className="space-y-4">
             <div>
               <h2 className="text-lg font-medium text-purple-100">Lifestyle</h2>
-              <p className="text-sm text-purple-300/60 mt-1">Optional - visible to everyone</p>
+              <p className="text-sm text-purple-300/70 mt-1">Optional - visible to everyone</p>
             </div>
             
             {/* Question 1: Vibe */}
@@ -1239,7 +1239,7 @@ const Profile = () => {
           <section className="space-y-4">
             <div>
               <h2 className="text-lg font-medium text-purple-100">Food Mood</h2>
-              <p className="text-sm text-purple-300/60 mt-1">Optional - visible to everyone</p>
+              <p className="text-sm text-purple-300/70 mt-1">Optional - visible to everyone</p>
             </div>
             
             <div className="space-y-2">
@@ -1327,7 +1327,7 @@ const Profile = () => {
                     <span className={`font-medium ${isPlayingVoice ? 'text-purple-200' : 'text-white/80'}`}>
                       {isPlayingVoice ? "Playing..." : "Voice intro ready"}
                     </span>
-                    <p className="text-xs mt-0.5 text-purple-300/60">
+                    <p className="text-xs mt-0.5 text-purple-300/70">
                       {isPlayingVoice ? "Tap to pause" : "Tap to preview"}
                     </p>
                   </div>
@@ -1365,7 +1365,7 @@ const Profile = () => {
                     
                     <div className="flex-1">
                       <span className="text-pink-200 font-medium">Recording...</span>
-                      <p className="text-xs mt-0.5 text-purple-300/60">
+                      <p className="text-xs mt-0.5 text-purple-300/70">
                         {recordingTime < 5 ? `${5 - recordingTime}s more for minimum` : 'Ready to save'}
                       </p>
                     </div>
@@ -1454,7 +1454,7 @@ const Profile = () => {
               }`}>
                 {formData.show_as === "male" ? "Male" : formData.show_as === "female" ? "Female" : "Not set"}
               </p>
-              <p className="text-xs text-purple-300/60">
+              <p className="text-xs text-purple-300/70">
                 To update your gender, name or date of birth, please email{' '}
                 <a href="mailto:hereandnow.social.uk@gmail.com" className="text-purple-400 hover:text-purple-300 underline">
                   hereandnow.social.uk@gmail.com
@@ -1541,7 +1541,7 @@ const Profile = () => {
                     <p className={`text-sm font-medium transition-colors ${formData.rainbow ? 'text-purple-100' : 'text-purple-200/70'}`}>
                       Rainbow / Rainbow-friendly
                     </p>
-                    <p className="text-[11px] text-purple-300/60">
+                    <p className="text-[11px] text-purple-300/70">
                       I'm LGBTQ+ and/or open to seeing LGBTQ+ people.
                     </p>
                   </div>
@@ -1585,7 +1585,7 @@ const Profile = () => {
                     <p className={`text-sm font-medium transition-colors ${formData.open_to_all ? 'text-amber-100' : 'text-purple-200/70'}`}>
                       Open to everyone
                     </p>
-                    <p className="text-[11px] text-purple-300/60">
+                    <p className="text-[11px] text-purple-300/70">
                       I'm happy to connect with anyone.
                     </p>
                   </div>
@@ -1708,7 +1708,7 @@ const Profile = () => {
                 <Eye className="w-5 h-5 text-indigo-400" />
                 <h2 className="text-lg font-medium text-purple-100">Who Viewed Your Profile</h2>
               </div>
-              <p className="text-purple-300/60 text-sm">Last 48 hours</p>
+              <p className="text-purple-300/70 text-sm">Last 48 hours</p>
               
               {viewersLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -1719,7 +1719,7 @@ const Profile = () => {
                   <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-3">
                     <Eye className="w-6 h-6 text-purple-400/50" />
                   </div>
-                  <p className="text-purple-300/60 text-sm">No profile views yet</p>
+                  <p className="text-purple-300/70 text-sm">No profile views yet</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1743,7 +1743,7 @@ const Profile = () => {
                       </div>
                       <div className="flex-1 text-left">
                         <p className="text-white font-medium">{viewer.display_name}</p>
-                        <p className="text-purple-300/60 text-xs">
+                        <p className="text-purple-300/70 text-xs">
                           {new Date(viewer.viewed_at).toLocaleString([], { 
                             month: 'short', 
                             day: 'numeric',
@@ -1847,7 +1847,7 @@ const Profile = () => {
             {/* ============================================ */}
             {previewMode === "unmatched" && (
               <div className="space-y-6">
-                <p className="text-sm text-purple-300/60 text-center mb-6">
+                <p className="text-sm text-purple-300/70 text-center mb-6">
                   This is how others see you before matching
                 </p>
                 
@@ -2010,7 +2010,7 @@ const Profile = () => {
             {/* ============================================ */}
             {previewMode === "connection_accepted" && (
               <div className="space-y-6">
-                <p className="text-sm text-purple-300/60 text-center mb-6">
+                <p className="text-sm text-purple-300/70 text-center mb-6">
                   This is how others see you after connecting (before reveal)
                 </p>
                 
@@ -2178,7 +2178,7 @@ const Profile = () => {
             {/* ============================================ */}
             {previewMode === "revealed" && (
               <div className="space-y-4">
-                <p className="text-sm text-purple-300/60 text-center mb-6">
+                <p className="text-sm text-purple-300/70 text-center mb-6">
                   This is how others see you after mutual reveal
                 </p>
                 

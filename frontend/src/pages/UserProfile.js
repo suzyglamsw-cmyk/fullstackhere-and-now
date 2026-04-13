@@ -458,23 +458,23 @@ const UserProfile = () => {
                 {/* LIFESTYLE SECTION FRAME - Visible in ALL profile states */}
                 {(profile.lifestyle_vibe || profile.lifestyle_travel || profile.lifestyle_going_out) && (
                   <div className="bg-purple-500/10 rounded-2xl p-4 border border-purple-500/15 shadow-sm">
-                    <h3 className="text-xs font-medium text-purple-300/60 mb-3 uppercase tracking-wide">Lifestyle</h3>
+                    <h3 className="text-xs font-medium text-purple-300/70 mb-3 uppercase tracking-wide">Lifestyle</h3>
                     <div className="space-y-2">
                       {profile.lifestyle_vibe && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Lively or laid-back?</p>
+                          <p className="text-purple-300/70 text-xs">Lively or laid-back?</p>
                           <p className="text-purple-100 text-sm">{profile.lifestyle_vibe}</p>
                         </div>
                       )}
                       {profile.lifestyle_travel && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Explorer or sunbed-snoozer?</p>
+                          <p className="text-purple-300/70 text-xs">Explorer or sunbed-snoozer?</p>
                           <p className="text-purple-100 text-sm">{profile.lifestyle_travel}</p>
                         </div>
                       )}
                       {profile.lifestyle_going_out && (
                         <div>
-                          <p className="text-purple-300/50 text-xs">Going out or staying in?</p>
+                          <p className="text-purple-300/70 text-xs">Going out or staying in?</p>
                           <p className="text-purple-100 text-sm">{profile.lifestyle_going_out}</p>
                         </div>
                       )}
@@ -485,9 +485,9 @@ const UserProfile = () => {
                 {/* FOOD MOOD SECTION FRAME - Visible in ALL profile states */}
                 {profile.food_mood && (
                   <div className="bg-purple-500/10 rounded-2xl p-4 border border-purple-500/15 shadow-sm">
-                    <h3 className="text-xs font-medium text-purple-300/60 mb-2 uppercase tracking-wide">Food Mood</h3>
+                    <h3 className="text-xs font-medium text-purple-300/70 mb-2 uppercase tracking-wide">Food Mood</h3>
                     <div>
-                      <p className="text-purple-300/50 text-xs">In the kitchen?</p>
+                      <p className="text-purple-300/70 text-xs">In the kitchen?</p>
                       <p className="text-purple-100 text-sm">{profile.food_mood}</p>
                     </div>
                   </div>

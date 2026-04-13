@@ -363,7 +363,7 @@ const Venues = () => {
             <MapPinOff className="w-5 h-5 text-amber-400" />
             <div>
               <p className="text-white font-medium">Location not available</p>
-              <p className="text-slate-400 text-sm">Showing curated venues instead</p>
+              <p className="text-slate-400/70 text-sm">Showing curated venues instead</p>
             </div>
           </div>
         )}
@@ -374,7 +374,7 @@ const Venues = () => {
             <MapPin className="w-5 h-5 text-indigo-400" />
             <div>
               <p className="text-white font-medium">Demo Mode</p>
-              <p className="text-slate-400 text-sm">Showing sample venues. Connect Google Places API for real venues.</p>
+              <p className="text-slate-400/70 text-sm">Showing sample venues. Connect Google Places API for real venues.</p>
             </div>
           </div>
         )}
@@ -481,7 +481,7 @@ const Venues = () => {
                           </span>
                         )}
                         {venue.price_level && (
-                          <span className="text-slate-500 text-sm">
+                          <span className="text-slate-500/70 text-sm">
                             {'£'.repeat(venue.price_level)}
                           </span>
                         )}
@@ -490,10 +490,10 @@ const Venues = () => {
                   </div>
 
                   {venue.description && (
-                    <p className="text-slate-400 text-sm mb-4 line-clamp-2">{venue.description}</p>
+                    <p className="text-slate-400/70 text-sm mb-4 line-clamp-2">{venue.description}</p>
                   )}
 
-                  <div className="flex items-center gap-2 text-slate-500 text-sm mb-4">
+                  <div className="flex items-center gap-2 text-slate-500/70 text-sm mb-4">
                     <MapPin className="w-4 h-4 flex-shrink-0" />
                     <span className="truncate">{venue.address}</span>
                   </div>

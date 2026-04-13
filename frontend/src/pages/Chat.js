@@ -286,7 +286,7 @@ const Chat = () => {
               <Shield className="w-5 h-5 text-amber-400" />
               <div>
                 <p className="text-white text-sm font-medium">{otherUser?.display_name} wants to chat</p>
-                <p className="text-slate-400 text-xs">Accept to unlock full messages and profile</p>
+                <p className="text-slate-400/70 text-xs">Accept to unlock full messages and profile</p>
               </div>
             </div>
             <div className="flex gap-2">

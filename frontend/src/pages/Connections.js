@@ -740,7 +740,7 @@ const Connections = () => {
                   </div>
 
                   {/* Time */}
-                  <div className="text-slate-500 text-xs mr-2">
+                  <div className="text-slate-500/70 text-xs mr-2">
                     {formatDate(thread.last_message_at)}
                   </div>
 
@@ -861,7 +861,7 @@ const Connections = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white truncate">{glance.display_name}</h4>
-                          <p className="text-slate-500 text-xs">
+                          <p className="text-slate-500/70 text-xs">
                             {glance.is_connection_accepted ? "Mutual glance" : "Glanced at you"} • {formatDate(glance.created_at)}
                           </p>
                         </div>
@@ -933,7 +933,7 @@ const Connections = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white truncate">{glance.display_name}</h4>
-                          <p className="text-slate-500 text-xs">
+                          <p className="text-slate-500/70 text-xs">
                             {glance.is_connection_accepted ? "Mutual glance" : "Waiting for them to glance back"} • {formatDate(glance.created_at)}
                           </p>
                         </div>
@@ -1160,7 +1160,7 @@ const Connections = () => {
                             Chat
                           </Button>
                         ) : (
-                          <span className="text-slate-500 text-xs">
+                          <span className="text-slate-500/70 text-xs">
                             {user?.is_premium && ib.viewed_at ? "👁" : "⏳"}
                           </span>
                         )}
@@ -1378,7 +1378,7 @@ const Connections = () => {
                             Chat
                           </Button>
                         ) : (
-                          <span className="text-slate-500 text-xs">
+                          <span className="text-slate-500/70 text-xs">
                             {request.status === "pending" ? "⏳" : ""}
                           </span>
                         )}
@@ -1439,7 +1439,7 @@ const Connections = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white truncate">{request.display_name}</h4>
-                          <p className="text-slate-500 text-xs">
+                          <p className="text-slate-500/70 text-xs">
                             Wants to be friends • {formatDate(request.created_at)}
                           </p>
                         </div>
@@ -1644,7 +1644,7 @@ const Connections = () => {
                                 {friend.display_name}
                               </p>
                             </div>
-                            <p className="text-slate-500 text-xs">
+                            <p className="text-slate-500/70 text-xs">
                               Hidden {friend.hidden_at ? formatDate(friend.hidden_at) : ""}
                             </p>
                           </div>
@@ -1785,7 +1785,7 @@ const Connections = () => {
                 <Eye className="w-5 h-5" />
                 Hidden Matches
                 {hiddenMatches.length > 0 && (
-                  <span className="text-sm text-slate-500">({hiddenMatches.length})</span>
+                  <span className="text-sm text-slate-500/70">({hiddenMatches.length})</span>
                 )}
               </h3>
               
@@ -1811,7 +1811,7 @@ const Connections = () => {
                   <div className="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3">
                     <Eye className="w-7 h-7 text-slate-600" />
                   </div>
-                  <p className="text-slate-500 text-sm">
+                  <p className="text-slate-500/70 text-sm">
                     You haven't hidden anyone.
                   </p>
                   <p className="text-slate-600 text-xs mt-1">
@@ -1857,7 +1857,7 @@ const Connections = () => {
                             <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                           )}
                         </div>
-                        <p className="text-slate-500 text-xs">
+                        <p className="text-slate-500/70 text-xs">
                           Hidden {hidden.hidden_at ? formatDate(hidden.hidden_at) : ""}
                         </p>
                       </div>
@@ -1894,7 +1894,7 @@ const Connections = () => {
             ) : (
               /* Toggle is OFF - show minimal info */
               <div className="text-center py-6 bg-white/5 rounded-2xl border border-white/10 border-dashed">
-                <p className="text-slate-500 text-sm">
+                <p className="text-slate-500/70 text-sm">
                   Hidden matches section is turned off.
                 </p>
                 <p className="text-slate-600 text-xs mt-1">

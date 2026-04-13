@@ -433,7 +433,7 @@ const Discovery = () => {
                   <h2 className="text-xl font-bold text-white group-hover:text-indigo-300 transition-colors">
                     Here Now
                   </h2>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-slate-400/70 text-sm">
                     Live venues
                   </p>
                 </div>
@@ -455,7 +455,7 @@ const Discovery = () => {
                   <h2 className="text-xl font-bold text-white group-hover:text-cyan-300 transition-colors">
                     Not Here
                   </h2>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-slate-400/70 text-sm">
                     People nearby not at a venue
                   </p>
                 </div>
@@ -680,7 +680,7 @@ const IcebreakerModal = ({ show, person, sending, onClose, onSend }) => {
           <DialogTitle className="text-white">Send Icebreaker</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-slate-400 text-sm">Choose a message to send:</p>
+          <p className="text-slate-400/70 text-sm">Choose a message to send:</p>
           {ICEBREAKER_MESSAGES.map((msg) => (
             <button
               key={msg.id}
