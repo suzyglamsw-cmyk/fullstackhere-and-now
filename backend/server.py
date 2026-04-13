@@ -785,6 +785,9 @@ class UserResponse(BaseModel):
     lifestyle_going_out: Optional[str] = ""
     # Food Mood field (optional)
     food_mood: Optional[str] = ""
+    # Home location fields
+    home_country: Optional[str] = ""
+    home_area: Optional[str] = ""
 
 class VenueCreate(BaseModel):
     name: str
@@ -1281,7 +1284,9 @@ async def login(data: UserLogin):
             "daily_tokens_remaining": user.get("daily_tokens_remaining", FREE_DAILY_TOKENS),
             "glances_reset_at": user.get("glances_reset_at"),
             "profile_theme": user.get("profile_theme"),
-            "created_at": user["created_at"]
+            "created_at": user["created_at"],
+            "home_country": user.get("home_country", ""),
+            "home_area": user.get("home_area", "")
         }
     }
 
@@ -6570,14 +6575,27 @@ async def decline_message_request(from_user_id: str, current_user: dict = Depend
 # Notifications (recent glances and icebreakers)
 @api_router.get("/notifications")
 async def get_notifications(current_user: dict = Depends(get_current_user)):
-    # Get recent glances at me
-    glances = await db.glances.find({"to_user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    # Get the notifications_cleared_at timestamp if set
+    user_data = await db.users.find_one({"id": current_user["id"]}, {"notifications_cleared_at": 1})
+    cleared_at = user_data.get("notifications_cleared_at") if user_data else None
     
-    # Get pending icebreakers
-    icebreakers = await db.icebreakers.find({"to_user_id": current_user["id"], "status": "pending"}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    # Get recent glances at me (filter by cleared_at)
+    glance_query = {"to_user_id": current_user["id"]}
+    if cleared_at:
+        glance_query["created_at"] = {"$gt": cleared_at}
+    glances = await db.glances.find(glance_query, {"_id": 0}).sort("created_at", -1).to_list(20)
     
-    # Get chat requests
-    chat_requests = await db.chat_requests.find({"to_user_id": current_user["id"], "status": "pending"}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    # Get pending icebreakers (filter by cleared_at)
+    icebreaker_query = {"to_user_id": current_user["id"], "status": "pending"}
+    if cleared_at:
+        icebreaker_query["created_at"] = {"$gt": cleared_at}
+    icebreakers = await db.icebreakers.find(icebreaker_query, {"_id": 0}).sort("created_at", -1).to_list(20)
+    
+    # Get chat requests (filter by cleared_at)
+    chat_query = {"to_user_id": current_user["id"], "status": "pending"}
+    if cleared_at:
+        chat_query["created_at"] = {"$gt": cleared_at}
+    chat_requests = await db.chat_requests.find(chat_query, {"_id": 0}).sort("created_at", -1).to_list(20)
     
     # Get stored notifications (including test notifications)
     stored_notifications = await db.notifications.find(
@@ -6724,8 +6742,16 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
 @api_router.delete("/notifications/clear")
 async def clear_notifications(current_user: dict = Depends(get_current_user)):
     """Clear all notifications for the current user"""
+    now = datetime.now(timezone.utc)
+    
     # Delete stored notifications
     await db.notifications.delete_many({"user_id": current_user["id"]})
+    
+    # Set notifications_cleared_at timestamp so we filter out older glances/icebreakers/chat_requests
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"notifications_cleared_at": now.isoformat()}}
+    )
     
     return {"message": "Notifications cleared"}
 
