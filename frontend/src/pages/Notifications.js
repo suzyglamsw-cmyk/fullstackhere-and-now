@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useAuth, API } from "@/App";
+import { API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
-import SilhouetteAvatar from "../components/SilhouetteAvatar";
 import { 
   Eye, Snowflake, Sparkles, Bell, Loader2, 
   MessageCircle, Trash2
@@ -233,29 +232,6 @@ const Notifications = () => {
                     <p className="text-slate-500 text-xs mt-2">
                       {formatTime(notification.created_at)}
                     </p>
-                  </div>
-
-                  {/* Avatar - tappable to profile */}
-                  <div 
-                    className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all"
-                    onClick={() => {
-                      const userId = notification.user?.id || notification.from_user?.id || notification.from_user_id;
-                      if (userId) navigate(`/profile/${userId}`);
-                    }}
-                  >
-                    {(notification.user?.avatar_url || notification.from_user?.avatar_url || notification.from_user_avatar) ? (
-                      <img
-                        src={
-                          notification.user?.avatar_url ||
-                          notification.from_user?.avatar_url ||
-                          notification.from_user_avatar
-                        }
-                        alt=""
-                        className={`w-full h-full object-cover ${notification.type !== "mutual_glance" ? "blur-[4px]" : ""}`}
-                      />
-                    ) : (
-                      <SilhouetteAvatar />
-                    )}
                   </div>
                 </div>
               );

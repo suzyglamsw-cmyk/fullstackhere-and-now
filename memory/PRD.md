@@ -1064,3 +1064,53 @@ Updated modal with Friend wording:
 
 ---
 *Last Updated: April 12, 2026 - Friends Flow Unified with Mutual Matches*
+
+---
+
+## Push Notification Auto-Resubscription (April 2026)
+
+### Problem Identified
+Push notifications were not being received because:
+1. Push subscription tokens expire when browser data is cleared or service worker is unregistered
+2. Backend was returning `410 Gone` errors for stale subscriptions
+3. No automatic re-subscription mechanism existed
+
+### Solution Implemented
+
+#### Backend Changes (`server.py`)
+- **New endpoint:** `GET /api/push/subscription-status`
+  - Checks if user has valid push subscription
+  - Detects if recent push attempts failed with 410 Gone errors
+  - Cleans up stale subscriptions automatically
+  - Returns `{ valid: true/false, reason: string }`
+
+#### Frontend Changes
+
+**`pushNotifications.js`:**
+- **New function:** `ensureValidPushSubscription(api)`
+  - Called on app load when user is authenticated
+  - Checks for existing local subscription
+  - Validates with backend via `/push/subscription-status`
+  - Re-subscribes automatically if:
+    1. No local subscription exists
+    2. Backend reports subscription expired/deleted
+    3. Permission is granted but no valid token
+
+**`App.js`:**
+- Calls `ensureValidPushSubscription()` after successful user fetch
+- Only runs if push is supported and permission was previously granted
+- Runs silently without disrupting app load
+
+### Notifications Screen Photo Removal (`Notifications.js`)
+- Removed user avatar photos from all notification cards
+- Now shows: Icon + Name + Event text + Timestamp + Action button
+- No blur logic changes elsewhere
+
+### Files Modified
+- `/app/backend/server.py` — Added `/push/subscription-status` endpoint
+- `/app/frontend/src/utils/pushNotifications.js` — Added `ensureValidPushSubscription()`
+- `/app/frontend/src/App.js` — Auto-resubscribe on app load
+- `/app/frontend/src/pages/Notifications.js` — Removed avatar photos
+
+---
+*Last Updated: April 13, 2026 - Push Notification Auto-Resubscription*

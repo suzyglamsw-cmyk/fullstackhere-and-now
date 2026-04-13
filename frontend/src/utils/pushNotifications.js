@@ -193,6 +193,88 @@ export async function getCurrentSubscription() {
   }
 }
 
+/**
+ * Ensure valid push subscription exists on app load.
+ * Re-subscribes automatically if:
+ * 1. No valid push subscription exists locally
+ * 2. Backend indicates subscription was deleted (410 Gone)
+ * 3. Permission is granted but no subscription
+ * 
+ * Call this on app load when user is authenticated.
+ */
+export async function ensureValidPushSubscription(api) {
+  if (!isPushSupported()) {
+    console.log('[Push] Not supported on this device');
+    return null;
+  }
+  
+  // Check if permission is granted
+  const permission = getPermissionStatus();
+  if (permission !== 'granted') {
+    console.log('[Push] Permission not granted:', permission);
+    return null;
+  }
+  
+  try {
+    // Check for existing local subscription
+    const registration = await navigator.serviceWorker.ready;
+    const existingSubscription = await registration.pushManager.getSubscription();
+    
+    if (existingSubscription) {
+      // Verify with backend that subscription is still valid
+      try {
+        const response = await axios.get(`${api}/push/subscription-status`);
+        if (response.data.valid) {
+          console.log('[Push] Existing subscription is valid');
+          return existingSubscription;
+        } else {
+          console.log('[Push] Backend reports subscription invalid, re-subscribing...');
+          // Unsubscribe locally before re-subscribing
+          await existingSubscription.unsubscribe();
+        }
+      } catch (error) {
+        // If endpoint doesn't exist or returns error, re-subscribe
+        if (error.response?.status === 404 || error.response?.status === 410) {
+          console.log('[Push] Subscription not found on backend, re-subscribing...');
+          await existingSubscription.unsubscribe();
+        } else {
+          // For other errors, keep existing subscription
+          console.log('[Push] Backend check failed, keeping existing subscription');
+          return existingSubscription;
+        }
+      }
+    } else {
+      console.log('[Push] No local subscription found');
+    }
+    
+    // Re-subscribe with fresh token
+    console.log('[Push] Creating fresh subscription...');
+    const vapidPublicKey = await getVapidPublicKey(api);
+    if (!vapidPublicKey) {
+      console.error('[Push] VAPID public key not available');
+      return null;
+    }
+    
+    const newSubscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+    });
+    
+    // Send to backend
+    const subscriptionJson = newSubscription.toJSON();
+    await axios.post(`${api}/push/subscribe`, {
+      endpoint: subscriptionJson.endpoint,
+      keys: subscriptionJson.keys
+    });
+    
+    console.log('[Push] Fresh subscription created successfully');
+    return newSubscription;
+  } catch (error) {
+    console.error('[Push] Error ensuring valid subscription:', error);
+    return null;
+  }
+}
+
 export default {
   isPushSupported,
   getPermissionStatus,
@@ -201,5 +283,6 @@ export default {
   subscribeToPush,
   unsubscribeFromPush,
   isSubscribedToPush,
-  getCurrentSubscription
+  getCurrentSubscription,
+  ensureValidPushSubscription
 };

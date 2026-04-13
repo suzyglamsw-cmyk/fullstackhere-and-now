@@ -6795,6 +6795,34 @@ async def get_vapid_public_key():
     vapid_public_key = os.environ.get("VAPID_PUBLIC_KEY", "")
     return {"public_key": vapid_public_key}
 
+@api_router.get("/push/subscription-status")
+async def get_push_subscription_status(current_user: dict = Depends(get_current_user)):
+    """Check if current user has a valid push subscription on the backend"""
+    subscription = await db.push_subscriptions.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    if not subscription:
+        return {"valid": False, "reason": "no_subscription"}
+    
+    # Check if there were recent 410 errors for this user
+    recent_failure = await db.push_queue.find_one(
+        {
+            "user_id": current_user["id"],
+            "status": "failed",
+            "error": {"$regex": "410|expired|unsubscribed", "$options": "i"}
+        },
+        sort=[("created_at", -1)]
+    )
+    
+    if recent_failure:
+        # Check if failure is more recent than subscription update
+        sub_updated = subscription.get("updated_at", "")
+        failure_created = recent_failure.get("created_at", "")
+        if failure_created > sub_updated:
+            # Delete stale subscription
+            await db.push_subscriptions.delete_one({"user_id": current_user["id"]})
+            return {"valid": False, "reason": "subscription_expired"}
+    
+    return {"valid": True}
+
 async def send_push_notification(user_id: str, title: str, body: str, data: Dict = None):
     """Internal function to send push notifications to a user"""
     # Check if user has push enabled

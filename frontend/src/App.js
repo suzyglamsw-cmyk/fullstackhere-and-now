@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useState, useEffect, createContext, useContext } from "react";
 import axios from "axios";
 import { dispatchPresenceEvent, PRESENCE_EVENTS } from "./utils/presenceEvents";
+import { ensureValidPushSubscription, isPushSupported, getPermissionStatus } from "./utils/pushNotifications";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -69,6 +70,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.get(`${API}/auth/me`);
       setUser(response.data);
+      
+      // Auto-resubscribe to push notifications if permission was previously granted
+      if (isPushSupported() && getPermissionStatus() === 'granted') {
+        ensureValidPushSubscription(API).catch(err => {
+          console.log('[Push] Auto-resubscription skipped:', err.message);
+        });
+      }
     } catch (error) {
       console.error("Failed to fetch user:", error);
       logout();
