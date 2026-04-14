@@ -375,6 +375,12 @@ const Profile = () => {
       return;
     }
 
+    // Required field: Intent (what are you here for)
+    if (!formData.intent || formData.intent.trim().length === 0) {
+      toast.error("Please select what you're here for.");
+      return;
+    }
+
     setSaving(true);
     try {
       // Save non-photo profile fields only

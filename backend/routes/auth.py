@@ -294,11 +294,11 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
     
-    # Validate intent (must be one of the allowed values)
-    if "intent" in update_data and update_data["intent"]:
+    # Validate intent (must be one of the allowed values, required)
+    if "intent" in update_data:
         allowed_intents = ["dating", "friends", "open_to_both"]
-        if update_data["intent"] not in allowed_intents:
-            raise HTTPException(status_code=400, detail="Intent must be 'dating', 'friends', or 'open_to_both'")
+        if not update_data["intent"] or update_data["intent"] not in allowed_intents:
+            raise HTTPException(status_code=400, detail="Please select what you're here for (dating, friends, or open_to_both)")
     
     # Validate who_open_to_meeting (must be one of the allowed values)
     if "who_open_to_meeting" in update_data and update_data["who_open_to_meeting"]:

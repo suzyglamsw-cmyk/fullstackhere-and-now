@@ -516,6 +516,22 @@ const UserProfile = () => {
                   </div>
                 )}
 
+                {/* What are you here for - Intent (shown on all profile states) */}
+                {profile.intent && (
+                  <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
+                    <h3 className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">Here for</h3>
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                      profile.intent === "dating" ? "bg-pink-500/30 text-pink-300" :
+                      profile.intent === "friends" ? "bg-emerald-500/30 text-emerald-300" :
+                      "bg-purple-500/30 text-purple-300"
+                    }`}>
+                      {profile.intent === "dating" ? "Dating" : 
+                       profile.intent === "friends" ? "Friends" : 
+                       profile.intent === "open_to_both" ? "Open to both" : ""}
+                    </span>
+                  </div>
+                )}
+
                 {/* Profile Details Section Frame (gender, orientation, relationship, seeking) - Only shown after reveal */}
                 {profile.is_revealed && (profile.gender || profile.orientation || profile.relationship_status || profile.seeking) && (
                   <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
