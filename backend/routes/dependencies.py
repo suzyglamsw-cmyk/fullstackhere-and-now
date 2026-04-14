@@ -369,7 +369,7 @@ class UserResponse(BaseModel):
     intent: Optional[str] = ""  # "dating", "friends", "open_to_both"
     who_open_to_meeting: Optional[str] = ""  # Private - for matching only
     home_country: Optional[str] = ""
-    home_region: Optional[str] = ""
+    home_area: Optional[str] = ""
     shy_indicator: Optional[bool] = False
     lat: Optional[float] = None
     lng: Optional[float] = None
