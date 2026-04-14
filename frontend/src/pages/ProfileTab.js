@@ -369,6 +369,12 @@ const Profile = () => {
       return;
     }
 
+    // Required field: Seeking (who you're interested in meeting)
+    if (!formData.seeking || formData.seeking.length === 0) {
+      toast.error("Please select who you're interested in meeting.");
+      return;
+    }
+
     setSaving(true);
     try {
       // Save non-photo profile fields only

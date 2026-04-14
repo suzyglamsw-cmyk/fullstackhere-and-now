@@ -331,6 +331,10 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
                 if s and s.lower() in allowed_seeking:
                     normalized.append(s.lower())
             update_data["seeking"] = normalized
+        
+        # Reject empty seeking array - at least one selection required
+        if not update_data["seeking"] or len(update_data["seeking"]) == 0:
+            raise HTTPException(status_code=400, detail="Please select who you're interested in meeting")
     
     # Validate rainbow flag (boolean)
     if "rainbow" in update_data:
