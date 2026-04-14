@@ -412,48 +412,34 @@ const Discovery = () => {
   if (!mode) {
     return (
       <Layout>
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-6">
+        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex flex-col pt-16 px-6">
           <div className="text-center mb-8">
-            {/* Header with 3D depth effect and white outline */}
-            <div className="relative inline-block">
-              {/* Shadow layer - offset and blurred for 3D lift */}
-              <h1 
-                className="absolute text-4xl font-bold text-fuchsia-700"
-                style={{ 
-                  transform: 'translate(2px, 2px)',
-                  filter: 'blur(4px)',
-                  opacity: 0.6
-                }}
-                aria-hidden="true"
-              >
-                Discover
-              </h1>
-              {/* Main text - solid magenta with white outline */}
-              <h1 
-                className="relative text-4xl font-bold text-fuchsia-500"
-                style={{
-                  textShadow: '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 8px rgba(255,255,255,0.3)'
-                }}
-              >
-                Discover
-              </h1>
-            </div>
+            {/* Header - purple to pink gradient matching Save button */}
+            <h1 
+              className="text-4xl font-bold bg-clip-text text-transparent"
+              style={{ backgroundImage: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
+            >
+              Discover
+            </h1>
             <p className="text-slate-300/70 text-sm mt-2">Choose how you want to explore people around you.</p>
           </div>
           
-          <div className="w-full max-w-md space-y-4">
-            {/* Here & Now Option - Noticeably lighter purple */}
+          <div className="w-full max-w-md mx-auto space-y-4">
+            {/* Here & Now Option - Dark purple (same as Not Here) */}
             <button
               data-testid="select-here-now"
               onClick={() => navigate("/venues")}
-              className="w-full p-6 rounded-2xl bg-gradient-to-br from-purple-400/40 to-violet-400/35 border border-purple-300/40 hover:border-purple-200/60 transition-all group"
+              className="w-full p-6 rounded-2xl bg-gradient-to-br from-purple-900/50 to-violet-950/45 border border-purple-600/40 hover:border-purple-500/60 transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-purple-400/25 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-xl bg-purple-800/30 flex items-center justify-center">
                   <MapPin className="w-7 h-7 text-indigo-400" />
                 </div>
                 <div className="text-left flex-1">
-                  <h2 className="text-xl font-bold text-fuchsia-500 group-hover:text-fuchsia-400 transition-colors">
+                  <h2 
+                    className="text-xl font-bold bg-clip-text text-transparent transition-opacity group-hover:opacity-80"
+                    style={{ backgroundImage: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
+                  >
                     Here Now
                   </h2>
                   <p className="text-white text-sm">
@@ -464,7 +450,7 @@ const Discovery = () => {
               </div>
             </button>
             
-            {/* Not Here Option - Noticeably darker purple */}
+            {/* Not Here Option - Dark purple (same as Here Now) */}
             <button
               data-testid="select-not-here"
               onClick={() => navigate("/discover/not-here")}
@@ -475,7 +461,10 @@ const Discovery = () => {
                   <Users className="w-7 h-7 text-cyan-400" />
                 </div>
                 <div className="text-left flex-1">
-                  <h2 className="text-xl font-bold text-fuchsia-500 group-hover:text-fuchsia-400 transition-colors">
+                  <h2 
+                    className="text-xl font-bold bg-clip-text text-transparent transition-opacity group-hover:opacity-80"
+                    style={{ backgroundImage: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
+                  >
                     Not Here
                   </h2>
                   <p className="text-white text-sm">
