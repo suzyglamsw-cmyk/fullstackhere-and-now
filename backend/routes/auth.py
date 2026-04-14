@@ -189,7 +189,9 @@ async def login(data: UserLogin):
             "daily_tokens_remaining": user.get("daily_tokens_remaining", FREE_DAILY_TOKENS),
             "glances_reset_at": user.get("glances_reset_at"),
             "profile_theme": user.get("profile_theme"),
-            "created_at": user["created_at"]
+            "created_at": user["created_at"],
+            "home_country": user.get("home_country", ""),
+            "home_area": user.get("home_area", "")
         }
     }
 
