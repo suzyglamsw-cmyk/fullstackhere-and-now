@@ -414,25 +414,25 @@ const Discovery = () => {
       <Layout>
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-6">
           <div className="text-center mb-8">
-            {/* Header with 3D depth effect and white glow */}
+            {/* Header with 3D depth effect and white outline */}
             <div className="relative inline-block">
-              {/* Shadow layer - offset and blurred for 3D depth */}
+              {/* Shadow layer - offset and blurred for 3D lift */}
               <h1 
-                className="absolute text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent"
+                className="absolute text-4xl font-bold text-fuchsia-700"
                 style={{ 
                   transform: 'translate(2px, 2px)',
-                  filter: 'blur(3px)',
-                  opacity: 0.5
+                  filter: 'blur(4px)',
+                  opacity: 0.6
                 }}
                 aria-hidden="true"
               >
                 Discover
               </h1>
-              {/* Main text with white glow edge */}
+              {/* Main text - solid magenta with white outline */}
               <h1 
-                className="relative text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent"
+                className="relative text-4xl font-bold text-fuchsia-500"
                 style={{
-                  textShadow: '0 0 1px rgba(255,255,255,0.8), 0 0 2px rgba(255,255,255,0.4)'
+                  textShadow: '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 8px rgba(255,255,255,0.3)'
                 }}
               >
                 Discover
@@ -442,18 +442,18 @@ const Discovery = () => {
           </div>
           
           <div className="w-full max-w-md space-y-4">
-            {/* Here & Now Option - Lighter purple */}
+            {/* Here & Now Option - Noticeably lighter purple */}
             <button
               data-testid="select-here-now"
               onClick={() => navigate("/venues")}
-              className="w-full p-6 rounded-2xl bg-gradient-to-br from-purple-500/30 to-violet-500/25 border border-purple-400/30 hover:border-purple-300/50 transition-all group"
+              className="w-full p-6 rounded-2xl bg-gradient-to-br from-purple-400/40 to-violet-400/35 border border-purple-300/40 hover:border-purple-200/60 transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-xl bg-purple-400/25 flex items-center justify-center">
                   <MapPin className="w-7 h-7 text-indigo-400" />
                 </div>
                 <div className="text-left flex-1">
-                  <h2 className="text-xl font-bold text-white group-hover:text-purple-200 transition-colors">
+                  <h2 className="text-xl font-bold text-fuchsia-500 group-hover:text-fuchsia-400 transition-colors">
                     Here Now
                   </h2>
                   <p className="text-white text-sm">
@@ -464,18 +464,18 @@ const Discovery = () => {
               </div>
             </button>
             
-            {/* Not Here Option - Darker purple */}
+            {/* Not Here Option - Noticeably darker purple */}
             <button
               data-testid="select-not-here"
               onClick={() => navigate("/discover/not-here")}
-              className="w-full p-6 rounded-2xl bg-gradient-to-br from-purple-700/30 to-violet-800/25 border border-purple-500/30 hover:border-purple-400/50 transition-all group"
+              className="w-full p-6 rounded-2xl bg-gradient-to-br from-purple-900/50 to-violet-950/45 border border-purple-600/40 hover:border-purple-500/60 transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-purple-700/20 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-xl bg-purple-800/30 flex items-center justify-center">
                   <Users className="w-7 h-7 text-cyan-400" />
                 </div>
                 <div className="text-left flex-1">
-                  <h2 className="text-xl font-bold text-white group-hover:text-purple-200 transition-colors">
+                  <h2 className="text-xl font-bold text-fuchsia-500 group-hover:text-fuchsia-400 transition-colors">
                     Not Here
                   </h2>
                   <p className="text-white text-sm">
