@@ -414,8 +414,8 @@ const Discovery = () => {
       <Layout>
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-6">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Discover</h1>
-            <p className="text-slate-400">How would you like to connect?</p>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">Discover</h1>
+            <p className="text-slate-300/70 text-sm">Choose how you want to explore people around you.</p>
           </div>
           
           <div className="w-full max-w-md space-y-4">
@@ -434,7 +434,7 @@ const Discovery = () => {
                     Here Now
                   </h2>
                   <p className="text-slate-400/70 text-sm">
-                    Live venues
+                    A real-time list of nearby venues you can check into and see who else is there.
                   </p>
                 </div>
                 <ArrowRight className="w-5 h-5 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
@@ -456,7 +456,7 @@ const Discovery = () => {
                     Not Here
                   </h2>
                   <p className="text-slate-400/70 text-sm">
-                    People nearby not at a venue
+                    See and be seen by people nearby who aren't in a venue.
                   </p>
                 </div>
                 <ArrowRight className="w-5 h-5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
