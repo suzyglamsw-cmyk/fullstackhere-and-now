@@ -162,7 +162,9 @@ async def get_people_not_here(
             has_glanced_at_me = False
             i_glanced_at = False
             is_connected = False
+            is_connection_accepted = False  # Self shows with heavy blur (as others see them)
             is_revealed = False  # Self should see their card as others see it (blurred/pre-reveal)
+            is_mutual_glance = False
             icebreaker_sent = False
             icebreaker_received = False
         else:
@@ -197,9 +199,9 @@ async def get_people_not_here(
                 "status": "pending"
             }) is not None
             
-            # REVEAL LOGIC - Two triggers:
-            # 1. Mutual glance (both users glanced at each other)
-            # 2. Accepted icebreaker/chat request (creates connection)
+            # REVEAL LOGIC - Two stages (same as venues):
+            # 1. is_connection_accepted = mutual glance OR accepted icebreaker/chat (gives 6px medium blur)
+            # 2. is_revealed = ONLY when both users explicitly press "Reveal" button (gives 0px clear)
             # Note: Presence/venue status NEVER triggers reveal
             is_mutual_glance = has_glanced_at_me and i_glanced_at
             
@@ -219,8 +221,22 @@ async def get_people_not_here(
                 ]
             })
             
-            # Revealed if: mutual glance OR accepted icebreaker/chat OR connected
-            is_revealed = is_mutual_glance or bool(accepted_icebreaker) or bool(accepted_chat) or is_connected
+            # is_connection_accepted = mutual glance OR accepted icebreaker/chat (medium blur - 6px)
+            is_connection_accepted = is_mutual_glance or bool(accepted_icebreaker) or bool(accepted_chat)
+            
+            # Check for explicit reveal (both users pressed reveal button)
+            # Only truly revealed if BOTH users have pressed reveal (clear - 0px)
+            i_revealed = await db.reveals.find_one({
+                "from_user_id": current_user["id"],
+                "to_user_id": user["id"]
+            }) is not None
+            
+            they_revealed = await db.reveals.find_one({
+                "from_user_id": user["id"],
+                "to_user_id": current_user["id"]
+            }) is not None
+            
+            is_revealed = i_revealed and they_revealed
         
         first_name = get_first_name(user.get("display_name", "Someone"))
         
@@ -250,7 +266,9 @@ async def get_people_not_here(
             "has_glanced_at_me": has_glanced_at_me,
             "i_glanced_at": i_glanced_at,
             "is_connected": is_connected,
-            "is_revealed": is_revealed,
+            "is_mutual": is_mutual_glance,  # Both users have glanced at each other
+            "is_connection_accepted": is_connection_accepted,  # For blur logic: mutual glance OR accepted icebreaker/chat (6px)
+            "is_revealed": is_revealed,  # ONLY when both users explicitly pressed reveal (0px)
             "is_premium": user.get("is_premium", False),
             "last_active_at": user.get("last_active_at"),
             "presence_note": user.get("presence_note", ""),
