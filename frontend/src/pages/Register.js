@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
-import { ArrowLeft, Loader2, Shield, AlertTriangle, User, Heart } from "lucide-react";
+import { ArrowLeft, Loader2, Shield, AlertTriangle, User, Heart, Eye, EyeOff } from "lucide-react";
 import { Logo, LogoIcon } from "../components/Logo";
 import { getErrorMessage } from "../utils/errorUtils";
 
@@ -36,6 +36,25 @@ const validateName = (name) => {
   return { valid: true, error: null };
 };
 
+// Password validation
+const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+
+const validatePassword = (password) => {
+  if (!password) return { valid: false, message: "" };
+  if (!PASSWORD_REGEX.test(password)) {
+    return { valid: false, message: "Add at least 8 characters, with letters and numbers." };
+  }
+  return { valid: true, message: "Looks good." };
+};
+
+const validateConfirmPassword = (password, confirmPassword) => {
+  if (!confirmPassword) return { valid: false, message: "" };
+  if (password !== confirmPassword) {
+    return { valid: false, message: "These don't match yet." };
+  }
+  return { valid: true, message: "Looks good." };
+};
+
 const Register = () => {
   const navigate = useNavigate();
   const { login, user } = useAuth();
@@ -43,6 +62,9 @@ const Register = () => {
   const [step, setStep] = useState("age-gate"); // "age-gate" | "register" | "gender"
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [nameError, setNameError] = useState(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -88,6 +110,18 @@ const Register = () => {
     const nameValidation = validateName(formData.display_name);
     if (!nameValidation.valid) {
       toast.error(nameValidation.error);
+      return;
+    }
+    
+    // Validate password format
+    if (!PASSWORD_REGEX.test(formData.password)) {
+      toast.error("Password must be at least 8 characters with letters and numbers");
+      return;
+    }
+    
+    // Validate confirm password
+    if (formData.password !== confirmPassword) {
+      toast.error("Passwords do not match");
       return;
     }
     
@@ -411,22 +445,70 @@ const Register = () => {
                   />
                 </div>
 
+                {/* Create Password Field */}
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-slate-300">
-                    Password
+                    Create password
                   </Label>
-                  <Input
-                    data-testid="password-input"
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    minLength={6}
-                    className="h-12 bg-white/5 border-transparent focus:border-indigo-500 rounded-xl text-white placeholder:text-slate-500"
-                  />
-                  <p className="text-xs text-slate-500">At least 6 characters</p>
+                  <div className="relative">
+                    <Input
+                      data-testid="password-input"
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required
+                      className="h-12 bg-white/5 border-transparent focus:border-indigo-500 rounded-xl text-white placeholder:text-slate-500 pr-12"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      data-testid="toggle-password-visibility"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">At least 8 characters, with letters and numbers. Just something you'll remember.</p>
+                  {formData.password && (
+                    <p className={`text-xs ${validatePassword(formData.password).valid ? 'text-green-400' : 'text-amber-400'}`}>
+                      {validatePassword(formData.password).message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Confirm Password Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="confirm_password" className="text-slate-300">
+                    Confirm password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      data-testid="confirm-password-input"
+                      id="confirm_password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      className="h-12 bg-white/5 border-transparent focus:border-indigo-500 rounded-xl text-white placeholder:text-slate-500 pr-12"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      data-testid="toggle-confirm-password-visibility"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">Just to make sure there are no typos.</p>
+                  {confirmPassword && (
+                    <p className={`text-xs ${validateConfirmPassword(formData.password, confirmPassword).valid ? 'text-green-400' : 'text-amber-400'}`}>
+                      {validateConfirmPassword(formData.password, confirmPassword).message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">

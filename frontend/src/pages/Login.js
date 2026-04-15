@@ -6,14 +6,26 @@ import { Label } from "@/components/ui/label";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Eye, EyeOff } from "lucide-react";
 import { Logo, LogoIcon } from "../components/Logo";
 import { getErrorMessage } from "../utils/errorUtils";
+
+// Password validation
+const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+
+const getPasswordValidation = (password) => {
+  if (!password) return { valid: false, message: "Enter your password to continue." };
+  if (!PASSWORD_REGEX.test(password)) {
+    return { valid: false, message: "That doesn't look like the password format you set." };
+  }
+  return { valid: true, message: "" };
+};
 
 const Login = () => {
   const navigate = useNavigate();
   const { login, user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -92,16 +104,30 @@ const Login = () => {
                 <Label htmlFor="password" className="text-slate-300">
                   Password
                 </Label>
-                <Input
-                  data-testid="password-input"
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  className="h-12 bg-white/5 border-transparent focus:border-indigo-500 rounded-xl text-white placeholder:text-slate-500"
-                />
+                <div className="relative">
+                  <Input
+                    data-testid="password-input"
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    className="h-12 bg-white/5 border-transparent focus:border-indigo-500 rounded-xl text-white placeholder:text-slate-500 pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    data-testid="toggle-password-visibility"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">Use the password you created when you joined.</p>
+                {formData.password && !getPasswordValidation(formData.password).valid && (
+                  <p className="text-xs text-amber-400">{getPasswordValidation(formData.password).message}</p>
+                )}
               </div>
 
               <Button
