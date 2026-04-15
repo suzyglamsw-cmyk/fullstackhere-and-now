@@ -278,6 +278,15 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
     
+    # Validate photos - must have at least one photo to save profile
+    if "photos" in update_data:
+        photos = update_data["photos"]
+        # Filter out empty strings and None values
+        valid_photos = [p for p in photos if p and p.strip()]
+        if len(valid_photos) < 1:
+            raise HTTPException(status_code=400, detail="Please add at least one profile photo to continue.")
+        update_data["photos"] = valid_photos
+    
     # DOB is NOT editable via profile update - remove if present
     if "date_of_birth" in update_data:
         del update_data["date_of_birth"]
