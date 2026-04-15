@@ -80,7 +80,7 @@ const WhosHere = () => {
   const [checkingIn, setCheckingIn] = useState(false);
   
   // Filter states
-  const [matchFilter, setMatchFilter] = useState("unmatched");
+  const [matchFilter, setMatchFilter] = useState("all");
   const [activityFilter, setActivityFilter] = useState("all");
   const [ageFilter, setAgeFilter] = useState("all");
   

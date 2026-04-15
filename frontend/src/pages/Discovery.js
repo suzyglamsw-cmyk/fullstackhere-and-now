@@ -92,7 +92,7 @@ const Discovery = () => {
   const [sendingChatRequest, setSendingChatRequest] = useState(null);
   
   // Filter states
-  const [matchFilter, setMatchFilter] = useState("unmatched");
+  const [matchFilter, setMatchFilter] = useState("all");
   const [activityFilter, setActivityFilter] = useState("all");
   const [ageFilter, setAgeFilter] = useState("all");
   
