@@ -251,7 +251,8 @@ async def get_people_not_here(
                 pass
         
         # Get photo URL with appropriate blur based on reveal status
-        blur_photos = not is_revealed
+        # Self card should NEVER be blurred (user always sees their own photo clearly)
+        blur_photos = not is_revealed and not is_self
         avatar_url = get_photo_url(user.get("avatar_url", ""), blur=blur_photos)
         
         entry = {
