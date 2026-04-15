@@ -41,9 +41,11 @@ const RADIUS_OPTIONS = [
 
 // Filter options
 const MATCH_FILTER_OPTIONS = [
-  { value: "unmatched", label: "Unmatched only" },
-  { value: "all", label: "All users" },
-  { value: "mutual", label: "Mutual only" },
+  { value: "unmatched", label: "Unmatched" },
+  { value: "all", label: "All" },
+  { value: "mutual", label: "Mutual" },
+  { value: "friends", label: "Friends" },
+  { value: "hidden", label: "Hidden Matches" },
 ];
 
 const ACTIVITY_FILTER_OPTIONS = [
@@ -97,6 +99,13 @@ const Discovery = () => {
   // Not for now sheet
   const [notForNowUser, setNotForNowUser] = useState(null);
   const [hiddenUsers, setHiddenUsers] = useState([]);
+  const [hiddenFromMatches, setHiddenFromMatches] = useState([]); // Users hidden from Mutual Matches
+  const [friendIds, setFriendIds] = useState([]); // IDs of current user's friends
+  const [showHiddenMatchesSection, setShowHiddenMatchesSection] = useState(() => {
+    // Load preference from localStorage (same key as Connections.js and WhosHere.js)
+    const saved = localStorage.getItem('showHiddenMatchesSection');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   
   // Global ref for confirmation hints
   const confirmHintRef = useConfirmHintGlobal();
@@ -129,6 +138,32 @@ const Discovery = () => {
     fetchHiddenUsers();
   }, []);
 
+  // Fetch hidden from matches (for the Hidden Matches filter)
+  useEffect(() => {
+    const fetchHiddenFromMatches = async () => {
+      try {
+        const response = await axios.get(`${API}/connections/hidden-from-matches`);
+        setHiddenFromMatches(response.data.map(h => h.user_id));
+      } catch (error) {
+        console.error("Failed to fetch hidden from matches:", error);
+      }
+    };
+    fetchHiddenFromMatches();
+  }, []);
+
+  // Fetch friends list (for the Friends filter)
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const response = await axios.get(`${API}/friends/list`);
+        setFriendIds(response.data.map(f => f.id));
+      } catch (error) {
+        console.error("Failed to fetch friends:", error);
+      }
+    };
+    fetchFriends();
+  }, []);
+
   // Check GPS location when in Not Here mode
   useEffect(() => {
     if (mode === "not-here") {
@@ -141,7 +176,7 @@ const Discovery = () => {
     if (mode === "not-here" && locationStatus === "granted" && userCoordinates) {
       fetchPeople();
     }
-  }, [mode, radius, locationStatus, userCoordinates, matchFilter, activityFilter, ageFilter]);
+  }, [mode, radius, locationStatus, userCoordinates, matchFilter, activityFilter, ageFilter, hiddenUsers, hiddenFromMatches, friendIds]);
 
   const checkLocationPermission = async () => {
     if (!navigator.geolocation) {
@@ -256,10 +291,25 @@ const Discovery = () => {
 
       // Apply match filter (but NOT to self)
       if (matchFilter === "unmatched") {
+        // Show unmatched users (exclude hidden from matches from mutual)
         fetchedPeople = fetchedPeople.filter(p => p.is_self || !p.is_connection_accepted);
       } else if (matchFilter === "mutual") {
-        fetchedPeople = fetchedPeople.filter(p => p.is_self || p.is_connection_accepted);
+        // Show mutual matches EXCLUDING those hidden from matches
+        fetchedPeople = fetchedPeople.filter(p => 
+          p.is_self || (p.is_connection_accepted && !hiddenFromMatches.includes(p.id))
+        );
+      } else if (matchFilter === "friends") {
+        // Show ONLY friends (from friends list) - NOT hidden from matches
+        fetchedPeople = fetchedPeople.filter(p => 
+          p.is_self || (friendIds.includes(p.id) && !hiddenFromMatches.includes(p.id))
+        );
+      } else if (matchFilter === "hidden") {
+        // Show ONLY users that are hidden from matches AND are mutual matches
+        fetchedPeople = fetchedPeople.filter(p => 
+          p.is_self || (p.is_connection_accepted && hiddenFromMatches.includes(p.id))
+        );
       }
+      // matchFilter === "all" shows everyone (including hidden from matches)
 
       // Apply activity filter (but NOT to self)
       if (activityFilter !== "all") {
@@ -492,9 +542,11 @@ const Discovery = () => {
         className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
         data-testid="match-filter"
       >
-        {MATCH_FILTER_OPTIONS.map(opt => (
-          <option key={opt.value} value={opt.value} className="bg-slate-900">{opt.label}</option>
-        ))}
+        {MATCH_FILTER_OPTIONS
+          .filter(opt => opt.value !== "hidden" || showHiddenMatchesSection)
+          .map(opt => (
+            <option key={opt.value} value={opt.value} className="bg-slate-900">{opt.label}</option>
+          ))}
       </select>
 
       {/* Activity Filter */}
