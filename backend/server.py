@@ -2423,43 +2423,25 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
     Block a user - BILATERAL blocking:
     - Both users are added to each other's blocked_users list
     - Removes from discovery, matches, recents, and chat for both
-    - Clears all notifications and chat facilities
+    - Clears all notifications and interaction facilities
     - Prevents future messaging, visibility, matching, and presence
-    - PRESERVES reveal state for potential unblock restoration
+    - PRESERVES reveal status (db.reveals) for photo clarity after unblock
+    - PRESERVES chat history (soft delete) for restoration after unblock
+    - Does NOT preserve interaction state (glances, connections, mutual match)
     """
     if data.user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="Cannot block yourself")
     
     now = datetime.now(timezone.utc).isoformat()
     
-    # PRESERVE reveal state before blocking
-    # Check if mutual reveal existed (for restoration on unblock)
-    i_glanced = await db.glances.find_one({"from_user_id": current_user["id"], "to_user_id": data.user_id})
-    they_glanced = await db.glances.find_one({"from_user_id": data.user_id, "to_user_id": current_user["id"]})
-    connection = await db.connections.find_one({
-        "$or": [
-            {"user1_id": current_user["id"], "user2_id": data.user_id},
-            {"user1_id": data.user_id, "user2_id": current_user["id"]}
-        ]
-    })
-    
-    # Determine reveal state to preserve
-    connection_revealed = connection and connection.get("reveal_state") == "mutual"
-    mutual_glance = bool(i_glanced and they_glanced)
-    was_revealed = connection_revealed or mutual_glance
-    
-    # Store blocked relationship state for potential unblock
+    # Store minimal blocked relationship record (for tracking, not restoration)
     blocked_relationship = {
         "blocker_id": current_user["id"],
         "blocked_id": data.user_id,
-        "blocked_at": now,
-        "was_revealed": was_revealed,
-        "had_connection": bool(connection),
-        "had_mutual_glance": mutual_glance,
-        "connection_reveal_state": connection.get("reveal_state") if connection else None
+        "blocked_at": now
     }
     
-    # Upsert the blocked relationship state
+    # Upsert the blocked relationship
     await db.blocked_relationships.update_one(
         {"blocker_id": current_user["id"], "blocked_id": data.user_id},
         {"$set": blocked_relationship},
@@ -2482,7 +2464,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         {"$inc": {"blocks_received_count": 1}}
     )
     
-    # Remove ALL mutual connections and relationships
+    # Remove ALL interaction states (NOT restored on unblock)
     # 1. Remove from friends (both directions)
     await db.friends.delete_many({
         "$or": [
@@ -2491,7 +2473,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # 2. Remove connections (both directions)
+    # 2. Remove connections (both directions) - NOT restored
     await db.connections.delete_many({
         "$or": [
             {"user1_id": current_user["id"], "user2_id": data.user_id},
@@ -2499,7 +2481,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # 3. Remove glances (both directions)
+    # 3. Remove glances (both directions) - NOT restored
     await db.glances.delete_many({
         "$or": [
             {"from_user_id": current_user["id"], "to_user_id": data.user_id},
@@ -2507,7 +2489,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # 4. Remove/cancel icebreakers (both directions)
+    # 4. Remove/cancel icebreakers (both directions) - NOT restored
     await db.icebreakers.delete_many({
         "$or": [
             {"from_user_id": current_user["id"], "to_user_id": data.user_id},
@@ -2515,7 +2497,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # 5. Remove/cancel chat requests (both directions)
+    # 5. Remove/cancel chat requests (both directions) - NOT restored
     await db.chat_requests.delete_many({
         "$or": [
             {"from_user_id": current_user["id"], "to_user_id": data.user_id},
@@ -2523,7 +2505,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # 6. Remove friend requests (both directions)
+    # 6. Remove friend requests (both directions) - NOT restored
     await db.friend_requests.delete_many({
         "$or": [
             {"from_user_id": current_user["id"], "to_user_id": data.user_id},
@@ -2531,7 +2513,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # 7. Archive/hide chat messages (both directions) - soft delete
+    # 7. Archive/hide chat messages (PRESERVED for restoration after unblock)
     await db.messages.update_many(
         {
             "$or": [
@@ -2542,7 +2524,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         {"$set": {"is_hidden_by_block": True, "blocked_at": now}}
     )
     
-    # 8. Clear notifications related to this user (both directions)
+    # 8. Clear notifications related to this user (both directions) - NOT restored
     await db.notifications.delete_many({
         "$or": [
             {"user_id": current_user["id"], "from_user_id": data.user_id},
@@ -2550,13 +2532,16 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # 9. Remove from profile views/recents (both directions)
+    # 9. Remove from profile views/recents (both directions) - NOT restored
     await db.profile_views.delete_many({
         "$or": [
             {"viewer_id": current_user["id"], "viewed_id": data.user_id},
             {"viewer_id": data.user_id, "viewed_id": current_user["id"]}
         ]
     })
+    
+    # NOTE: We do NOT delete from db.reveals - photo reveal status is PRESERVED
+    # so that if they unblock, photos stay clear if they were clear before
     
     return {"message": "User blocked. They won't be able to see or contact you."}
 
@@ -2565,20 +2550,19 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
 async def unblock_user(data: BlockUserRequest, current_user: dict = Depends(get_current_user)):
     """
     Unblock a user:
-    - Restores visibility and allows future matching/messaging
-    - RESTORES previous reveal state and blur level
-    - Connection and glances are restored to their pre-block state
+    - Restores visibility (they can see each other again)
+    - Restores chat history
+    - Reveal status is preserved (photos stay clear if they were clear before)
+    - Does NOT restore any previous interaction state:
+      • No mutual match
+      • No pending glances
+      • No old glance states
+      • No old connections
+      • No old notifications
+    - After unblocking: fresh interaction flow, but chat and reveal preserved
     """
     if data.user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="Cannot unblock yourself")
-    
-    now = datetime.now(timezone.utc).isoformat()
-    
-    # Retrieve the saved relationship state
-    blocked_relationship = await db.blocked_relationships.find_one({
-        "blocker_id": current_user["id"],
-        "blocked_id": data.user_id
-    })
     
     # Remove from blocker's blocked list
     await db.users.update_one(
@@ -2592,64 +2576,35 @@ async def unblock_user(data: BlockUserRequest, current_user: dict = Depends(get_
         {"$pull": {"blocked_by_users": current_user["id"]}}
     )
     
-    # Restore previous state if it existed
-    if blocked_relationship:
-        # Restore mutual glances if they existed
-        if blocked_relationship.get("had_mutual_glance"):
-            # Check if glances don't already exist (avoid duplicates)
-            existing_my_glance = await db.glances.find_one({
-                "from_user_id": current_user["id"], 
-                "to_user_id": data.user_id
-            })
-            existing_their_glance = await db.glances.find_one({
-                "from_user_id": data.user_id, 
-                "to_user_id": current_user["id"]
-            })
-            
-            if not existing_my_glance:
-                await db.glances.insert_one({
-                    "id": str(uuid.uuid4()),
-                    "from_user_id": current_user["id"],
-                    "to_user_id": data.user_id,
-                    "created_at": now,
-                    "restored_after_unblock": True
-                })
-            
-            if not existing_their_glance:
-                await db.glances.insert_one({
-                    "id": str(uuid.uuid4()),
-                    "from_user_id": data.user_id,
-                    "to_user_id": current_user["id"],
-                    "created_at": now,
-                    "restored_after_unblock": True
-                })
-        
-        # Restore connection if it existed
-        if blocked_relationship.get("had_connection"):
-            existing_connection = await db.connections.find_one({
-                "$or": [
-                    {"user1_id": current_user["id"], "user2_id": data.user_id},
-                    {"user1_id": data.user_id, "user2_id": current_user["id"]}
-                ]
-            })
-            
-            if not existing_connection:
-                await db.connections.insert_one({
-                    "id": str(uuid.uuid4()),
-                    "user1_id": current_user["id"],
-                    "user2_id": data.user_id,
-                    "connected_at": now,
-                    "reveal_state": blocked_relationship.get("connection_reveal_state", "none"),
-                    "restored_after_unblock": True
-                })
-        
-        # Clean up the blocked relationship record
-        await db.blocked_relationships.delete_one({
-            "blocker_id": current_user["id"],
-            "blocked_id": data.user_id
-        })
+    # Restore chat history by un-hiding messages
+    await db.messages.update_many(
+        {
+            "$or": [
+                {"from_user_id": current_user["id"], "to_user_id": data.user_id},
+                {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
+            ],
+            "is_hidden_by_block": True
+        },
+        {"$unset": {"is_hidden_by_block": "", "blocked_at": ""}}
+    )
     
-    return {"message": "User unblocked. Previous connection state has been restored."}
+    # Clean up the blocked relationship record (don't restore old states)
+    await db.blocked_relationships.delete_one({
+        "blocker_id": current_user["id"],
+        "blocked_id": data.user_id
+    })
+    
+    # Note: We do NOT restore:
+    # - Glances (they start fresh)
+    # - Connections (they start fresh)
+    # - Mutual match status (they start fresh)
+    # - Notifications (cleared on block, not restored)
+    #
+    # We DO preserve (by not deleting during block):
+    # - Reveal status (from db.reveals collection - was never deleted)
+    # - Chat history (now un-hidden)
+    
+    return {"message": "User unblocked. You can see each other again. Chat history restored."}
 
 
 @api_router.get("/users/blocked")

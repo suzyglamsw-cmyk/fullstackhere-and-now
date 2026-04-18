@@ -62,6 +62,7 @@ The preview simulates exactly what others see:
 - ✅ Glances card styling fix in Match List
 - ✅ Glance deletion confirmation prompt
 - ✅ Unified connection logic for all three pathways (glance/icebreaker/chat request)
+- ✅ Block/Unblock behavior: preserves chat history & reveal status, does NOT restore interaction states
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules
