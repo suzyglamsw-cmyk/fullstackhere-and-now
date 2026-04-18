@@ -4386,8 +4386,9 @@ async def get_people_at_venue(
         # Check if user wants to hide their photo in venues (silhouette mode)
         hide_photo = user.get("hide_photo_in_venues", False)
         
-        # Determine avatar_url: hide if user toggled hide_photo_in_venues AND not connection_accepted
-        if hide_photo and not is_connection_accepted:
+        # IMPORTANT: Reveal overrides venue hiding - if they revealed to viewer, show clear photos
+        # Determine avatar_url: hide if user toggled hide_photo_in_venues AND not connection_accepted AND they haven't revealed
+        if hide_photo and not is_connection_accepted and not they_revealed_to_me:
             avatar_url = None  # Client will show silhouette placeholder
         else:
             avatar_url = user.get("avatar_url", "")  # Send avatar for blur effect client-side
@@ -4407,6 +4408,8 @@ async def get_people_at_venue(
             "is_mutual": is_mutual,
             "is_connection_accepted": is_connection_accepted,
             "is_revealed": is_revealed,
+            "i_revealed": i_revealed_to_them,
+            "they_revealed": they_revealed_to_me,
             "is_premium": user.get("is_premium", False),
             "last_active_at": user.get("last_active_at"),
             # New fields - visible while blurred
@@ -4571,6 +4574,9 @@ async def get_people_not_here(
             i_glanced_at = False
             is_connected = False
             is_revealed = True  # Always revealed to self
+            i_revealed_to_them = False
+            they_revealed_to_me = False
+            is_connection_accepted = False
         else:
             # Check glance status
             has_glanced_at_me = await db.glances.find_one({
@@ -4591,19 +4597,34 @@ async def get_people_not_here(
                 ]
             }) is not None
             
-            # Revealed if mutual glance or connected
-            is_revealed = (has_glanced_at_me and i_glanced_at) or is_connected
+            # Check reveal status - BOTH must have pressed reveal
+            i_revealed_to_them = await db.reveals.find_one({
+                "revealer_id": current_user["id"],
+                "revealed_to_id": user["id"]
+            }) is not None
+            
+            they_revealed_to_me = await db.reveals.find_one({
+                "revealer_id": user["id"],
+                "revealed_to_id": current_user["id"]
+            }) is not None
+            
+            # Connection accepted = mutual glance or connected
+            is_mutual = has_glanced_at_me and i_glanced_at
+            is_connection_accepted = is_mutual or is_connected
+            
+            # Revealed only when BOTH have pressed reveal
+            is_revealed = i_revealed_to_them and they_revealed_to_me
         
         first_name = get_first_name(user.get("display_name", "Someone"))
         
         # Check if user wants to hide their photo in venues (silhouette mode)
-        # For discovery/not-here, apply same logic for consistency
+        # IMPORTANT: Reveal overrides venue hiding - if they revealed to me, I see their photos
         hide_photo = user.get("hide_photo_in_venues", False)
         
-        # Determine avatar_url: hide if user toggled hide_photo_in_venues AND not revealed (self always shows)
+        # Determine avatar_url: hide if user toggled hide_photo_in_venues AND not connection_accepted AND they haven't revealed
         if is_self:
             avatar_url = user.get("avatar_url", "")
-        elif hide_photo and not is_revealed:
+        elif hide_photo and not is_connection_accepted and not they_revealed_to_me:
             avatar_url = None  # Client will show silhouette placeholder
         else:
             avatar_url = user.get("avatar_url", "")
@@ -4620,7 +4641,10 @@ async def get_people_not_here(
             "has_glanced_at_me": has_glanced_at_me,
             "i_glanced_at": i_glanced_at,
             "is_connected": is_connected,
+            "is_connection_accepted": is_connection_accepted,
             "is_revealed": is_revealed,
+            "i_revealed": i_revealed_to_them,
+            "they_revealed": they_revealed_to_me,
             "is_premium": user.get("is_premium", False),
             "last_active_at": user.get("last_active_at"),
             "presence_note": user.get("presence_note", ""),
@@ -6143,9 +6167,14 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         }
     
     # Check if user wants to hide their photo in venues (silhouette mode)
-    # Apply hide_photo_in_venues: if enabled AND not connection_accepted, hide photo
+    # IMPORTANT: Reveal overrides venue hiding - if they revealed to me, I always see clear photos
     hide_photo = user.get("hide_photo_in_venues", False)
-    if hide_photo and not is_connection_accepted and current_user["id"] != user_id:
+    
+    # Apply hide_photo_in_venues: hide photo ONLY if:
+    # - User enabled hide_photo_in_venues AND
+    # - Not connection_accepted AND  
+    # - They have NOT revealed to the viewer (reveal overrides venue hiding)
+    if hide_photo and not is_connection_accepted and not they_revealed_to_me and current_user["id"] != user_id:
         avatar_url = None
         photos = []
     else:

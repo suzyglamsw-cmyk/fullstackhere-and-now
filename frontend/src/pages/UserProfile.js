@@ -179,17 +179,22 @@ const UserProfile = () => {
   const isMutualMatch = profile?.is_connection_accepted === true;
   
   // Photo reveal state (for blur level only - separate from match state)
+  // is_revealed = BOTH have revealed to each other
+  // they_revealed = THEY have revealed to ME (their photos clear to me)
   const isRevealed = profile?.is_revealed === true;
+  const theyRevealed = profile?.they_revealed === true;
   
   // Blocked state
   const isBlocked = profile?.is_blocked === true;
   
   // Get photo blur state (12px / 6px / 0px)
+  // IMPORTANT: If they revealed to me, I see their photos clear (0px)
+  // regardless of whether I revealed back
   const getPhotoState = () => {
     if (isBlocked) return 'blocked';
-    if (isRevealed) return 'revealed';           // 0px - ONLY when both pressed Reveal
-    if (isMutualMatch) return 'connection_accepted'; // 6px - mutual match
-    return 'unmatched';                          // 12px - no connection
+    if (isRevealed || theyRevealed) return 'revealed';  // 0px - they revealed to me OR both revealed
+    if (isMutualMatch) return 'connection_accepted';     // 6px - mutual match
+    return 'unmatched';                                  // 12px - no connection
   };
 
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -441,7 +446,7 @@ const UserProfile = () => {
                 {/* Left: Name + Age */}
                 <div className="min-w-0 flex-shrink">
                   <h1 className="text-2xl font-bold text-white truncate">
-                    {getPhotoState() === 'revealed' ? profile.display_name : (profile.display_name || "?").charAt(0)}
+                    {(isRevealed || theyRevealed) ? profile.display_name : (profile.display_name || "?").charAt(0)}
                     {profile.age && <span className="text-slate-400 ml-2">{profile.age}</span>}
                   </h1>
                 </div>
@@ -481,6 +486,18 @@ const UserProfile = () => {
                   )}
                 </div>
               </div>
+
+              {/* Reveal-Status Indicator - Only when ONE person has revealed (not both) */}
+              {!profile.is_revealed && profile.they_revealed && !profile.i_revealed && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mt-3 mb-1">
+                  <p className="text-emerald-400 text-sm font-medium">
+                    They've revealed. You can reveal anytime.
+                  </p>
+                  <p className="text-emerald-400/70 text-xs mt-1">
+                    Revealed means their photos and profile are now clear to you.
+                  </p>
+                </div>
+              )}
 
               {/* Inner Scrollable Sections Container */}
               <div className="space-y-4">
