@@ -837,7 +837,8 @@ const Profile = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-medium text-purple-100">Your Photos</h2>
-                <p className="text-sm mt-1 text-purple-300/70">Choose photos that feel like you today</p>
+                <p className="text-sm mt-1 text-purple-300/70">Keep it recent. Keep it real. Keep it in the Here&Now.</p>
+                <p className="text-xs mt-1 text-purple-300/50">Your main photo should clearly show your face. Your other photos can show your world.</p>
               </div>
               <span className="text-xs text-purple-400/60 flex items-center gap-1">
                 <Check className="w-3 h-3" />

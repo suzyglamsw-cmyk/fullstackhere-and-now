@@ -115,6 +115,13 @@ The preview simulates exactly what others see:
   - Face fully obscured while remaining warm and on-brand
   - Automatically updates when user changes their profile photo
   - Backend updated to return photos array in messages/threads endpoint
+- ✅ Photo upload validation system implemented:
+  - Global safety rules (all photos): Rejects nudity, explicit content, violence, unsafe material
+  - Main photo rules (photos[0] only): Must have exactly one human face, recent EXIF metadata (within 18 months), not a screenshot, not AI-generated, not a celebrity
+  - Secondary photos: Only global safety rules apply (allows group photos, pets, scenery)
+  - Error message: "Please choose a recent photo that clearly shows your face for your main pic."
+  - UI copy added: "Keep it recent. Keep it real. Keep it in the Here&Now. Your main photo should clearly show your face. Your other photos can show your world."
+  - Uses OpenAI GPT-4o Vision via Emergent LLM key for AI-based analysis
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules

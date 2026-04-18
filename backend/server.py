@@ -1565,6 +1565,8 @@ async def upload_photo(
     current_user: dict = Depends(get_current_user)
 ):
     """Upload a profile photo to cloud storage (up to 3 photos, slots 0-2)"""
+    from utils.photo_validation import validate_photo
+    
     if slot < 0 or slot > 2:
         raise HTTPException(status_code=400, detail="Invalid slot. Use 0, 1, or 2.")
     
@@ -1579,8 +1581,12 @@ async def upload_photo(
     if len(content) > MAX_PHOTO_SIZE:
         raise HTTPException(status_code=400, detail="File too large. Maximum 5MB.")
     
-    # Check photo metadata age (soft warning, never blocks)
-    photo_age_warning = check_photo_age_warning(content)
+    # Validate photo based on slot (main photo has stricter rules)
+    is_main_photo = (slot == 0)
+    validation_result = await validate_photo(content, is_main_photo)
+    
+    if not validation_result["valid"]:
+        raise HTTPException(status_code=400, detail=validation_result["error"])
     
     # Generate unique photo ID
     photo_id = str(uuid.uuid4())
@@ -1648,12 +1654,8 @@ async def upload_photo(
             "photo_id": photo_id,
             "url": f"/api/photos/serve/{photo_id}",
             "slot": slot,
-            "message": "Photo uploaded to cloud storage successfully"
+            "message": "Photo uploaded successfully"
         }
-        
-        # Add soft warning if photo appears old (never blocks upload)
-        if photo_age_warning:
-            response["warning"] = photo_age_warning
         
         return response
         
@@ -1794,6 +1796,9 @@ async def delete_photo(slot: int, current_user: dict = Depends(get_current_user)
 @api_router.post("/photos/make-main/{slot}")
 async def make_main_photo(slot: int, current_user: dict = Depends(get_current_user)):
     """Make a photo the main photo (move to slot 0)"""
+    from utils.photo_validation import validate_photo
+    from utils.storage import get_photo_from_storage
+    
     if slot < 1 or slot > 2:
         raise HTTPException(status_code=400, detail="Invalid slot. Use 1 or 2.")
     
@@ -1803,6 +1808,25 @@ async def make_main_photo(slot: int, current_user: dict = Depends(get_current_us
     
     if not photos[slot]:
         raise HTTPException(status_code=400, detail="No photo in this slot")
+    
+    # Get the photo that will become the main photo and validate it
+    photo_to_promote = await db.photos.find_one({"user_id": current_user["id"], "slot": slot})
+    if photo_to_promote:
+        # Get the photo data from storage
+        try:
+            photo_data = get_photo_from_storage(
+                current_user["id"],
+                photo_to_promote["id"],
+                blurred=False
+            )
+            if photo_data:
+                # Validate as main photo (stricter rules)
+                validation_result = await validate_photo(photo_data, is_main_photo=True)
+                if not validation_result["valid"]:
+                    raise HTTPException(status_code=400, detail=validation_result["error"])
+        except Exception as e:
+            logger.warning(f"Could not validate photo for make-main: {e}")
+            # Continue without validation if we can't get the photo data
     
     # Swap the photos: move selected to index 0, move current 0 to selected slot
     old_main = photos[0]
