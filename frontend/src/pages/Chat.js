@@ -112,6 +112,16 @@ const Chat = () => {
             fetchMessages();
           }
         }
+        
+        // Handle user unblocked - refresh chat state to clear blocked status
+        if (data.type === 'user_unblocked') {
+          const unblockUserId = data.unblocked_by || data.unblocked_user;
+          if (unblockUserId === userId) {
+            // This chat's user was unblocked - refresh to clear blocked state
+            setIsBlocked(false);
+            fetchMessages();
+          }
+        }
       } catch (e) {
         console.error('WebSocket message error:', e);
       }

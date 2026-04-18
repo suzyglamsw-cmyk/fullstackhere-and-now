@@ -201,6 +201,12 @@ const Connections = () => {
           // Refresh all data to update lists
           fetchAllData();
         }
+        
+        // Handle user_unblocked event - refresh lists to restore visibility
+        if (data.type === 'user_unblocked') {
+          // Refresh all data to potentially restore the unblocked user in lists
+          fetchAllData();
+        }
       } catch (e) {
         console.error('WebSocket message error:', e);
       }

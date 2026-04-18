@@ -82,6 +82,12 @@ The preview simulates exactly what others see:
   - Blocked users removed from Mutual Matches immediately via WebSocket
   - Backend /connections endpoint filters blocked users from all match sources
   - Chat.js no longer calls profile endpoint for blocked users (avoids "Unavailable" overwrite)
+- ✅ Unblock fully restores messaging:
+  - WebSocket `user_unblocked` event sent to both users
+  - Chat.js and Connections.js listen for unblock event to refresh state
+  - `check_chat_unlocked` now checks for message history (preserves chat after unblock)
+  - Both server.py and routes/dependencies.py versions updated
+  - Messaging works immediately after unblock (no page refresh needed)
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules

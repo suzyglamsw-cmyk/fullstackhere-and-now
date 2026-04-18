@@ -460,6 +460,7 @@ async def check_chat_unlocked(user1_id: str, user2_id: str) -> dict:
     1. Mutual glance exists
     2. Drink has been accepted
     3. Chat request has been accepted
+    4. There's existing message history (preserves chat after unblock)
     Returns dict with is_unlocked and reason
     """
     # Check for connection (mutual glance or drink acceptance)
@@ -494,6 +495,20 @@ async def check_chat_unlocked(user1_id: str, user2_id: str) -> dict:
     
     if accepted_icebreaker:
         return {"is_unlocked": True, "reason": "icebreaker_accepted"}
+    
+    # Check for existing message history (preserves chat after unblock)
+    # If both users have sent messages to each other, chat is unlocked
+    user1_sent = await db.messages.find_one({
+        "from_user_id": user1_id,
+        "to_user_id": user2_id
+    })
+    user2_sent = await db.messages.find_one({
+        "from_user_id": user2_id,
+        "to_user_id": user1_id
+    })
+    
+    if user1_sent and user2_sent:
+        return {"is_unlocked": True, "reason": "message_history"}
     
     return {"is_unlocked": False, "reason": None}
 
@@ -2599,6 +2614,20 @@ async def unblock_user(data: BlockUserRequest, current_user: dict = Depends(get_
     await db.blocked_relationships.delete_one({
         "blocker_id": current_user["id"],
         "blocked_id": data.user_id
+    })
+    
+    # Send WebSocket notification to the unblocked user so they refresh their chat state
+    await manager.send_to_user(data.user_id, {
+        "type": "user_unblocked",
+        "unblocked_by": current_user["id"],
+        "message": "A user has unblocked you"
+    })
+    
+    # Also notify the current user (blocker) to refresh their own state
+    await manager.send_to_user(current_user["id"], {
+        "type": "user_unblocked",
+        "unblocked_user": data.user_id,
+        "message": "You have unblocked this user"
     })
     
     # Note: We do NOT restore:

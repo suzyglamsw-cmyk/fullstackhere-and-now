@@ -818,6 +818,17 @@ async def handle_premium_expiration(user_id: str, user_data: dict) -> dict:
 
 async def check_chat_unlocked(user1_id: str, user2_id: str) -> dict:
     """Check if chat is unlocked between two users"""
+    # Check for connection record
+    connection = await db.connections.find_one({
+        "$or": [
+            {"user1_id": user1_id, "user2_id": user2_id},
+            {"user1_id": user2_id, "user2_id": user1_id}
+        ]
+    })
+    
+    if connection:
+        return {"is_unlocked": True, "reason": "connected"}
+    
     # Check for mutual glance
     glance1 = await db.glances.find_one({
         "from_user_id": user1_id,
@@ -863,6 +874,20 @@ async def check_chat_unlocked(user1_id: str, user2_id: str) -> dict:
     
     if friendship:
         return {"is_unlocked": True, "reason": "friends"}
+    
+    # Check for existing message history (preserves chat after unblock)
+    # If both users have sent messages to each other, chat is unlocked
+    user1_sent = await db.messages.find_one({
+        "from_user_id": user1_id,
+        "to_user_id": user2_id
+    })
+    user2_sent = await db.messages.find_one({
+        "from_user_id": user2_id,
+        "to_user_id": user1_id
+    })
+    
+    if user1_sent and user2_sent:
+        return {"is_unlocked": True, "reason": "message_history"}
     
     return {"is_unlocked": False, "reason": None}
 
