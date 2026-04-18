@@ -64,7 +64,7 @@ The preview simulates exactly what others see:
 - ✅ Unified connection logic for all three pathways (glance/icebreaker/chat request)
 - ✅ Block/Unblock behavior: preserves chat history & reveal status, does NOT restore interaction states
 - ✅ Reveal-status indicator: shows when one person revealed, disappears when both have
-- ✅ Reveal overrides venue hiding: if they revealed, their photos stay clear regardless of venue settings
+- ✅ Reveal requires MUTUAL: photos clear only when BOTH revealed; venue/discovery hiding unaffected
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules
