@@ -65,6 +65,7 @@ The preview simulates exactly what others see:
 - ✅ Block/Unblock behavior: preserves chat history & reveal status, does NOT restore interaction states
 - ✅ Reveal-status indicator: shows when one person revealed, disappears when both have
 - ✅ Reveal requires MUTUAL: photos clear only when BOTH revealed; venue/discovery hiding unaffected
+- ✅ Notification fixes: added logging for message notifications, added reveal notification via "matches" channel
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules

@@ -6352,7 +6352,10 @@ async def send_message(data: MessageCreate, current_user: dict = Depends(get_cur
     
     # Send push notification for message
     settings = await db.push_settings.find_one({"user_id": data.to_user_id})
-    if not settings or settings.get("messages", True):
+    messages_enabled = not settings or settings.get("messages", True)
+    logger.info(f"Message notification check: to_user={data.to_user_id}, messages_enabled={messages_enabled}")
+    
+    if messages_enabled:
         # Truncate message preview
         preview = data.content[:50] + "..." if len(data.content) > 50 else data.content
         await send_push_notification(

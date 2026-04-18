@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 import uuid
+import logging
 
 from .dependencies import (
     db, get_current_user, IS_TEST_BUILD,
@@ -18,11 +19,65 @@ from .dependencies import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# Push notification helper (to be imported from server.py or defined here)
-async def send_push_notification(user_id: str, title: str, body: str, data: dict = None):
-    """Send push notification - placeholder, actual implementation in server.py"""
-    pass
+
+# Push notification helper for routes
+async def send_push_notification_from_route(user_id: str, title: str, body: str, data: dict = None):
+    """
+    Send push notification to a user.
+    Uses the same logic as server.py's send_push_notification.
+    """
+    try:
+        from pywebpush import webpush, WebPushException
+        import os
+        import json
+        
+        # Get user's push subscriptions
+        subscriptions = await db.push_subscriptions.find({"user_id": user_id}).to_list(10)
+        if not subscriptions:
+            logger.info(f"No push subscriptions for user {user_id}")
+            return
+        
+        # Check user's notification settings
+        settings = await db.push_settings.find_one({"user_id": user_id})
+        if settings and not settings.get("enabled", True):
+            logger.info(f"Push notifications disabled for user {user_id}")
+            return
+        
+        vapid_private_key = os.environ.get("VAPID_PRIVATE_KEY", "")
+        vapid_claims = {"sub": "mailto:support@hereandnow.app"}
+        
+        if not vapid_private_key:
+            logger.warning("VAPID_PRIVATE_KEY not configured")
+            return
+        
+        payload = json.dumps({
+            "title": title,
+            "body": body,
+            "data": data or {}
+        })
+        
+        for sub in subscriptions:
+            try:
+                webpush(
+                    subscription_info=sub["subscription"],
+                    data=payload,
+                    vapid_private_key=vapid_private_key,
+                    vapid_claims=vapid_claims
+                )
+                logger.info(f"Push notification sent to user {user_id}")
+            except WebPushException as e:
+                logger.error(f"Push notification failed: {e}")
+                if e.response and e.response.status_code in [404, 410]:
+                    # Subscription expired, remove it
+                    await db.push_subscriptions.delete_one({"_id": sub["_id"]})
+            except Exception as e:
+                logger.error(f"Push notification error: {e}")
+    except ImportError:
+        logger.warning("pywebpush not installed, skipping push notification")
+    except Exception as e:
+        logger.error(f"Push notification error: {e}")
 
 
 # ============================================================================
@@ -1613,6 +1668,17 @@ async def reveal_photo(other_user_id: str, current_user: dict = Depends(get_curr
         "revealed_to_id": other_user_id,
         "revealed_at": now.isoformat()
     })
+    
+    # Send push notification to the other user (uses "matches" channel)
+    settings = await db.push_settings.find_one({"user_id": other_user_id})
+    if not settings or settings.get("matches", True):
+        first_name = get_first_name(current_user.get("display_name", "Someone"))
+        await send_push_notification_from_route(
+            other_user_id,
+            "Someone revealed to you!",
+            f"{first_name} has revealed their photo. Reveal back to see each other clearly!",
+            {"type": "reveal", "from_user_id": current_user["id"]}
+        )
     
     # Check if mutual reveal (both have revealed)
     mutual = await db.photo_reveals.find_one({
