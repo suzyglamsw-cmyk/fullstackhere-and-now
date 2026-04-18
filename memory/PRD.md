@@ -71,6 +71,7 @@ The preview simulates exactly what others see:
   - Added connection record check to `is_connection_accepted`
   - Updated Add Friend error messages to reference "mutual connection"
   - Photo blur: 0px only when BOTH revealed, 6px when matched
+- ✅ Fixed `PageHeader is not defined` crash in UserProfile.js (missing import restored)
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules
