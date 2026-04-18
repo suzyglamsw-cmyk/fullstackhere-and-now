@@ -6068,6 +6068,7 @@ async def get_message_threads(current_user: dict = Depends(get_current_user)):
                 "avatar_url": user.get("avatar_url", ""),
                 "thumbnail_url": user.get("thumbnail_url", ""),
                 "profile_photo_url": profile_photo_url,
+                "photos": [f"/api/photos/serve/{p}" for p in photos if p] if photos else [],  # Full photos array for new avatar design
                 "last_message": last_msg.get("content", "")[:50],
                 "last_message_at": last_msg.get("created_at"),
                 "unread_count": thread_data["unread_count"],
@@ -6594,6 +6595,10 @@ async def get_messages(user_id: str, current_user: dict = Depends(get_current_us
                 "is_masked": False
             })
     
+    # Convert photo IDs to URLs for the new avatar design
+    photos = other_user.get("photos", []) if other_user else []
+    photo_urls = [f"/api/photos/serve/{p}" for p in photos if p] if photos else []
+    
     return {
         "messages": result,
         "is_unlocked": True,
@@ -6604,7 +6609,7 @@ async def get_messages(user_id: str, current_user: dict = Depends(get_current_us
             "id": user_id,
             "display_name": other_user.get("display_name", "Someone") if other_user else "Someone",
             "avatar_url": other_user.get("avatar_url", "") if other_user else "",
-            "photos": other_user.get("photos", []) if other_user else []
+            "photos": photo_urls
         }
     }
 

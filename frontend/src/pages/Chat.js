@@ -279,16 +279,37 @@ const Chat = () => {
                 onClick={() => !isBlocked && navigate(`/profile/${userId}`)}
                 data-testid="chat-user-header"
               >
-                {/* Profile photo - use SilhouetteAvatar as fallback */}
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-800 shrink-0 ring-2 ring-white/10">
-                  {otherUser.avatar_url || (otherUser.photos && otherUser.photos[0]) ? (
-                    <BlurredImage
-                      src={otherUser.avatar_url || (otherUser.photos && otherUser.photos[0])}
-                      alt={otherUser.display_name}
-                      blurState={isRevealed ? BLUR_STATES.CLEAR : BLUR_STATES.LOW_BLUR}
-                      isThumbnail={true}
-                      fallbackInitial={otherUser.display_name?.charAt(0) || "?"}
-                    />
+                {/* Profile photo - blurred with dark overlay and gradient initial */}
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-800 shrink-0 ring-2 ring-white/10 relative">
+                  {otherUser.photos && otherUser.photos[0] ? (
+                    <>
+                      {/* Base photo with blur */}
+                      <img
+                        src={otherUser.photos[0]}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        style={{ filter: 'blur(5px)', transform: 'scale(1.1)' }}
+                      />
+                      {/* Dark overlay */}
+                      <div 
+                        className="absolute inset-0"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                      />
+                      {/* Gradient initial */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span 
+                          className="text-xl font-bold"
+                          style={{
+                            background: 'linear-gradient(90deg, #FF4F9A 0%, #A259FF 100%)',
+                            WebkitBackgroundClip: 'text',
+                            backgroundClip: 'text',
+                            color: 'transparent'
+                          }}
+                        >
+                          {otherUser.display_name?.charAt(0)?.toUpperCase() || "?"}
+                        </span>
+                      </div>
+                    </>
                   ) : (
                     <SilhouetteAvatar />
                   )}

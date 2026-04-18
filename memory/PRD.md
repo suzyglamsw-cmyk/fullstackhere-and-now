@@ -59,6 +59,13 @@ The preview simulates exactly what others see:
   - Added `presence_note` field
   - Added `my_type_of_person` field
   - Now matches the modern profile data used by ProfilePreview/ExpandedPane
+- ✅ Push notification settings respect user preferences:
+  - Glances: checks `glances` setting before sending
+  - Icebreakers: checks `drinks` setting before sending
+  - Messages: checks `messages` setting before sending
+  - Matches (mutual glance): now checks `matches` setting before sending
+  - Matches (icebreaker accepted): now checks `matches` setting before sending
+  - Matches (chat request accepted): now checks `matches` setting before sending
 
 ## Completed Work (Dec 2025)
 - ✅ Town/Country persistence fix (auth.py route shadowing)
@@ -101,13 +108,13 @@ The preview simulates exactly what others see:
   - Section order: HereFor → Name/Age/Location → Food Mood → About You (Lifestyle) → About (Bio) → Q&A → Photos
   - Lifestyle section renamed from "Lifestyle" to "About You"
   - Bio section renamed from "About You" to "About"
-- ✅ Push notification settings respect user preferences:
-  - Glances: checks `glances` setting before sending
-  - Icebreakers: checks `drinks` setting before sending
-  - Messages: checks `messages` setting before sending
-  - Matches (mutual glance): now checks `matches` setting before sending
-  - Matches (icebreaker accepted): now checks `matches` setting before sending
-  - Matches (chat request accepted): now checks `matches` setting before sending
+- ✅ Small avatars redesigned with new brand-consistent style:
+  - HereHub Messages tab (Connections.js): Square avatar with blurred photo, dark overlay, gradient initial
+  - Chat header (Chat.js): Circular avatar with blurred photo, dark overlay, gradient initial
+  - Design: photos[0] with 5px blur, 50% dark overlay, centered initial with gradient (linear-gradient(90deg, #FF4F9A 0%, #A259FF 100%))
+  - Face fully obscured while remaining warm and on-brand
+  - Automatically updates when user changes their profile photo
+  - Backend updated to return photos array in messages/threads endpoint
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules

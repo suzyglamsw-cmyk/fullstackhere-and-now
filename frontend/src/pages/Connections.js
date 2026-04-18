@@ -834,14 +834,52 @@ const Connections = () => {
                     className="relative cursor-pointer"
                     onClick={() => navigate(`/profile/${thread.user_id}`)}
                   >
-                    <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
-                      <BlurredImage
-                        src={thread.photo_url || thread.avatar_url}
-                        alt={thread.display_name}
-                        blurState={getPhotoState(thread)}
-                        isThumbnail={true}
-                        fallbackInitial={thread.display_name?.charAt(0) || "?"}
-                      />
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all relative bg-slate-800">
+                      {thread.photos && thread.photos[0] ? (
+                        <>
+                          {/* Base photo with blur */}
+                          <img
+                            src={thread.photos[0]}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            style={{ filter: 'blur(5px)', transform: 'scale(1.1)' }}
+                          />
+                          {/* Dark overlay */}
+                          <div 
+                            className="absolute inset-0"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                          />
+                          {/* Gradient initial */}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span 
+                              className="text-2xl font-bold"
+                              style={{
+                                background: 'linear-gradient(90deg, #FF4F9A 0%, #A259FF 100%)',
+                                WebkitBackgroundClip: 'text',
+                                backgroundClip: 'text',
+                                color: 'transparent'
+                              }}
+                            >
+                              {thread.display_name?.charAt(0)?.toUpperCase() || "?"}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        /* Fallback: gradient initial on dark background */
+                        <div className="w-full h-full flex items-center justify-center bg-slate-700">
+                          <span 
+                            className="text-2xl font-bold"
+                            style={{
+                              background: 'linear-gradient(90deg, #FF4F9A 0%, #A259FF 100%)',
+                              WebkitBackgroundClip: 'text',
+                              backgroundClip: 'text',
+                              color: 'transparent'
+                            }}
+                          >
+                            {thread.display_name?.charAt(0)?.toUpperCase() || "?"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     {thread.unread_count > 0 && (
                       <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center text-white text-xs font-bold">
