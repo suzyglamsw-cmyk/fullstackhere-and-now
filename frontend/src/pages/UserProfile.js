@@ -226,9 +226,9 @@ const UserProfile = () => {
   };
 
   const handleAddFriend = async () => {
-    // Double-check if friend can be added
+    // Double-check if friend can be added (requires mutual match/connection)
     if (!profile.can_add_friend) {
-      toast.error("You can only add friends after an icebreaker or chat request is accepted.");
+      toast.error("You can add friends after making a mutual connection.");
       return;
     }
     
@@ -248,7 +248,7 @@ const UserProfile = () => {
       } else if (errorData?.detail) {
         errorMessage = typeof errorData.detail === "string" 
           ? errorData.detail 
-          : "You can only add friends after an icebreaker or chat request is accepted.";
+          : "You can add friends after making a mutual connection.";
       } else if (errorData?.msg) {
         errorMessage = errorData.msg;
       }

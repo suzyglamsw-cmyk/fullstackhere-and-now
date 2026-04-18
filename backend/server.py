@@ -6096,7 +6096,15 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
     # 2. CONNECTION_ACCEPTED (6px blur): Mutual glance OR accepted icebreaker OR accepted chat request
     # 3. REVEALED (0px blur): BOTH users have explicitly pressed the Reveal button
     
-    # Check for accepted connections (triggers connection_accepted state, NOT revealed)
+    # Check for explicit connection record (created on mutual glance or accepted icebreaker/chat)
+    has_connection_record = await db.connections.find_one({
+        "$or": [
+            {"user1_id": current_user["id"], "user2_id": user_id},
+            {"user1_id": user_id, "user2_id": current_user["id"]}
+        ]
+    }) is not None
+    
+    # Check for accepted icebreaker
     has_accepted_icebreaker = await db.icebreakers.find_one({
         "$or": [
             {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
@@ -6104,6 +6112,7 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         ]
     }) is not None
     
+    # Check for accepted chat request
     has_accepted_chat_request = await db.chat_requests.find_one({
         "$or": [
             {"from_user_id": current_user["id"], "to_user_id": user_id, "status": "accepted"},
@@ -6111,8 +6120,8 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         ]
     }) is not None
     
-    # Connection accepted = mutual glance OR accepted icebreaker OR accepted chat request OR friends
-    is_connection_accepted = is_mutual or has_accepted_icebreaker or has_accepted_chat_request or is_friend
+    # Connection accepted = connection record exists OR mutual glance OR accepted icebreaker OR accepted chat request OR friends
+    is_connection_accepted = has_connection_record or is_mutual or has_accepted_icebreaker or has_accepted_chat_request or is_friend
     
     # REVEAL requires BOTH users to explicitly press the Reveal button
     # Check the reveals collection for both directions

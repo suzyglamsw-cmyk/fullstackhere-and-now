@@ -1653,7 +1653,7 @@ async def reveal_photo(other_user_id: str, current_user: dict = Depends(get_curr
     now = datetime.now(timezone.utc)
     
     # Check if already revealed
-    existing = await db.photo_reveals.find_one({
+    existing = await db.reveals.find_one({
         "revealer_id": current_user["id"],
         "revealed_to_id": other_user_id
     })
@@ -1662,7 +1662,7 @@ async def reveal_photo(other_user_id: str, current_user: dict = Depends(get_curr
         return {"message": "Already revealed", "revealed_at": existing.get("revealed_at")}
     
     # Create reveal record
-    await db.photo_reveals.insert_one({
+    await db.reveals.insert_one({
         "id": str(uuid.uuid4()),
         "revealer_id": current_user["id"],
         "revealed_to_id": other_user_id,
@@ -1681,7 +1681,7 @@ async def reveal_photo(other_user_id: str, current_user: dict = Depends(get_curr
         )
     
     # Check if mutual reveal (both have revealed)
-    mutual = await db.photo_reveals.find_one({
+    mutual = await db.reveals.find_one({
         "revealer_id": other_user_id,
         "revealed_to_id": current_user["id"]
     })
@@ -1698,13 +1698,13 @@ async def get_reveal_status(other_user_id: str, current_user: dict = Depends(get
     """Get reveal status between current user and another user"""
     
     # Did I reveal to them?
-    i_revealed = await db.photo_reveals.find_one({
+    i_revealed = await db.reveals.find_one({
         "revealer_id": current_user["id"],
         "revealed_to_id": other_user_id
     })
     
     # Did they reveal to me?
-    they_revealed = await db.photo_reveals.find_one({
+    they_revealed = await db.reveals.find_one({
         "revealer_id": other_user_id,
         "revealed_to_id": current_user["id"]
     })

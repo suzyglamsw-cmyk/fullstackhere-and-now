@@ -66,6 +66,11 @@ The preview simulates exactly what others see:
 - ✅ Reveal-status indicator: shows when one person revealed, disappears when both have
 - ✅ Reveal requires MUTUAL: photos clear only when BOTH revealed; venue/discovery hiding unaffected
 - ✅ Notification fixes: added logging for message notifications, added reveal notification via "matches" channel
+- ✅ Reveal/Connection/Add Friend/Messaging/Blur logic fixes:
+  - Fixed reveal collection mismatch (`db.reveals` used consistently)
+  - Added connection record check to `is_connection_accepted`
+  - Updated Add Friend error messages to reference "mutual connection"
+  - Photo blur: 0px only when BOTH revealed, 6px when matched
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules
