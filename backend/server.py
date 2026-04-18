@@ -6526,28 +6526,41 @@ async def get_notifications_unread_count(current_user: dict = Depends(get_curren
     # Count glances (filter by cleared_at)
     glance_query = {"to_user_id": current_user["id"]}
     if cleared_at:
-        glance_query["created_at"] = {"$gt": cleared_at}
+        # Only count glances that have created_at AND it's after cleared_at
+        glance_query["$and"] = [
+            {"created_at": {"$exists": True}},
+            {"created_at": {"$gt": cleared_at}}
+        ]
     glance_count = await db.glances.count_documents(glance_query)
     total_count += glance_count
     
     # Count pending icebreakers (filter by cleared_at)
     icebreaker_query = {"to_user_id": current_user["id"], "status": "pending"}
     if cleared_at:
-        icebreaker_query["created_at"] = {"$gt": cleared_at}
+        icebreaker_query["$and"] = [
+            {"created_at": {"$exists": True}},
+            {"created_at": {"$gt": cleared_at}}
+        ]
     icebreaker_count = await db.icebreakers.count_documents(icebreaker_query)
     total_count += icebreaker_count
     
     # Count pending chat requests (filter by cleared_at)
     chat_query = {"to_user_id": current_user["id"], "status": "pending"}
     if cleared_at:
-        chat_query["created_at"] = {"$gt": cleared_at}
+        chat_query["$and"] = [
+            {"created_at": {"$exists": True}},
+            {"created_at": {"$gt": cleared_at}}
+        ]
     chat_count = await db.chat_requests.count_documents(chat_query)
     total_count += chat_count
     
-    # Count stored notifications (filter by cleared_at - these are already filtered on insert)
+    # Count stored notifications (filter by cleared_at)
     notif_query = {"user_id": current_user["id"]}
     if cleared_at:
-        notif_query["created_at"] = {"$gt": cleared_at}
+        notif_query["$and"] = [
+            {"created_at": {"$exists": True}},
+            {"created_at": {"$gt": cleared_at}}
+        ]
     notif_count = await db.notifications.count_documents(notif_query)
     total_count += notif_count
     
@@ -6633,24 +6646,39 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
     # Get recent glances at me (filter by cleared_at)
     glance_query = {"to_user_id": current_user["id"]}
     if cleared_at:
-        glance_query["created_at"] = {"$gt": cleared_at}
+        glance_query["$and"] = [
+            {"created_at": {"$exists": True}},
+            {"created_at": {"$gt": cleared_at}}
+        ]
     glances = await db.glances.find(glance_query, {"_id": 0}).sort("created_at", -1).to_list(20)
     
     # Get pending icebreakers (filter by cleared_at)
     icebreaker_query = {"to_user_id": current_user["id"], "status": "pending"}
     if cleared_at:
-        icebreaker_query["created_at"] = {"$gt": cleared_at}
+        icebreaker_query["$and"] = [
+            {"created_at": {"$exists": True}},
+            {"created_at": {"$gt": cleared_at}}
+        ]
     icebreakers = await db.icebreakers.find(icebreaker_query, {"_id": 0}).sort("created_at", -1).to_list(20)
     
     # Get chat requests (filter by cleared_at)
     chat_query = {"to_user_id": current_user["id"], "status": "pending"}
     if cleared_at:
-        chat_query["created_at"] = {"$gt": cleared_at}
+        chat_query["$and"] = [
+            {"created_at": {"$exists": True}},
+            {"created_at": {"$gt": cleared_at}}
+        ]
     chat_requests = await db.chat_requests.find(chat_query, {"_id": 0}).sort("created_at", -1).to_list(20)
     
-    # Get stored notifications (including test notifications)
+    # Get stored notifications (including test notifications, filter by cleared_at)
+    notif_query = {"user_id": current_user["id"]}
+    if cleared_at:
+        notif_query["$and"] = [
+            {"created_at": {"$exists": True}},
+            {"created_at": {"$gt": cleared_at}}
+        ]
     stored_notifications = await db.notifications.find(
-        {"user_id": current_user["id"]},
+        notif_query,
         {"_id": 0}
     ).sort("created_at", -1).to_list(30)
     
@@ -6674,12 +6702,14 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
         if g.get("id") in stored_glance_ids:
             continue  # Already in stored notifications
             
-        # Check if mutual
-        mutual = await db.glances.find_one({
+        # Check if mutual (handle missing venue_id gracefully)
+        mutual_query = {
             "from_user_id": current_user["id"],
-            "to_user_id": g["from_user_id"],
-            "venue_id": g["venue_id"]
-        })
+            "to_user_id": g.get("from_user_id")
+        }
+        if g.get("venue_id"):
+            mutual_query["venue_id"] = g["venue_id"]
+        mutual = await db.glances.find_one(mutual_query)
         
         from_user = await db.users.find_one({"id": g["from_user_id"]}, {"_id": 0, "password": 0})
         

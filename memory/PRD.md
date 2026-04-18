@@ -58,6 +58,7 @@ The preview simulates exactly what others see:
 - ✅ Minimum 1 photo validation on profile update
 - ✅ Notifications.js error handling (try/catch)
 - ✅ Profile Preview fix - mirrors real visibility exactly
+- ✅ Notification badge bug - unread_count now resets after clearing
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules
