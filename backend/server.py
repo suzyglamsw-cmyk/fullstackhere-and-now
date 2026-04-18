@@ -1359,6 +1359,9 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 
 @api_router.put("/auth/profile")
 async def update_profile(data: UserProfile, current_user: dict = Depends(get_current_user)):
+    from utils.photo_validation import validate_photo
+    from utils.storage import get_photo_from_storage
+    
     update_data = data.model_dump(exclude_unset=True)
     
     # Prevent display_name from being changed after registration
@@ -1398,6 +1401,29 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
         is_valid, error_msg = validate_home_area(update_data["home_area"])
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Validate main photo (photos[0]) before saving
+    photos = current_user.get("photos", [])
+    if photos and photos[0]:
+        main_photo_id = photos[0]
+        # Get the main photo from storage
+        main_photo_record = await db.photos.find_one({"user_id": current_user["id"], "slot": 0})
+        if main_photo_record:
+            try:
+                photo_data = get_photo_from_storage(
+                    current_user["id"],
+                    main_photo_record["id"],
+                    blurred=False
+                )
+                if photo_data:
+                    validation_result = await validate_photo(photo_data, is_main_photo=True)
+                    if not validation_result["valid"]:
+                        raise HTTPException(status_code=400, detail=validation_result["error"])
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.warning(f"Could not validate main photo on profile save: {e}")
+                # Continue without validation if we can't get the photo data
     
     await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
     updated = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "password": 0})
@@ -1796,9 +1822,6 @@ async def delete_photo(slot: int, current_user: dict = Depends(get_current_user)
 @api_router.post("/photos/make-main/{slot}")
 async def make_main_photo(slot: int, current_user: dict = Depends(get_current_user)):
     """Make a photo the main photo (move to slot 0)"""
-    from utils.photo_validation import validate_photo
-    from utils.storage import get_photo_from_storage
-    
     if slot < 1 or slot > 2:
         raise HTTPException(status_code=400, detail="Invalid slot. Use 1 or 2.")
     
@@ -1808,25 +1831,6 @@ async def make_main_photo(slot: int, current_user: dict = Depends(get_current_us
     
     if not photos[slot]:
         raise HTTPException(status_code=400, detail="No photo in this slot")
-    
-    # Get the photo that will become the main photo and validate it
-    photo_to_promote = await db.photos.find_one({"user_id": current_user["id"], "slot": slot})
-    if photo_to_promote:
-        # Get the photo data from storage
-        try:
-            photo_data = get_photo_from_storage(
-                current_user["id"],
-                photo_to_promote["id"],
-                blurred=False
-            )
-            if photo_data:
-                # Validate as main photo (stricter rules)
-                validation_result = await validate_photo(photo_data, is_main_photo=True)
-                if not validation_result["valid"]:
-                    raise HTTPException(status_code=400, detail=validation_result["error"])
-        except Exception as e:
-            logger.warning(f"Could not validate photo for make-main: {e}")
-            # Continue without validation if we can't get the photo data
     
     # Swap the photos: move selected to index 0, move current 0 to selected slot
     old_main = photos[0]
