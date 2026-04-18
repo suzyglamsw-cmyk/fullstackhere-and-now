@@ -95,6 +95,12 @@ The preview simulates exactly what others see:
   - Section order: HereFor → Name/Age/Location → Food Mood → About You (Lifestyle) → About (Bio) → Q&A → Photos
   - Lifestyle section renamed from "Lifestyle" to "About You"
   - Bio section renamed from "About You" to "About"
+- ✅ Profile endpoint data source updated (GET /api/users/{user_id}/profile):
+  - Added `intent` field (Here for: Dating/Friends/Both)
+  - Added `home_area` and `home_country` fields (location)
+  - Added `presence_note` field
+  - Added `my_type_of_person` field
+  - Now matches the modern profile data used by ProfilePreview/ExpandedPane
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules

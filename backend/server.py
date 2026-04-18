@@ -6264,6 +6264,15 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "show_as": user.get("show_as", ""),
         "rainbow": user.get("rainbow", False),
         "open_to_all": user.get("open_to_all", False),
+        # Intent - "Here for" (Dating/Friends/Both)
+        "intent": user.get("intent", ""),
+        # Location fields
+        "home_area": user.get("home_area", ""),
+        "home_country": user.get("home_country", ""),
+        # Presence note
+        "presence_note": user.get("presence_note", ""),
+        # My type of person
+        "my_type_of_person": user.get("my_type_of_person", ""),
         # Lifestyle fields (visible in ALL profile states)
         "lifestyle_vibe": user.get("lifestyle_vibe", ""),
         "lifestyle_travel": user.get("lifestyle_travel", ""),
