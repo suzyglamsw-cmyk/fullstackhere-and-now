@@ -2041,22 +2041,56 @@ async def respond_to_chat_request(request_id: str, data: ChatRequestResponse, cu
     if not request:
         raise HTTPException(status_code=404, detail="Request not found")
     
+    now = datetime.now(timezone.utc)
+    
     if data.accept:
-        await db.chat_requests.update_one({"id": request_id}, {"$set": {"status": "accepted"}})
+        await db.chat_requests.update_one({"id": request_id}, {"$set": {"status": "accepted", "accepted_at": now.isoformat()}})
         
-        # Create chat unlock
+        # Create chat unlock (for backwards compatibility)
         await db.chat_unlocks.insert_one({
             "id": str(uuid.uuid4()),
             "user1_id": request["from_user_id"],
             "user2_id": current_user["id"],
-            "unlocked_at": datetime.now(timezone.utc).isoformat()
+            "unlocked_at": now.isoformat()
         })
         
-        # Notify sender
-        await manager.send_to_user(request["from_user_id"], {
-            "type": "request_accepted",
-            "message": f"{current_user['display_name']} accepted. Chat unlocked."
+        # Create connection record (consistent with icebreaker acceptance)
+        connection_id = str(uuid.uuid4())
+        await db.connections.insert_one({
+            "id": connection_id,
+            "user1_id": request["from_user_id"],
+            "user2_id": current_user["id"],
+            "status": "connected",
+            "connection_type": "chat_request_accepted",
+            "created_at": now.isoformat(),
+            "connected_at": now.isoformat()
         })
+        
+        # Notify sender - unified event name
+        await manager.send_to_user(request["from_user_id"], {
+            "type": "mutual_match_created",
+            "source": "chat_request",
+            "by_user": {
+                "id": current_user["id"],
+                "display_name": current_user["display_name"],
+                "avatar_url": current_user.get("avatar_url", "")
+            }
+        })
+        
+        # Send push notification
+        await send_push_notification(
+            request["from_user_id"],
+            "You made a mutual connection 🎉",
+            f"You and {current_user['display_name']} are now connected!",
+            {
+                "type": "mutual_match_created",
+                "source": "chat_request",
+                "user_id": current_user["id"],
+                "from_user_id": current_user["id"],
+                "from_user_name": current_user["display_name"],
+                "from_user_photo": current_user.get("avatar_url", "")
+            }
+        )
         
         return {"message": "You accepted. Chat unlocked.", "response_message": data.message}
     else:
@@ -4983,18 +5017,31 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
     if mutual:
         # Create connection
         connection_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc)
         connection = {
             "id": connection_id,
             "user1_id": current_user["id"],
             "user2_id": data.to_user_id,
             "venue_id": data.venue_id,
-            "connected_at": datetime.now(timezone.utc).isoformat()
+            "connection_type": "mutual_glance",
+            "connected_at": now.isoformat()
         }
         await db.connections.insert_one(connection)
         
-        # Notify both users via WebSocket
+        # Update both glance records with matched status
+        await db.glances.update_one(
+            {"from_user_id": current_user["id"], "to_user_id": data.to_user_id, "venue_id": data.venue_id},
+            {"$set": {"status": "matched", "matched_at": now.isoformat()}}
+        )
+        await db.glances.update_one(
+            {"from_user_id": data.to_user_id, "to_user_id": current_user["id"], "venue_id": data.venue_id},
+            {"$set": {"status": "matched", "matched_at": now.isoformat()}}
+        )
+        
+        # Notify both users via WebSocket - unified event name
         await manager.send_to_user(data.to_user_id, {
-            "type": "mutual_glance",
+            "type": "mutual_match_created",
+            "source": "glance",
             "from_user": {
                 "id": current_user["id"],
                 "display_name": current_user["display_name"],
@@ -5005,10 +5052,11 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
         # Send push notification for match
         await send_push_notification(
             data.to_user_id,
-            "It's a match! 🎉",
-            f"You and {current_user['display_name']} both glanced at each other!",
+            "You made a mutual connection 🎉",
+            f"You and {current_user['display_name']} are now connected!",
             {
-                "type": "match",
+                "type": "mutual_match_created",
+                "source": "glance",
                 "user_id": current_user["id"],
                 "from_user_id": current_user["id"],
                 "from_user_name": current_user["display_name"],
@@ -5241,14 +5289,31 @@ async def respond_to_icebreaker(icebreaker_id: str, data: IcebreakerActionReques
             "connected_at": now.isoformat()
         })
         
-        # Notify sender (but don't reveal the action type for non-accept)
+        # Notify sender - unified event name
         await manager.send_to_user(icebreaker["from_user_id"], {
-            "type": "icebreaker_accepted",
+            "type": "mutual_match_created",
+            "source": "icebreaker",
             "by_user": {
                 "id": current_user["id"],
-                "display_name": current_user["display_name"]
+                "display_name": current_user["display_name"],
+                "avatar_url": current_user.get("avatar_url", "")
             }
         })
+        
+        # Send push notification
+        await send_push_notification(
+            icebreaker["from_user_id"],
+            "You made a mutual connection 🎉",
+            f"You and {current_user['display_name']} are now connected!",
+            {
+                "type": "mutual_match_created",
+                "source": "icebreaker",
+                "user_id": current_user["id"],
+                "from_user_id": current_user["id"],
+                "from_user_name": current_user["display_name"],
+                "from_user_photo": current_user.get("avatar_url", "")
+            }
+        )
         
         return {"message": "Icebreaker accepted! You can now chat."}
     

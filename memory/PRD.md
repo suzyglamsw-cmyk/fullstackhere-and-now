@@ -59,6 +59,9 @@ The preview simulates exactly what others see:
 - ✅ Notifications.js error handling (try/catch)
 - ✅ Profile Preview fix - mirrors real visibility exactly
 - ✅ Notification badge bug - unread_count now resets after clearing
+- ✅ Glances card styling fix in Match List
+- ✅ Glance deletion confirmation prompt
+- ✅ Unified connection logic for all three pathways (glance/icebreaker/chat request)
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules

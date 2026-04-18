@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +15,7 @@ import BlurredImage from "../components/BlurredImage";
 import SilhouetteAvatar from "../components/SilhouetteAvatar";
 import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 import { dispatchBlockEvent, onUserBlocked } from "../utils/blockEvents";
+import { dispatchMatchEvent, onMutualMatch } from "../utils/matchEvents";
 
 /**
  * Helper: Determine photo blur state using 3-stage system
@@ -61,6 +62,7 @@ const Connections = () => {
   const [hideFriendConfirm, setHideFriendConfirm] = useState(null); // For hide friend confirmation
   const [removeFriendConfirm, setRemoveFriendConfirm] = useState(null); // For remove friend confirmation
   const [deleteGlanceConfirm, setDeleteGlanceConfirm] = useState(null); // For glance deletion confirmation
+  const [matchedGlances, setMatchedGlances] = useState(new Set()); // Transitional state for glances that just became mutual
   const [tab, setTab] = useState(searchParams.get("tab") || "messages"); // "messages" | "glances" | "icebreakers" | "chats" | "requests" | "friends" | "connections"
   
   // Selection state for bulk delete
@@ -68,6 +70,9 @@ const Connections = () => {
   const [selectedIcebreakers, setSelectedIcebreakers] = useState(new Set());
   const [selectedChatRequests, setSelectedChatRequests] = useState(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  
+  // WebSocket ref for real-time updates
+  const wsRef = useRef(null);
   
   // Global ref for confirmation hints (only one visible at a time)
   const confirmHintRef = useConfirmHintGlobal();
@@ -120,6 +125,85 @@ const Connections = () => {
     });
     return cleanup;
   }, []);
+
+  // WebSocket connection for real-time match updates
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const wsUrl = API.replace('/api', '').replace('https://', 'wss://').replace('http://', 'ws://');
+    const ws = new WebSocket(`${wsUrl}/api/ws/${user.id}`);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle unified mutual match event
+        if (data.type === 'mutual_match_created') {
+          const matchUserId = data.by_user?.id || data.from_user?.id;
+          
+          // Show in-app notification
+          toast.success("You made a mutual connection!");
+          
+          // Dispatch event for other components (like Expanded Pane)
+          dispatchMatchEvent(data);
+          
+          if (data.source === 'glance') {
+            // Mark glances as matched (transitional state)
+            setMatchedGlances(prev => new Set([...prev, matchUserId]));
+            
+            // Update glances to show transitional state
+            setGlances(prev => ({
+              incoming: prev.incoming.map(g => 
+                g.from_user_id === matchUserId || g.user_id === matchUserId 
+                  ? { ...g, status: 'matched', matched_at: new Date().toISOString() }
+                  : g
+              ),
+              outgoing: prev.outgoing.map(g => 
+                g.to_user_id === matchUserId || g.user_id === matchUserId
+                  ? { ...g, status: 'matched', matched_at: new Date().toISOString() }
+                  : g
+              )
+            }));
+          }
+          
+          // Refresh all data to update lists
+          fetchAllData();
+        }
+      } catch (e) {
+        console.error('WebSocket message error:', e);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    wsRef.current = ws;
+    
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [user?.id]);
+
+  // Listen for mutual match events from other components
+  useEffect(() => {
+    const cleanup = onMutualMatch((matchData) => {
+      // Refresh data when a match is created
+      fetchAllData();
+    });
+    return cleanup;
+  }, []);
+
+  // Clear matched glances transitional state when leaving the Glances tab
+  useEffect(() => {
+    if (tab !== 'glances' && matchedGlances.size > 0) {
+      // Clear transitional state and refresh to remove matched glances
+      setMatchedGlances(new Set());
+      fetchAllData();
+    }
+  }, [tab, matchedGlances.size]);
 
   const fetchAllData = async () => {
     try {
@@ -858,8 +942,12 @@ const Connections = () => {
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-white text-sm truncate">{glance.display_name}</p>
-                          <p className="text-xs text-slate-400 truncate">
-                            {glance.is_connection_accepted ? "Mutual" : "Glanced at you"} · {formatDate(glance.created_at)}
+                          <p className={`text-xs truncate ${glance.status === 'matched' || matchedGlances.has(glance.from_user_id || glance.user_id) ? 'text-emerald-400 font-medium' : 'text-slate-400'}`}>
+                            {glance.status === 'matched' || matchedGlances.has(glance.from_user_id || glance.user_id)
+                              ? "Returned — now mutual"
+                              : glance.is_connection_accepted 
+                                ? "Mutual" 
+                                : "Glanced at you"} · {formatDate(glance.created_at)}
                           </p>
                         </div>
 
@@ -925,8 +1013,12 @@ const Connections = () => {
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-white text-sm truncate">{glance.display_name}</p>
-                          <p className="text-xs text-slate-400 truncate">
-                            {glance.is_connection_accepted ? "Mutual" : "Waiting"} · {formatDate(glance.created_at)}
+                          <p className={`text-xs truncate ${glance.status === 'matched' || matchedGlances.has(glance.to_user_id || glance.user_id) ? 'text-emerald-400 font-medium' : 'text-slate-400'}`}>
+                            {glance.status === 'matched' || matchedGlances.has(glance.to_user_id || glance.user_id)
+                              ? "Returned — now mutual"
+                              : glance.is_connection_accepted 
+                                ? "Mutual" 
+                                : "Waiting"} · {formatDate(glance.created_at)}
                           </p>
                         </div>
 

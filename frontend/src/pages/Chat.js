@@ -85,6 +85,17 @@ const Chat = () => {
           toast.success("Chat unlocked!");
           fetchMessages();
         }
+        
+        // Handle mutual match created (unified event)
+        if (data.type === 'mutual_match_created') {
+          const matchUserId = data.by_user?.id || data.from_user?.id;
+          if (matchUserId === userId) {
+            setIsUnlocked(true);
+            setUnlockReason(data.source || 'mutual_match');
+            toast.success("You made a mutual connection!");
+            fetchMessages();
+          }
+        }
       } catch (e) {
         console.error('WebSocket message error:', e);
       }

@@ -12,6 +12,7 @@ import BlurredImage from "../components/BlurredImage";
 import SilhouetteAvatar from "../components/SilhouetteAvatar";
 import { ConfirmHint, useConfirmHintGlobal } from "../components/ConfirmHint";
 import { dispatchBlockEvent } from "../utils/blockEvents";
+import { onMutualMatch } from "../utils/matchEvents";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,6 +90,57 @@ const UserProfile = () => {
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, [userId]);
+
+  // Listen for mutual match events - refresh if this profile is involved
+  useEffect(() => {
+    const cleanup = onMutualMatch((matchData) => {
+      const matchUserId = matchData.by_user?.id || matchData.from_user?.id;
+      if (matchUserId === userId) {
+        // This profile just became a mutual match - refresh to update UI
+        toast.success("You made a mutual connection!");
+        refreshConnectionState();
+        fetchProfile();
+      }
+    });
+    return cleanup;
+  }, [userId]);
+
+  // WebSocket connection for real-time match updates
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const wsUrl = API.replace('/api', '').replace('https://', 'wss://').replace('http://', 'ws://');
+    const ws = new WebSocket(`${wsUrl}/api/ws/${user.id}`);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle unified mutual match event
+        if (data.type === 'mutual_match_created') {
+          const matchUserId = data.by_user?.id || data.from_user?.id;
+          if (matchUserId === userId) {
+            // This profile just became a mutual match - refresh to update UI
+            toast.success("You made a mutual connection!");
+            refreshConnectionState();
+            fetchProfile();
+          }
+        }
+      } catch (e) {
+        console.error('WebSocket message error:', e);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [user?.id, userId]);
 
   const fetchProfile = async () => {
     try {
