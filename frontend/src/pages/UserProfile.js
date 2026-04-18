@@ -443,8 +443,23 @@ const UserProfile = () => {
 
             {/* Profile Info - Inner Scroll Container */}
             <div className="p-4">
+              {/* HERE FOR BANNER - TOP of profile */}
+              {profile.intent && (
+                <div className="mb-4">
+                  <span className={`inline-block px-3 py-1.5 rounded-full text-sm font-medium ${
+                    profile.intent === "dating" ? "bg-pink-500/30 text-pink-300" :
+                    profile.intent === "friends" ? "bg-emerald-500/30 text-emerald-300" :
+                    "bg-purple-500/30 text-purple-300"
+                  }`}>
+                    Here for {profile.intent === "dating" ? "Dating" : 
+                     profile.intent === "friends" ? "Friends" : 
+                     profile.intent === "open_to_both" ? "Both" : ""}
+                  </span>
+                </div>
+              )}
+
               {/* Name + Age row with icons right-aligned */}
-              <div className="flex justify-between items-center flex-nowrap mb-4">
+              <div className="flex justify-between items-center flex-nowrap">
                 {/* Left: Name + Age */}
                 <div className="min-w-0 flex-shrink">
                   <h1 className="text-2xl font-bold text-white truncate">
@@ -489,6 +504,16 @@ const UserProfile = () => {
                 </div>
               </div>
 
+              {/* Location - Town, Country (under name/age) */}
+              {(profile.home_area || profile.home_country) && (
+                <p className="text-slate-400 text-sm flex items-center gap-1.5 mt-1 mb-4">
+                  <MapPin className="w-3.5 h-3.5 text-teal-400" />
+                  {profile.home_area && profile.home_country 
+                    ? `${profile.home_area}, ${profile.home_country}` 
+                    : profile.home_area || profile.home_country}
+                </p>
+              )}
+
               {/* Reveal-Status Indicator - Only when ONE person has revealed (not both) */}
               {!isRevealed && theyRevealed && !iRevealed && (
                 <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mt-3 mb-1">
@@ -526,10 +551,21 @@ const UserProfile = () => {
                   )}
                 </div>
 
-                {/* LIFESTYLE SECTION FRAME - Visible in ALL profile states */}
+                {/* FOOD MOOD SECTION - Visible in ALL profile states */}
+                {profile.food_mood && (
+                  <div className="bg-purple-500/10 rounded-2xl p-4 border border-purple-500/15 shadow-sm">
+                    <h3 className="text-xs font-medium text-purple-300/70 mb-2 uppercase tracking-wide">Food Mood</h3>
+                    <div>
+                      <p className="text-purple-300/70 text-xs">In the kitchen?</p>
+                      <p className="text-purple-100 text-sm">{profile.food_mood}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ABOUT YOU (LIFESTYLE) SECTION - Visible in ALL profile states */}
                 {(profile.lifestyle_vibe || profile.lifestyle_travel || profile.lifestyle_going_out) && (
                   <div className="bg-purple-500/10 rounded-2xl p-4 border border-purple-500/15 shadow-sm">
-                    <h3 className="text-xs font-medium text-purple-300/70 mb-3 uppercase tracking-wide">Lifestyle</h3>
+                    <h3 className="text-xs font-medium text-purple-300/70 mb-3 uppercase tracking-wide">About You</h3>
                     <div className="space-y-2">
                       {profile.lifestyle_vibe && (
                         <div>
@@ -553,58 +589,19 @@ const UserProfile = () => {
                   </div>
                 )}
 
-                {/* FOOD MOOD SECTION FRAME - Visible in ALL profile states */}
-                {profile.food_mood && (
-                  <div className="bg-purple-500/10 rounded-2xl p-4 border border-purple-500/15 shadow-sm">
-                    <h3 className="text-xs font-medium text-purple-300/70 mb-2 uppercase tracking-wide">Food Mood</h3>
-                    <div>
-                      <p className="text-purple-300/70 text-xs">In the kitchen?</p>
-                      <p className="text-purple-100 text-sm">{profile.food_mood}</p>
-                    </div>
-                  </div>
-                )}
-
                 {/* About You (Bio) - obscured until is_connection_accepted === true */}
                 {profile.bio && (
                   <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
-                    <h3 className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">About You</h3>
+                    <h3 className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">About</h3>
                     <p className="text-slate-300 text-sm leading-relaxed">
                       {obscureBioText(profile.bio, profile.is_connection_accepted)}
                     </p>
                   </div>
                 )}
 
-                {/* Based in - Town, Country (shown on all profile states) */}
-                {(profile.home_area || profile.home_country) && (
-                  <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
-                    <h3 className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">Based in</h3>
-                    <p className="text-slate-300 text-sm flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-teal-400" />
-                      {profile.home_area && profile.home_country 
-                        ? `${profile.home_area}, ${profile.home_country}` 
-                        : profile.home_area || profile.home_country}
-                    </p>
-                  </div>
-                )}
-
-                {/* What are you here for - Intent (shown on all profile states) */}
-                {profile.intent && (
-                  <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
-                    <h3 className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wide">Here for</h3>
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                      profile.intent === "dating" ? "bg-pink-500/30 text-pink-300" :
-                      profile.intent === "friends" ? "bg-emerald-500/30 text-emerald-300" :
-                      "bg-purple-500/30 text-purple-300"
-                    }`}>
-                      {profile.intent === "dating" ? "Dating" : 
-                       profile.intent === "friends" ? "Friends" : 
-                       profile.intent === "open_to_both" ? "Open to both" : ""}
-                    </span>
-                  </div>
-                )}
-
-                {/* Profile Details Section Frame (gender, orientation, relationship, seeking) - Only shown after reveal */}
-                {profile.is_revealed && (profile.gender || profile.orientation || profile.relationship_status || profile.seeking) && (
+                {/* Profile Details Section Frame (gender, orientation, relationship) - Only shown after reveal */}
+                {/* NOTE: "Looking for" (seeking) field has been removed */}
+                {profile.is_revealed && (profile.gender || profile.orientation || profile.relationship_status) && (
                   <div className="bg-slate-800/40 rounded-2xl p-4 border border-white/10 shadow-sm">
                     <h3 className="text-xs font-medium text-slate-400 mb-3 uppercase tracking-wide">About</h3>
                     <div className="grid grid-cols-2 gap-3">
@@ -624,12 +621,6 @@ const UserProfile = () => {
                         <div className="bg-white/5 rounded-xl px-3 py-2">
                           <p className="text-slate-500 text-xs">Status</p>
                           <p className="text-white text-sm capitalize">{profile.relationship_status}</p>
-                        </div>
-                      )}
-                      {profile.seeking && (
-                        <div className="bg-white/5 rounded-xl px-3 py-2">
-                          <p className="text-slate-500 text-xs">Looking for</p>
-                          <p className="text-white text-sm capitalize">{profile.seeking}</p>
                         </div>
                       )}
                     </div>
