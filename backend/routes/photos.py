@@ -221,6 +221,10 @@ async def upload_photo(
     current_user: dict = Depends(get_current_user)
 ):
     """Upload a profile photo to cloud storage (up to 3 photos, slots 0-2) with AI moderation"""
+    from utils.photo_validation import validate_photo
+    
+    print("=== UPLOAD ENDPOINT (routes/photos.py) CALLED ===")  # TEMPORARY LOGGING
+    
     if slot < 0 or slot > 2:
         raise HTTPException(status_code=400, detail="Invalid slot. Use 0, 1, or 2.")
     
@@ -232,12 +236,12 @@ async def upload_photo(
     if len(content) > MAX_PHOTO_SIZE:
         raise HTTPException(status_code=400, detail="File too large. Maximum 5MB.")
     
-    # Run image moderation
-    moderation_result = await analyze_image_content(content)
-    if not moderation_result["is_safe"]:
-        raise HTTPException(status_code=400, detail=moderation_result["reason"])
+    # Run photo validation (global safety for all, main photo rules for slot 0)
+    is_main_photo = (slot == 0)
+    validation_result = await validate_photo(content, is_main_photo)
+    if not validation_result["valid"]:
+        raise HTTPException(status_code=400, detail=validation_result["error"])
     
-    photo_age_warning = check_photo_age_warning(content)
     photo_id = str(uuid.uuid4())
     
     try:
