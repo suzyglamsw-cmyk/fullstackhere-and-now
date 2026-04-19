@@ -151,7 +151,7 @@ async def analyze_photo_with_ai(image_data: bytes, is_main_photo: bool) -> dict:
             session_id=f"photo-validation-{datetime.now().timestamp()}",
             system_message="""You are a photo validation assistant. Analyze photos and respond ONLY with a JSON object.
 Do not include any explanation or text outside the JSON."""
-        ).with_model("openai", "gpt-4o")
+        ).with_model("openai", "gpt-4o-mini")
         
         # Build the analysis prompt based on photo type
         if is_main_photo:
