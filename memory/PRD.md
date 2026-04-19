@@ -122,6 +122,11 @@ The preview simulates exactly what others see:
   - Error message: "Please choose a recent photo that clearly shows your face for your main pic."
   - UI copy added: "Keep it recent. Keep it real. Keep it in the Here&Now. Your main photo should clearly show your face. Your other photos can show your world."
   - Uses OpenAI GPT-4o Vision via Emergent LLM key for AI-based analysis
+- ✅ Photo validation wired into ACTIVE endpoints (Dec 2025):
+  - `POST /api/photos/upload` (routes/photos.py): Validates on upload, applies main photo rules when slot=0
+  - `PUT /api/auth/profile` (routes/auth.py): Validates when main photo (photos[0]) changes during profile save
+  - Safety net for photo reordering (make-main) to ensure promoted photos meet main photo rules
+  - Fails open on technical errors (validation ran successfully on original upload)
 
 ## Pending Tasks
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules
@@ -132,8 +137,10 @@ The preview simulates exactly what others see:
 
 ## Key Files
 - `/app/backend/server.py` - Main backend (needs refactoring)
-- `/app/backend/routes/auth.py` - Auth routes
+- `/app/backend/routes/auth.py` - Auth routes (profile save with photo validation)
+- `/app/backend/routes/photos.py` - Photo upload routes (with AI validation)
 - `/app/backend/routes/discovery.py` - Discovery routes
+- `/app/backend/utils/photo_validation.py` - AI-powered photo validation module
 - `/app/frontend/src/pages/ProfileTab.js` - Profile editing + preview
 - `/app/frontend/src/pages/UserProfile.js` - Viewing other users
 - `/app/frontend/src/utils/bioObscure.js` - Bio obscuring utility

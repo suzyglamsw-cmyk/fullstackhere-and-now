@@ -223,8 +223,6 @@ async def upload_photo(
     """Upload a profile photo to cloud storage (up to 3 photos, slots 0-2) with AI moderation"""
     from utils.photo_validation import validate_photo
     
-    print("=== UPLOAD ENDPOINT (routes/photos.py) CALLED ===")  # TEMPORARY LOGGING
-    
     if slot < 0 or slot > 2:
         raise HTTPException(status_code=400, detail="Invalid slot. Use 0, 1, or 2.")
     

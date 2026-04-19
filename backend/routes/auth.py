@@ -15,6 +15,8 @@ from .dependencies import (
     FREE_DAILY_GLANCES, FREE_DAILY_TOKENS, PREMIUM_DAILY_GLANCES, PREMIUM_DAILY_TOKENS,
     logger
 )
+from utils.photo_validation import validate_photo
+from utils.storage import get_object
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -287,6 +289,26 @@ async def update_profile(data: UserProfile, current_user: dict = Depends(get_cur
         if len(valid_photos) < 1:
             raise HTTPException(status_code=400, detail="Please add at least one profile photo to continue.")
         update_data["photos"] = valid_photos
+        
+        # Validate main photo (photos[0]) if it's being changed
+        new_main_photo = valid_photos[0] if valid_photos else None
+        current_main_photo = current_user.get("photos", [""])[0] if current_user.get("photos") else None
+        
+        if new_main_photo and new_main_photo != current_main_photo:
+            # Main photo is changing - validate the new main photo
+            try:
+                photo_record = await db.photos.find_one({"id": new_main_photo, "is_deleted": {"$ne": True}})
+                if photo_record and photo_record.get("storage_type") == "cloud" and photo_record.get("clear_path"):
+                    # Fetch image from storage and validate
+                    image_data, _ = get_object(photo_record["clear_path"])
+                    validation_result = await validate_photo(image_data, is_main_photo=True)
+                    if not validation_result["valid"]:
+                        raise HTTPException(status_code=400, detail=validation_result["error"])
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.warning(f"Could not validate main photo on profile save: {e}")
+                # Allow save if validation fails due to technical issues (photo was already validated on upload)
     else:
         # If photos not being updated, check existing photos in database
         existing_photos = current_user.get("photos", [])
