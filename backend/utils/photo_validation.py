@@ -3,6 +3,7 @@ Photo validation module for Here & Now app.
 Implements validation rules for main photo (photos[0]) and secondary photos.
 """
 
+import asyncio
 import base64
 import os
 import logging
@@ -190,9 +191,20 @@ Be strict about face detection - the face must be clearly visible, not obscured 
             else:
                 return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "message_creation_failed"}}
         
-        # Send and get response
+        # Send and get response with strict timeout (10 seconds max)
+        AI_TIMEOUT_SECONDS = 10
         try:
-            response = await chat.send_message(user_message)
+            response = await asyncio.wait_for(
+                chat.send_message(user_message),
+                timeout=AI_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            print(f"PHOTO VALIDATION ERROR: AI TIMEOUT after {AI_TIMEOUT_SECONDS}s")
+            logger.error(f"AI photo analysis timed out after {AI_TIMEOUT_SECONDS}s")
+            if is_main_photo:
+                return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": "ai_timeout"}}
+            else:
+                return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "ai_timeout"}}
         except Exception as e:
             print(f"PHOTO VALIDATION ERROR: AI API CALL: {e}")
             logger.error(f"AI API call failed: {e}")
