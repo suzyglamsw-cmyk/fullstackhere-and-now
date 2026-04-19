@@ -27,7 +27,6 @@ MAX_PHOTO_AGE_DAYS = 548  # ~18 months
 
 def extract_exif_data(image_data: bytes) -> dict:
     """Extract EXIF metadata from image bytes."""
-    print("TRACE: entering extract_exif_data()", flush=True)
     try:
         img = Image.open(BytesIO(image_data))
         exif_data = img._getexif()
@@ -49,7 +48,6 @@ def check_photo_recency(image_data: bytes) -> dict:
     Check if photo meets recency requirements based on EXIF metadata.
     Returns: {"valid": bool, "reason": str or None}
     """
-    logger.error("TRACE: entering check_photo_recency()")
     exif = extract_exif_data(image_data)
     
     # Check if EXIF exists
@@ -85,7 +83,6 @@ def check_is_screenshot(image_data: bytes) -> bool:
     Check if image appears to be a screenshot based on EXIF and image properties.
     Returns True if it's likely a screenshot.
     """
-    print("TRACE: entering check_is_screenshot()", flush=True)
     exif = extract_exif_data(image_data)
     
     # Check software field for screenshot indicators
@@ -125,7 +122,6 @@ async def analyze_photo_with_ai(image_data: bytes, is_main_photo: bool) -> dict:
     
     FAIL CLOSED: If AI analysis fails, reject the photo rather than allowing potentially unsafe content.
     """
-    logger.error(f"TRACE: entering analyze_photo_with_ai(is_main_photo={is_main_photo})")
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
         
@@ -196,22 +192,33 @@ Be strict about face detection - the face must be clearly visible, not obscured 
                 return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "message_creation_failed"}}
         
         # Send and get response with strict timeout (10 seconds max)
+        # Use thread executor because LiteLLM blocks the event loop
         AI_TIMEOUT_SECONDS = 10
+        
+        def run_ai_call_sync():
+            """Run the async AI call in a new event loop (for thread executor)"""
+            import asyncio as aio
+            loop = aio.new_event_loop()
+            aio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(chat.send_message(user_message))
+            finally:
+                loop.close()
+        
         try:
+            loop = asyncio.get_event_loop()
             response = await asyncio.wait_for(
-                chat.send_message(user_message),
+                loop.run_in_executor(None, run_ai_call_sync),
                 timeout=AI_TIMEOUT_SECONDS
             )
         except asyncio.TimeoutError:
-            print(f"PHOTO VALIDATION ERROR: AI TIMEOUT after {AI_TIMEOUT_SECONDS}s")
-            logger.error(f"AI photo analysis timed out after {AI_TIMEOUT_SECONDS}s")
+            logger.error(f"PHOTO VALIDATION ERROR: AI TIMEOUT after {AI_TIMEOUT_SECONDS}s")
             if is_main_photo:
                 return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": "ai_timeout"}}
             else:
                 return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "ai_timeout"}}
         except Exception as e:
-            print(f"PHOTO VALIDATION ERROR: AI API CALL: {e}")
-            logger.error(f"AI API call failed: {e}")
+            logger.error(f"PHOTO VALIDATION ERROR: AI API CALL: {e}")
             if is_main_photo:
                 return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": "ai_api_failed"}}
             else:
@@ -321,7 +328,6 @@ async def validate_photo(image_data: bytes, is_main_photo: bool) -> dict:
         
     FAIL CLOSED: Any unexpected error results in rejection with appropriate error message.
     """
-    logger.error(f"TRACE: entering validate_photo(is_main_photo={is_main_photo})")
     try:
         # For main photo, check recency and screenshot first (faster checks)
         if is_main_photo:

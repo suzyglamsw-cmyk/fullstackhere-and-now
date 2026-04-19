@@ -221,7 +221,6 @@ async def upload_photo(
     current_user: dict = Depends(get_current_user)
 ):
     """Upload a profile photo to cloud storage (up to 3 photos, slots 0-2) with AI moderation"""
-    print(f"TRACE: entering upload_photo endpoint (slot={slot})", flush=True)
     from utils.photo_validation import validate_photo, MAIN_PHOTO_ERROR, SAFETY_ERROR
     
     if slot < 0 or slot > 2:
