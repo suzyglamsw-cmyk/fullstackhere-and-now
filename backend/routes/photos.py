@@ -221,7 +221,7 @@ async def upload_photo(
     current_user: dict = Depends(get_current_user)
 ):
     """Upload a profile photo to cloud storage (up to 3 photos, slots 0-2) with AI moderation"""
-    from utils.photo_validation import validate_photo
+    from utils.photo_validation import validate_photo, MAIN_PHOTO_ERROR, SAFETY_ERROR
     
     if slot < 0 or slot > 2:
         raise HTTPException(status_code=400, detail="Invalid slot. Use 0, 1, or 2.")
@@ -235,10 +235,23 @@ async def upload_photo(
         raise HTTPException(status_code=400, detail="File too large. Maximum 5MB.")
     
     # Run photo validation (global safety for all, main photo rules for slot 0)
+    # Wrapped in defensive try/except to prevent 502 crashes
     is_main_photo = (slot == 0)
-    validation_result = await validate_photo(content, is_main_photo)
-    if not validation_result["valid"]:
-        raise HTTPException(status_code=400, detail=validation_result["error"])
+    try:
+        validation_result = await validate_photo(content, is_main_photo)
+        if not validation_result["valid"]:
+            raise HTTPException(status_code=400, detail=validation_result["error"])
+    except HTTPException:
+        # Re-raise HTTP exceptions (these are intentional rejections)
+        raise
+    except Exception as e:
+        # Catch any unexpected validation crash - FAIL CLOSED
+        print(f"PHOTO VALIDATION ERROR: UPLOAD ENDPOINT CATCH: {e}")
+        logger.error(f"Photo validation crashed in upload endpoint: {e}")
+        if is_main_photo:
+            raise HTTPException(status_code=400, detail=MAIN_PHOTO_ERROR)
+        else:
+            raise HTTPException(status_code=400, detail=SAFETY_ERROR)
     
     photo_id = str(uuid.uuid4())
     

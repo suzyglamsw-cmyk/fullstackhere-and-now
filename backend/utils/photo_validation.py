@@ -118,17 +118,31 @@ async def analyze_photo_with_ai(image_data: bytes, is_main_photo: bool) -> dict:
     """
     Use AI to analyze photo for safety and content requirements.
     Returns: {"valid": bool, "error": str or None, "details": dict}
+    
+    FAIL CLOSED: If AI analysis fails, reject the photo rather than allowing potentially unsafe content.
     """
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
         
         api_key = os.environ.get("EMERGENT_LLM_KEY")
         if not api_key:
-            logger.error("EMERGENT_LLM_KEY not found")
-            return {"valid": True, "error": None, "details": {}}  # Fail open if no key
+            logger.error("EMERGENT_LLM_KEY not found - failing closed")
+            print("PHOTO VALIDATION ERROR: NO API KEY")
+            # Fail closed - no key means we can't verify safety
+            if is_main_photo:
+                return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": "no_api_key"}}
+            else:
+                return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "no_api_key"}}
         
         # Encode image to base64
-        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        try:
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+        except Exception as e:
+            print(f"PHOTO VALIDATION ERROR: BASE64 ENCODING: {e}")
+            if is_main_photo:
+                return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": "encoding_failed"}}
+            else:
+                return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "encoding_failed"}}
         
         # Create the chat instance
         chat = LlmChat(
@@ -163,26 +177,56 @@ Be strict about face detection - the face must be clearly visible, not obscured 
 }"""
         
         # Create message with image
-        image_content = ImageContent(image_base64=image_base64)
-        user_message = UserMessage(
-            text=prompt,
-            file_contents=[image_content]
-        )
+        try:
+            image_content = ImageContent(image_base64=image_base64)
+            user_message = UserMessage(
+                text=prompt,
+                file_contents=[image_content]
+            )
+        except Exception as e:
+            print(f"PHOTO VALIDATION ERROR: MESSAGE CREATION: {e}")
+            if is_main_photo:
+                return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": "message_creation_failed"}}
+            else:
+                return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "message_creation_failed"}}
         
         # Send and get response
-        response = await chat.send_message(user_message)
+        try:
+            response = await chat.send_message(user_message)
+        except Exception as e:
+            print(f"PHOTO VALIDATION ERROR: AI API CALL: {e}")
+            logger.error(f"AI API call failed: {e}")
+            if is_main_photo:
+                return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": "ai_api_failed"}}
+            else:
+                return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "ai_api_failed"}}
         
         # Parse JSON response
-        import json
-        # Clean up response - remove markdown code blocks if present
-        response_text = response.strip()
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-        response_text = response_text.strip()
-        
-        analysis = json.loads(response_text)
+        try:
+            import json
+            # Clean up response - remove markdown code blocks if present
+            response_text = response.strip() if response else ""
+            if not response_text:
+                print("PHOTO VALIDATION ERROR: EMPTY AI RESPONSE")
+                if is_main_photo:
+                    return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": "empty_response"}}
+                else:
+                    return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "empty_response"}}
+            
+            if response_text.startswith("```"):
+                response_text = response_text.split("```")[1]
+                if response_text.startswith("json"):
+                    response_text = response_text[4:]
+            response_text = response_text.strip()
+            
+            analysis = json.loads(response_text)
+        except Exception as e:
+            print(f"PHOTO VALIDATION ERROR: JSON PARSING: {e}")
+            logger.error(f"Failed to parse AI response: {e}")
+            if is_main_photo:
+                return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": "json_parse_failed"}}
+            else:
+                return {"valid": False, "error": SAFETY_ERROR, "details": {"error": "json_parse_failed"}}
         
         # Check safety (applies to all photos)
         if not analysis.get("is_safe", True):
@@ -239,9 +283,13 @@ Be strict about face detection - the face must be clearly visible, not obscured 
         return {"valid": True, "error": None, "details": analysis}
         
     except Exception as e:
-        logger.error(f"AI photo analysis failed: {e}")
-        # Fail open on AI errors to not block users
-        return {"valid": True, "error": None, "details": {"error": str(e)}}
+        # Catch-all for any unexpected errors - FAIL CLOSED
+        print(f"PHOTO VALIDATION ERROR: UNEXPECTED IN AI ANALYSIS: {e}")
+        logger.error(f"AI photo analysis failed unexpectedly: {e}")
+        if is_main_photo:
+            return {"valid": False, "error": MAIN_PHOTO_ERROR, "details": {"error": str(e)}}
+        else:
+            return {"valid": False, "error": SAFETY_ERROR, "details": {"error": str(e)}}
 
 
 async def validate_photo(image_data: bytes, is_main_photo: bool) -> dict:
@@ -254,21 +302,43 @@ async def validate_photo(image_data: bytes, is_main_photo: bool) -> dict:
         
     Returns:
         {"valid": bool, "error": str or None}
-    """
-    # For main photo, check recency and screenshot first (faster checks)
-    if is_main_photo:
-        # Check EXIF recency
-        recency = check_photo_recency(image_data)
-        if not recency["valid"]:
-            return {"valid": False, "error": MAIN_PHOTO_ERROR}
         
-        # Check if screenshot
-        if check_is_screenshot(image_data):
+    FAIL CLOSED: Any unexpected error results in rejection with appropriate error message.
+    """
+    try:
+        # For main photo, check recency and screenshot first (faster checks)
+        if is_main_photo:
+            # Check EXIF recency
+            try:
+                recency = check_photo_recency(image_data)
+                if not recency["valid"]:
+                    return {"valid": False, "error": MAIN_PHOTO_ERROR}
+            except Exception as e:
+                print(f"PHOTO VALIDATION ERROR: EXIF RECENCY CHECK: {e}")
+                logger.warning(f"EXIF recency check failed: {e}")
+                return {"valid": False, "error": MAIN_PHOTO_ERROR}
+            
+            # Check if screenshot
+            try:
+                if check_is_screenshot(image_data):
+                    return {"valid": False, "error": MAIN_PHOTO_ERROR}
+            except Exception as e:
+                print(f"PHOTO VALIDATION ERROR: SCREENSHOT CHECK: {e}")
+                logger.warning(f"Screenshot check failed: {e}")
+                return {"valid": False, "error": MAIN_PHOTO_ERROR}
+        
+        # AI-based analysis (safety for all, face/content for main)
+        ai_result = await analyze_photo_with_ai(image_data, is_main_photo)
+        if not ai_result["valid"]:
+            return {"valid": False, "error": ai_result["error"]}
+        
+        return {"valid": True, "error": None}
+        
+    except Exception as e:
+        # Master catch-all - FAIL CLOSED
+        print(f"PHOTO VALIDATION ERROR: UNEXPECTED IN MAIN VALIDATION: {e}")
+        logger.error(f"Photo validation failed unexpectedly: {e}")
+        if is_main_photo:
             return {"valid": False, "error": MAIN_PHOTO_ERROR}
-    
-    # AI-based analysis (safety for all, face/content for main)
-    ai_result = await analyze_photo_with_ai(image_data, is_main_photo)
-    if not ai_result["valid"]:
-        return {"valid": False, "error": ai_result["error"]}
-    
-    return {"valid": True, "error": None}
+        else:
+            return {"valid": False, "error": SAFETY_ERROR}
