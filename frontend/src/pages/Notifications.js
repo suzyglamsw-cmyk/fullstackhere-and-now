@@ -112,6 +112,7 @@ const Notifications = () => {
           </Button>
         );
       case "glance":
+      case "new_glance":
         return (
           <Button
             data-testid={`view-glances-${notification.id}`}
@@ -148,13 +149,50 @@ const Notifications = () => {
             View in Chat Requests
           </Button>
         );
+      case "new_message":
+        const messageUserId = notification.data?.from_user_id || notification.from_user_id;
+        return messageUserId ? (
+          <Button
+            data-testid={`view-message-${notification.id}`}
+            onClick={() => navigate(`/chat/${messageUserId}`)}
+            size="sm"
+            className="rounded-full bg-purple-500 hover:bg-purple-600 text-white text-xs"
+          >
+            <MessageCircle className="w-3 h-3 mr-1" />
+            View Message
+          </Button>
+        ) : (
+          <Button
+            data-testid={`view-messages-${notification.id}`}
+            onClick={() => navigate("/connections?tab=messages")}
+            size="sm"
+            className="rounded-full bg-purple-500 hover:bg-purple-600 text-white text-xs"
+          >
+            <MessageCircle className="w-3 h-3 mr-1" />
+            View Messages
+          </Button>
+        );
+      case "mutual_reveal":
+      case "reveal_received":
+        const revealUserId = notification.data?.from_user_id || notification.from_user_id;
+        return revealUserId ? (
+          <Button
+            data-testid={`view-profile-${notification.id}`}
+            onClick={() => navigate(`/profile/${revealUserId}`)}
+            size="sm"
+            className="rounded-full bg-amber-500 hover:bg-amber-600 text-white text-xs"
+          >
+            <Eye className="w-3 h-3 mr-1" />
+            View Profile
+          </Button>
+        ) : null;
       default:
         return null;
     }
   };
 
   const getNotificationMessage = (notification) => {
-    const userName = notification.from_user?.display_name || notification.from_user_name || "Someone";
+    const userName = notification.from_user?.display_name || notification.from_user_name || notification.data?.from_user_name || "Someone";
     
     switch (notification.type) {
       case "mutual_glance":
@@ -163,9 +201,10 @@ const Notifications = () => {
           subtitle: "You can now chat with them"
         };
       case "glance":
+      case "new_glance":
         return {
-          title: `${userName} glanced at you`,
-          subtitle: "They noticed you at the venue"
+          title: notification.title || `${userName} glanced at you`,
+          subtitle: notification.body || "They noticed you at the venue"
         };
       case "icebreaker":
       case "drink_token":
@@ -178,10 +217,25 @@ const Notifications = () => {
           title: `${userName} wants to chat`,
           subtitle: "They sent you a chat request"
         };
+      case "new_message":
+        return {
+          title: notification.title || `New message from ${userName}`,
+          subtitle: notification.body || "Tap to view"
+        };
+      case "mutual_reveal":
+        return {
+          title: notification.title || `Mutual reveal with ${userName}!`,
+          subtitle: notification.body || "You can now see each other clearly"
+        };
+      case "reveal_received":
+        return {
+          title: notification.title || `${userName} revealed to you`,
+          subtitle: notification.body || "You can reveal back if you'd like"
+        };
       default:
         return {
-          title: notification.message || "New notification",
-          subtitle: null
+          title: notification.title || notification.message || "New notification",
+          subtitle: notification.body || null
         };
     }
   };

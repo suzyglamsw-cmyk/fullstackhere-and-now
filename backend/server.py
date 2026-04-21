@@ -3088,7 +3088,6 @@ async def generate_test_glance(current_user: dict = Depends(get_current_user)):
     fake_user = random.choice(FAKE_TEST_USERS)
     
     # Create a proper glance record in the database
-    # No need to create notification - the /notifications endpoint reads from glances collection
     glance_id = str(uuid.uuid4())
     glance = {
         "id": glance_id,
@@ -3099,6 +3098,24 @@ async def generate_test_glance(current_user: dict = Depends(get_current_user)):
         "is_test": True
     }
     await db.glances.insert_one(glance)
+    
+    # Create notification record so it appears in the Notifications tab
+    notification_id = str(uuid.uuid4())
+    await db.notifications.insert_one({
+        "id": notification_id,
+        "user_id": current_user["id"],
+        "type": "new_glance",
+        "title": "Someone glanced at you!",
+        "body": f"{fake_user['display_name']} glanced at you",
+        "data": {
+            "from_user_id": fake_user["id"],
+            "from_user_name": fake_user["display_name"],
+            "from_user_photo": fake_user.get("avatar_url", ""),
+            "glance_id": glance_id
+        },
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
     
     # Send WebSocket notification
     await manager.send_to_user(current_user["id"], {
@@ -3251,6 +3268,24 @@ async def generate_test_message(current_user: dict = Depends(get_current_user)):
             "content": message_content,
             "created_at": message["created_at"]
         }
+    })
+    
+    # Create notification record so it appears in the Notifications tab
+    notification_id = str(uuid.uuid4())
+    await db.notifications.insert_one({
+        "id": notification_id,
+        "user_id": current_user["id"],
+        "type": "new_message",
+        "title": f"New message from {fake_user['display_name']}",
+        "body": message_content[:100] + ("..." if len(message_content) > 100 else ""),
+        "data": {
+            "from_user_id": fake_user["id"],
+            "from_user_name": fake_user["display_name"],
+            "from_user_photo": fake_user.get("avatar_url", ""),
+            "message_id": message_id
+        },
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
     })
     
     # Send push notification
