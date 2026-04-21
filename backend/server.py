@@ -6268,9 +6268,11 @@ async def get_user_profile(user_id: str, current_user: dict = Depends(get_curren
         "to_user_id": user_id
     }) is not None
     
+    # Only show "Requested" for pending chat requests - declined ones allow re-requesting
     chat_request_sent = await db.chat_requests.find_one({
         "from_user_id": current_user["id"],
-        "to_user_id": user_id
+        "to_user_id": user_id,
+        "status": "pending"
     }) is not None
     
     # Check if we received an icebreaker from them (pending)
