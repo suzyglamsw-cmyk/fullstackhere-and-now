@@ -604,8 +604,8 @@ const Discovery = () => {
             </button>
 
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-                <Users className="w-5 h-5 text-cyan-400" />
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Users className="w-5 h-5 text-purple-400" />
               </div>
               <div>
                 <h1 
@@ -625,9 +625,9 @@ const Discovery = () => {
                   key={option.value}
                   data-testid={`radius-${option.value}`}
                   onClick={() => setRadius(option.value)}
-                  className={`px-4 py-2 rounded-xl text-sm transition-all ${
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                     radius === option.value
-                      ? "bg-cyan-500 text-white"
+                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
                       : "bg-white/5 text-slate-400 hover:bg-white/10"
                   }`}
                 >
