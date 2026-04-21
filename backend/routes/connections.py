@@ -1462,12 +1462,12 @@ async def get_message_threads(current_user: dict = Depends(get_current_user)):
         # Check reveal state for both users
         reveal_state = "none"
         my_reveal = await db.reveals.find_one({
-            "from_user_id": current_user["id"],
-            "to_user_id": user_id
+            "revealer_id": current_user["id"],
+            "revealed_to_id": user_id
         })
         their_reveal = await db.reveals.find_one({
-            "from_user_id": user_id,
-            "to_user_id": current_user["id"]
+            "revealer_id": user_id,
+            "revealed_to_id": current_user["id"]
         })
         if my_reveal and their_reveal:
             reveal_state = "both_revealed"
@@ -1591,12 +1591,12 @@ async def get_messages(user_id: str, current_user: dict = Depends(get_current_us
     
     # Check reveal status
     i_revealed = await db.reveals.find_one({
-        "from_user_id": current_user["id"],
-        "to_user_id": user_id
+        "revealer_id": current_user["id"],
+        "revealed_to_id": user_id
     })
     they_revealed = await db.reveals.find_one({
-        "from_user_id": user_id,
-        "to_user_id": current_user["id"]
+        "revealer_id": user_id,
+        "revealed_to_id": current_user["id"]
     })
     is_revealed = bool(i_revealed and they_revealed)
     
@@ -1785,28 +1785,112 @@ async def reveal_photo(other_user_id: str, current_user: dict = Depends(get_curr
         "revealed_at": now.isoformat()
     })
     
-    # Send push notification to the other user (uses "matches" channel)
-    settings = await db.push_settings.find_one({"user_id": other_user_id})
-    if not settings or settings.get("matches", True):
-        first_name = get_first_name(current_user.get("display_name", "Someone"))
-        await send_push_notification_from_route(
-            other_user_id,
-            "Someone revealed to you!",
-            f"{first_name} has revealed their photo. Reveal back to see each other clearly!",
-            {"type": "reveal", "from_user_id": current_user["id"]}
-        )
-    
-    # Check if mutual reveal (both have revealed)
+    # Check if this creates a mutual reveal (other user already revealed)
     mutual = await db.reveals.find_one({
         "revealer_id": other_user_id,
         "revealed_to_id": current_user["id"]
     })
+    
+    first_name = get_first_name(current_user.get("display_name", "Someone"))
+    
+    if mutual:
+        # Mutual reveal! Notify both users
+        # Notify the other user
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": other_user_id,
+            "type": "mutual_reveal",
+            "title": "Mutual reveal!",
+            "body": f"You and {first_name} have mutually revealed",
+            "data": {"from_user_id": current_user["id"]},
+            "is_read": False,
+            "created_at": now.isoformat()
+        })
+        
+        # Send push notification for mutual reveal
+        settings = await db.push_settings.find_one({"user_id": other_user_id})
+        if not settings or settings.get("matches", True):
+            await send_push_notification_from_route(
+                other_user_id,
+                "Mutual reveal!",
+                f"You and {first_name} have mutually revealed. You can now see each other clearly!",
+                {"type": "mutual_reveal", "from_user_id": current_user["id"]}
+            )
+    else:
+        # One-sided reveal - notify the other user that someone revealed to them
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": other_user_id,
+            "type": "reveal_received",
+            "title": "Someone revealed to you",
+            "body": f"{first_name} has revealed their photo to you",
+            "data": {"from_user_id": current_user["id"]},
+            "is_read": False,
+            "created_at": now.isoformat()
+        })
+        
+        # Send push notification
+        settings = await db.push_settings.find_one({"user_id": other_user_id})
+        if not settings or settings.get("matches", True):
+            await send_push_notification_from_route(
+                other_user_id,
+                "Someone revealed to you!",
+                f"{first_name} has revealed their photo. Reveal back to see each other clearly!",
+                {"type": "reveal_received", "from_user_id": current_user["id"]}
+            )
     
     return {
         "message": "Photo revealed",
         "revealed_at": now.isoformat(),
         "is_mutual": mutual is not None
     }
+
+
+@router.get("/connections/revealed-to-me")
+async def get_users_who_revealed_to_me(current_user: dict = Depends(get_current_user)):
+    """
+    Get list of users who have revealed to the current user but the current user hasn't revealed back.
+    For the "They've revealed to you" HereHub section.
+    """
+    # Find all reveals where someone revealed to current user
+    reveals_to_me = await db.reveals.find({
+        "revealed_to_id": current_user["id"]
+    }).to_list(length=100)
+    
+    result = []
+    for reveal in reveals_to_me:
+        from_user_id = reveal["revealer_id"]
+        
+        # Check if current user has revealed back
+        i_revealed = await db.reveals.find_one({
+            "revealer_id": current_user["id"],
+            "revealed_to_id": from_user_id
+        })
+        
+        # Only include if current user hasn't revealed back yet
+        if i_revealed:
+            continue
+        
+        # Get user details
+        user = await db.users.find_one({"id": from_user_id}, {"_id": 0, "password_hash": 0})
+        if not user:
+            continue
+        
+        # Convert photo IDs to URLs
+        photos = user.get("photos", [])
+        photo_urls = [f"/api/photos/serve/{p}" for p in photos if p] if photos else []
+        
+        result.append({
+            "user_id": from_user_id,
+            "display_name": user.get("display_name", "Unknown"),
+            "photos": photo_urls,
+            "revealed_at": reveal.get("revealed_at"),
+            "reveal_state": "they_revealed"  # They revealed, I haven't
+        })
+    
+    # Sort by reveal date (most recent first)
+    result.sort(key=lambda x: x.get("revealed_at", ""), reverse=True)
+    return result
 
 
 @router.get("/reveal/status/{other_user_id}")

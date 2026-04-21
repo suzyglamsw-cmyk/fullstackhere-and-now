@@ -158,8 +158,15 @@ const UserProfile = () => {
   const handleRevealPhoto = async () => {
     setRevealing(true);
     try {
-      await axios.post(`${API}/reveal/${userId}`);
-      toast.success("Photo revealed!");
+      const response = await axios.post(`${API}/connections/reveal/${userId}`);
+      
+      // Show appropriate toast based on whether it's mutual
+      if (response.data.is_mutual) {
+        toast.success("You've mutually revealed! You can now see each other clearly.");
+      } else {
+        toast.success("You've revealed to them. They can reveal back anytime.");
+      }
+      
       // Refresh both match status and profile for latest state
       await refreshConnectionState();
     } catch (error) {
@@ -699,19 +706,20 @@ const UserProfile = () => {
                   </Button>
                   
                   {/* Reveal Button (optional - for photo clarity) */}
-                  {!profile.i_revealed && (
+                  {/* Show if: user hasn't revealed yet OR reveal is in half-state (not both_revealed) */}
+                  {(!profile.i_revealed || (profile.i_revealed && !profile.is_revealed)) && (
                     <Button
                       data-testid="reveal-btn"
                       onClick={handleRevealPhoto}
-                      disabled={revealing}
-                      className="w-full rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white h-12"
+                      disabled={revealing || profile.i_revealed}
+                      className={`w-full rounded-xl h-12 ${profile.i_revealed ? 'bg-slate-600 cursor-default' : 'bg-indigo-500 hover:bg-indigo-600'} text-white`}
                     >
                       {revealing ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       ) : (
                         <Eye className="w-4 h-4 mr-2" />
                       )}
-                      Reveal My Photo
+                      {profile.i_revealed ? "You've Revealed" : "Reveal My Photo"}
                     </Button>
                   )}
                   

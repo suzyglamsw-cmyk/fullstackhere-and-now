@@ -39,7 +39,7 @@ const getPhotoState = (item) => {
  * MessageThreadRow - A single message thread row for the Messages list
  * Handles photo reveal logic: shows clear photo only when reveal_state === "both_revealed"
  */
-const MessageThreadRow = ({ thread, navigate, formatDate, onMoveToQuiet, onMoveToMessages, isQuiet }) => {
+const MessageThreadRow = ({ thread, navigate, formatDate, onMoveToQuiet, onMoveToMessages, onDelete, isQuiet }) => {
   const isBothRevealed = thread.reveal_state === "both_revealed";
   
   return (
@@ -139,13 +139,22 @@ const MessageThreadRow = ({ thread, navigate, formatDate, onMoveToQuiet, onMoveT
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
           {isQuiet ? (
-            <DropdownMenuItem 
-              onClick={(e) => { e.stopPropagation(); onMoveToMessages?.(); }}
-              className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
-            >
-              <Volume2 className="w-4 h-4 mr-2" />
-              Move back to Messages
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem 
+                onClick={(e) => { e.stopPropagation(); onMoveToMessages?.(); }}
+                className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
+              >
+                <Volume2 className="w-4 h-4 mr-2" />
+                Move back to Messages
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete conversation permanently
+              </DropdownMenuItem>
+            </>
           ) : (
             <DropdownMenuItem 
               onClick={(e) => { e.stopPropagation(); onMoveToQuiet?.(); }}
@@ -195,6 +204,7 @@ const Connections = () => {
   const [removeFriendConfirm, setRemoveFriendConfirm] = useState(null); // For remove friend confirmation
   const [deleteGlanceConfirm, setDeleteGlanceConfirm] = useState(null); // For glance deletion confirmation
   const [matchedGlances, setMatchedGlances] = useState(new Set()); // Transitional state for glances that just became mutual
+  const [revealedToMe, setRevealedToMe] = useState([]); // Users who have revealed to current user
   const [tab, setTab] = useState(searchParams.get("tab") || "messages"); // "messages" | "glances" | "icebreakers" | "chats" | "requests" | "friends" | "connections"
   
   // Selection state for bulk delete
@@ -377,7 +387,7 @@ const Connections = () => {
 
   const fetchAllData = async () => {
     try {
-      const [connectionsRes, hiddenRes, mutualRes, threadsRes, requestsRes, friendsRes, glancesRes, icebreakersRes, chatRequestsRes] = await Promise.all([
+      const [connectionsRes, hiddenRes, mutualRes, threadsRes, requestsRes, friendsRes, glancesRes, icebreakersRes, chatRequestsRes, revealedRes] = await Promise.all([
         axios.get(`${API}/connections`),
         axios.get(`${API}/connections/hidden-from-matches`),
         axios.get(`${API}/connections/mutual-glances`),
@@ -386,7 +396,8 @@ const Connections = () => {
         axios.get(`${API}/friends/list`),
         axios.get(`${API}/connections/glances`),
         axios.get(`${API}/connections/icebreakers`),
-        axios.get(`${API}/connections/chat-requests`)
+        axios.get(`${API}/connections/chat-requests`),
+        axios.get(`${API}/connections/revealed-to-me`)
       ]);
       setConnections(connectionsRes.data);
       setHiddenMatches(hiddenRes.data);
@@ -397,6 +408,7 @@ const Connections = () => {
       setGlances(glancesRes.data);
       setIcebreakers(icebreakersRes.data);
       setChatRequests(chatRequestsRes.data);
+      setRevealedToMe(revealedRes.data);
     } catch (error) {
       console.error("Failed to load data:", error);
       toast.error("Failed to load connections");
@@ -630,6 +642,18 @@ const Connections = () => {
       fetchAllData();
     } catch (error) {
       toast.error("Failed to remove glance");
+    }
+  };
+
+  // Glance back at someone who glanced at you
+  const handleGlanceBack = async (userId, displayName) => {
+    try {
+      await axios.post(`${API}/glances`, { to_user_id: userId });
+      toast.success(`Glanced back at ${displayName}!`);
+      setMatchedGlances(prev => new Set([...prev, userId]));
+      fetchAllData();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to glance back"));
     }
   };
 
@@ -943,67 +967,62 @@ const Connections = () => {
           </div>
         ) : tab === "messages" ? (
           /* Messages Tab */
-          messageThreads.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                <MessageCircle className="w-10 h-10 text-slate-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-white mb-2">No messages yet</h2>
-              <p className="text-slate-400 mb-6">
-                Start a conversation after a mutual glance or icebreaker
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4" data-testid="messages-list">
-              {/* Active Messages Section */}
-              {(() => {
-                const activeThreads = sortByDate(messageThreads.filter(t => !t.is_quiet), "last_message_at");
-                const quietThreads = sortByDate(messageThreads.filter(t => t.is_quiet), "last_message_at");
-                const quietUnreadCount = quietThreads.filter(t => t.unread_count > 0).length;
-                
-                return (
-                  <>
-                    {/* Active Messages */}
-                    {activeThreads.length > 0 ? (
-                      <div className="space-y-2">
-                        {activeThreads.map((thread) => (
-                          <MessageThreadRow 
-                            key={thread.user_id}
-                            thread={thread}
-                            navigate={navigate}
-                            formatDate={formatDate}
-                            onMoveToQuiet={async () => {
-                              try {
-                                await axios.post(`${API}/messages/threads/${thread.user_id}/move?to=quiet`);
-                                fetchAllData();
-                              } catch (error) {
-                                toast.error("Failed to move thread");
-                              }
-                            }}
-                            isQuiet={false}
-                          />
-                        ))}
+          <div className="space-y-4" data-testid="messages-list">
+            {/* Active Messages Section */}
+            {(() => {
+              const activeThreads = sortByDate(messageThreads.filter(t => !t.is_quiet), "last_message_at");
+              const quietThreads = sortByDate(messageThreads.filter(t => t.is_quiet), "last_message_at");
+              const quietUnreadCount = quietThreads.filter(t => t.unread_count > 0).length;
+              
+              return (
+                <>
+                  {/* Active Messages */}
+                  {activeThreads.length > 0 ? (
+                    <div className="space-y-2">
+                      {activeThreads.map((thread) => (
+                        <MessageThreadRow 
+                          key={thread.user_id}
+                          thread={thread}
+                          navigate={navigate}
+                          formatDate={formatDate}
+                          onMoveToQuiet={async () => {
+                            try {
+                              await axios.post(`${API}/messages/threads/${thread.user_id}/move?to=quiet`);
+                              fetchAllData();
+                            } catch (error) {
+                              toast.error("Failed to move thread");
+                            }
+                          }}
+                          isQuiet={false}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                        <MessageCircle className="w-8 h-8 text-slate-600" />
                       </div>
-                    ) : quietThreads.length > 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-slate-400 text-sm">No active messages</p>
-                      </div>
-                    ) : null}
+                      <h2 className="text-lg font-semibold text-white mb-1">No messages yet</h2>
+                      <p className="text-slate-400 text-sm">
+                        Start a conversation after a mutual glance or icebreaker
+                      </p>
+                    </div>
+                  )}
                     
-                    {/* Quiet for now Section */}
-                    {quietThreads.length > 0 && (
-                      <div className="mt-6">
-                        <div className="flex items-center gap-2 mb-3 px-1">
-                          <Archive className="w-4 h-4 text-slate-500" />
-                          <h3 className="text-sm font-medium text-slate-400">
-                            Quiet for now
-                            {quietUnreadCount > 0 && (
-                              <span className="ml-2 text-xs bg-pink-500 px-2 py-0.5 rounded-full text-white">
-                                {quietUnreadCount}
-                              </span>
-                            )}
-                          </h3>
-                        </div>
+                    {/* Quiet for now Section - Always visible */}
+                    <div className="mt-6">
+                      <div className="flex items-center gap-2 mb-3 px-1">
+                        <Archive className="w-4 h-4 text-slate-500" />
+                        <h3 className="text-sm font-medium text-slate-400">
+                          Quiet for now
+                          {quietUnreadCount > 0 && (
+                            <span className="ml-2 text-xs bg-pink-500 px-2 py-0.5 rounded-full text-white">
+                              {quietUnreadCount}
+                            </span>
+                          )}
+                        </h3>
+                      </div>
+                      {quietThreads.length > 0 ? (
                         <div className="space-y-2">
                           {quietThreads.map((thread) => (
                             <MessageThreadRow 
@@ -1019,20 +1038,30 @@ const Connections = () => {
                                   toast.error("Failed to move thread");
                                 }
                               }}
+                              onDelete={async () => {
+                                try {
+                                  await axios.delete(`${API}/messages/conversation/${thread.user_id}`);
+                                  toast.success("Conversation deleted");
+                                  fetchAllData();
+                                } catch (error) {
+                                  toast.error("Failed to delete conversation");
+                                }
+                              }}
                               isQuiet={true}
                             />
                           ))}
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <p className="text-xs text-slate-500 px-1">(no threads yet)</p>
+                      )}
+                    </div>
                   </>
                 );
               })()}
             </div>
-          )
         ) : tab === "glances" ? (
           /* Glances Tab */
-          totalGlances === 0 ? (
+          totalGlances === 0 && revealedToMe.length === 0 ? (
             <div className="text-center py-20">
               <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
                 <Eye className="w-10 h-10 text-slate-600" />
@@ -1051,7 +1080,51 @@ const Connections = () => {
             </div>
           ) : (
             <div className="space-y-6" data-testid="glances-list">
+              {/* They've revealed to you Section */}
+              {revealedToMe.length > 0 && (
+                <div className="bg-gradient-to-r from-pink-500/10 to-indigo-500/10 backdrop-blur-sm rounded-2xl p-4 border border-pink-500/20 shadow-lg">
+                  <h3 className="text-sm font-medium text-pink-300 mb-3 flex items-center gap-2">
+                    <Eye className="w-4 h-4" />
+                    They've revealed to you ({revealedToMe.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {revealedToMe.map((item) => (
+                      <div
+                        key={item.user_id}
+                        className="bg-slate-800/60 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-800/80 transition-all"
+                        onClick={() => navigate(`/profile/${item.user_id}`)}
+                        data-testid={`revealed-${item.user_id}`}
+                      >
+                        <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
+                          {item.photos && item.photos[0] ? (
+                            <BlurredImage
+                              src={item.photos[0]}
+                              alt={item.display_name}
+                              blurState="connection_accepted"
+                              isThumbnail={true}
+                              fallbackInitial={item.display_name?.charAt(0) || "?"}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-slate-700 flex items-center justify-center">
+                              <span className="text-lg font-bold text-slate-400">
+                                {item.display_name?.charAt(0)?.toUpperCase() || "?"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-white text-sm truncate">{item.display_name}</p>
+                          <p className="text-xs text-pink-300/80">They've revealed. You can reveal anytime.</p>
+                        </div>
+                        <Eye className="w-4 h-4 text-pink-400 flex-shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Bulk Actions Header */}
+              {totalGlances > 0 && (
               <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between border border-white/10 shadow-lg" data-testid="glances-bulk-header">
                 <div className="flex items-center gap-3">
                   <Checkbox
@@ -1090,6 +1163,7 @@ const Connections = () => {
                   </Button>
                 )}
               </div>
+              )}
 
               {/* Received Glances */}
               {glances.incoming?.length > 0 && (
@@ -1099,65 +1173,102 @@ const Connections = () => {
                     Received ({glances.incoming.length})
                   </h3>
                   <div className="space-y-3">
-                    {sortByDate(glances.incoming).map((glance) => (
-                      <div
-                        key={glance.id}
-                        data-testid={`received-glance-${glance.id}`}
-                        className={`bg-slate-800/40 backdrop-blur-sm rounded-2xl p-3 flex items-center gap-3 border border-white/10 shadow-md transition-all ${selectedGlances.has(glance.id) ? 'ring-2 ring-indigo-500/50 bg-indigo-500/10 border-indigo-500/30' : 'hover:bg-slate-800/60'}`}
-                      >
-                        {/* Avatar - tappable to profile */}
-                        <div 
-                          className="relative cursor-pointer flex-shrink-0"
+                    {sortByDate(glances.incoming).map((glance) => {
+                      const isBothRevealed = glance.reveal_state === "both_revealed";
+                      const hasGlancedBack = glance.status === 'matched' || matchedGlances.has(glance.from_user_id || glance.user_id) || glance.has_glanced_back;
+                      
+                      return (
+                        <div
+                          key={glance.id}
+                          data-testid={`received-glance-${glance.id}`}
+                          className={`bg-slate-800/40 backdrop-blur-sm rounded-2xl p-3 border border-white/10 shadow-md transition-all cursor-pointer ${selectedGlances.has(glance.id) ? 'ring-2 ring-indigo-500/50 bg-indigo-500/10 border-indigo-500/30' : 'hover:bg-slate-800/60'}`}
                           onClick={() => navigate(`/profile/${glance.user_id}`)}
                         >
-                          <div className="w-12 h-12 rounded-xl overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
-                            <BlurredImage
-                              src={glance.photo_url || glance.avatar_url}
-                              alt={glance.display_name}
-                              blurState={getPhotoState(glance)}
-                              isThumbnail={true}
-                              fallbackInitial={glance.display_name?.charAt(0) || "?"}
-                            />
-                          </div>
-                          {glance.is_connection_accepted && (
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-pink-500 flex items-center justify-center">
-                              <Heart className="w-2.5 h-2.5 text-white" />
+                          <div className="flex items-center gap-3">
+                            {/* Avatar */}
+                            <div className="relative flex-shrink-0">
+                              <div className="w-12 h-12 rounded-xl overflow-hidden">
+                                {isBothRevealed ? (
+                                  <img
+                                    src={glance.photo_url || glance.avatar_url}
+                                    alt={glance.display_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <BlurredImage
+                                    src={glance.photo_url || glance.avatar_url}
+                                    alt={glance.display_name}
+                                    blurState={getPhotoState(glance)}
+                                    isThumbnail={true}
+                                    fallbackInitial={glance.display_name?.charAt(0) || "?"}
+                                  />
+                                )}
+                              </div>
+                              {glance.is_connection_accepted && (
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-pink-500 flex items-center justify-center">
+                                  <Heart className="w-2.5 h-2.5 text-white" />
+                                </div>
+                              )}
                             </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-white text-sm truncate">{glance.display_name}</p>
+                              <p className={`text-xs truncate ${hasGlancedBack ? 'text-emerald-400 font-medium' : 'text-slate-400'}`}>
+                                {hasGlancedBack
+                                  ? "Returned — now mutual"
+                                  : glance.is_connection_accepted 
+                                    ? "Mutual" 
+                                    : "Glanced at you"} · {formatDate(glance.created_at)}
+                              </p>
+                            </div>
+
+                            {/* Glance Back Button - Only show if not yet glanced back */}
+                            {!hasGlancedBack && !glance.is_connection_accepted && (
+                              <Button
+                                data-testid={`glance-back-${glance.id}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGlanceBack(glance.from_user_id || glance.user_id, glance.display_name);
+                                }}
+                                size="sm"
+                                className="rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 text-white text-xs px-3 h-8 flex-shrink-0"
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                Glance Back
+                              </Button>
+                            )}
+
+                            {/* Selection Checkbox */}
+                            <Checkbox
+                              checked={selectedGlances.has(glance.id)}
+                              onCheckedChange={(e) => { toggleGlanceSelection(glance.id); }}
+                              onClick={(e) => e.stopPropagation()}
+                              data-testid={`select-glance-${glance.id}`}
+                              className="flex-shrink-0"
+                            />
+
+                            {/* Delete button */}
+                            <Button
+                              data-testid={`delete-glance-${glance.id}`}
+                              onClick={(e) => { e.stopPropagation(); setDeleteGlanceConfirm({ id: glance.id, display_name: glance.display_name }); }}
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex-shrink-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          
+                          {/* Hint text - Only show when not yet glanced back */}
+                          {!hasGlancedBack && !glance.is_connection_accepted && (
+                            <p className="text-xs text-slate-500 mt-2 pl-15">
+                              Tap Glance Back to send yours
+                            </p>
                           )}
                         </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-white text-sm truncate">{glance.display_name}</p>
-                          <p className={`text-xs truncate ${glance.status === 'matched' || matchedGlances.has(glance.from_user_id || glance.user_id) ? 'text-emerald-400 font-medium' : 'text-slate-400'}`}>
-                            {glance.status === 'matched' || matchedGlances.has(glance.from_user_id || glance.user_id)
-                              ? "Returned — now mutual"
-                              : glance.is_connection_accepted 
-                                ? "Mutual" 
-                                : "Glanced at you"} · {formatDate(glance.created_at)}
-                          </p>
-                        </div>
-
-                        {/* Selection Checkbox */}
-                        <Checkbox
-                          checked={selectedGlances.has(glance.id)}
-                          onCheckedChange={() => toggleGlanceSelection(glance.id)}
-                          data-testid={`select-glance-${glance.id}`}
-                          className="flex-shrink-0"
-                        />
-
-                        {/* Delete button */}
-                        <Button
-                          data-testid={`delete-glance-${glance.id}`}
-                          onClick={(e) => { e.stopPropagation(); setDeleteGlanceConfirm({ id: glance.id, display_name: glance.display_name }); }}
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex-shrink-0"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

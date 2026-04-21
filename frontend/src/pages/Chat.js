@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth, API } from "@/App";
 import { toast } from "sonner";
 import axios from "axios";
-import { ArrowLeft, Send, Loader2, Check, CheckCheck, Lock, Unlock, Shield, MoreVertical, VolumeX, Volume2 } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Check, CheckCheck, Lock, Unlock, Shield, MoreVertical, VolumeX, Volume2, Trash2 } from "lucide-react";
 import BlurredImage, { BLUR_STATES } from "../components/BlurredImage";
 import SilhouetteAvatar from "../components/SilhouetteAvatar";
 import {
@@ -395,13 +395,30 @@ const Chat = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
                   {isQuiet ? (
-                    <DropdownMenuItem 
-                      onClick={() => handleMoveThread("messages")}
-                      className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
-                    >
-                      <Volume2 className="w-4 h-4 mr-2" />
-                      Move back to Messages
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem 
+                        onClick={() => handleMoveThread("messages")}
+                        className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
+                      >
+                        <Volume2 className="w-4 h-4 mr-2" />
+                        Move back to Messages
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={async () => {
+                          try {
+                            await axios.delete(`${API}/messages/conversation/${userId}`);
+                            toast.success("Conversation deleted");
+                            navigate(-1);
+                          } catch (error) {
+                            toast.error("Failed to delete conversation");
+                          }
+                        }}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete conversation permanently
+                      </DropdownMenuItem>
+                    </>
                   ) : (
                     <DropdownMenuItem 
                       onClick={() => handleMoveThread("quiet")}

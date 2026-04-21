@@ -21,19 +21,46 @@ Building a real-time, location-based social connection app called "Here & Now" w
 
 ### Quiet for Now Section
 - Below Messages list, titled "Quiet for now"
+- **Always visible** even when empty (shows "(no threads yet)")
 - Uses same row layout as Messages
 - Badge shows unread count: "Quiet for now (1)"
 - New messages show unread indicator but thread does NOT auto-move
+- "Delete conversation permanently" option available for quiet threads
 
 ### Thread Movement Options
 - In Messages: "Move to Quiet for now" option in thread menu
-- In Quiet for now: "Move back to Messages" option in thread menu
+- In Quiet for now: "Move back to Messages" and "Delete conversation permanently" options
 - Uses `quiet_threads` array in user document to track
 
 ### Photo Behaviour Rule
 - If `reveal_state === "both_revealed"`: show clear photo everywhere
 - Otherwise: keep current blur/overlay behaviour unchanged
-- Applies to: Messages list, Quiet for now, Chat thread header
+- Applies to: Messages list, Quiet for now, Chat thread header, HereHub cards
+
+## Glances System (Updated Apr 2025)
+
+### Glance Card Features
+- Entire card is clickable (navigates to profile)
+- "Glance Back" button appears on received glances when not yet returned
+- Hint text: "Tap Glance Back to send yours"
+- Hint only shows when user hasn't glanced back yet
+
+## Reveal System (Updated Apr 2025)
+
+### "They've revealed to you" Section
+- New HereHub section in Glances tab
+- Shows users who revealed to current user but haven't been revealed back to
+- Each card shows: blurred photo, name, microcopy "They've revealed. You can reveal anytime."
+- Section hidden when empty
+
+### Reveal Button Visibility
+- Shows if user is connected AND reveal_state !== "both_revealed"
+- Safeguard for edge cases where reveal is in half-state
+
+### Reveal Notifications
+- **Someone reveals to you:** In-app notification + push notification + badge update
+- **You reveal to someone:** Toast confirmation "You've revealed to them"
+- **Mutual reveal:** Both users notified "You've mutually revealed"
 
 ## Core Visibility Model
 
