@@ -339,8 +339,23 @@ const Venues = () => {
         {/* Header with Clock */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Find a Venue</h1>
-            <p className="text-slate-400">Check into a place to see who's around</p>
+            <h1 
+              className="text-3xl font-bold mb-2 bg-clip-text text-transparent"
+              style={{ 
+                backgroundImage: 'linear-gradient(90deg, #a855f7, #c084fc, #ec4899, #c084fc, #a855f7)',
+                backgroundSize: '200% 100%',
+                animation: 'shimmerText 4s ease-in-out infinite',
+              }}
+            >
+              Find a Venue
+              <style>{`
+                @keyframes shimmerText {
+                  0%, 100% { background-position: 0% center; }
+                  50% { background-position: 100% center; }
+                }
+              `}</style>
+            </h1>
+            <p className="text-white">Check into a place to see who's around</p>
             {/* Location Tracking Status */}
             {isTracking && (
               <div className="flex items-center gap-2 mt-2">
