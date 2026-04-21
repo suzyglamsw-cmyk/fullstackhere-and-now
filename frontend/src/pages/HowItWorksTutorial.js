@@ -12,28 +12,28 @@ import { ArrowLeft, Eye, EyeOff, Users, Heart, Sparkles, MapPin, Camera } from "
 // Gradient text style for titles
 const gradientTextClass = "bg-gradient-to-r from-[#A66CFF] via-[#C77DFF] to-[#FF70A6] bg-clip-text text-transparent";
 
+// Static avatar paths
+const AVATAR_A = "/avatarA.png"; // Blonde cartoon portrait (You)
+const AVATAR_B = "/avatarB.png"; // Androgynous avatar (Them)
+
 // Avatar visual component - represents a blurred/clear photo state
-const AvatarVisual = ({ blurLevel = "heavy", label }) => {
+const AvatarVisual = ({ src, blurLevel = "heavy", label }) => {
   // blurLevel: "heavy" | "medium" | "clear"
   const blurStyles = {
-    heavy: { filter: "blur(12px)", opacity: 0.6 },
-    medium: { filter: "blur(6px)", opacity: 0.8 },
-    clear: { filter: "none", opacity: 1 },
+    heavy: { filter: "blur(12px)", transform: "scale(1.15)" },
+    medium: { filter: "blur(6px)", transform: "scale(1.1)" },
+    clear: { filter: "none", transform: "scale(1)" },
   };
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <div 
-        className="w-16 h-16 rounded-xl overflow-hidden relative"
-        style={blurStyles[blurLevel]}
-      >
-        {/* Abstract avatar representation using gradient */}
-        <div className="w-full h-full bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400">
-          <svg viewBox="0 0 64 64" className="w-full h-full">
-            <circle cx="32" cy="22" r="12" fill="rgba(255,255,255,0.3)" />
-            <ellipse cx="32" cy="52" rx="18" ry="14" fill="rgba(255,255,255,0.3)" />
-          </svg>
-        </div>
+      <div className="w-16 h-16 rounded-xl overflow-hidden relative bg-slate-800">
+        <img 
+          src={src}
+          alt={label || "Avatar"}
+          className="w-full h-full object-cover"
+          style={blurStyles[blurLevel]}
+        />
       </div>
       {label && <span className="text-[10px] text-slate-500">{label}</span>}
     </div>
@@ -116,8 +116,8 @@ const HowItWorksTutorial = () => {
           description="You start as strangers. Photos are heavily blurred for protection."
           icon={Users}
         >
-          <AvatarVisual blurLevel="heavy" label="You" />
-          <AvatarVisual blurLevel="heavy" label="Them" />
+          <AvatarVisual src={AVATAR_A} blurLevel="heavy" label="You" />
+          <AvatarVisual src={AVATAR_B} blurLevel="heavy" label="Them" />
         </StepCard>
 
         {/* Step 2 - Someone shows interest */}
@@ -127,11 +127,11 @@ const HowItWorksTutorial = () => {
           description="If you send or receive a Glance, Icebreaker, or Chat Request, photos stay heavily blurred until you both respond."
           icon={Eye}
         >
-          <AvatarVisual blurLevel="heavy" label="You" />
+          <AvatarVisual src={AVATAR_A} blurLevel="heavy" label="You" />
           <div className="flex flex-col items-center justify-center">
             <Heart className="w-5 h-5 text-pink-400 animate-pulse" />
           </div>
-          <AvatarVisual blurLevel="heavy" label="Them" />
+          <AvatarVisual src={AVATAR_B} blurLevel="heavy" label="Them" />
         </StepCard>
 
         {/* Step 3 - Mutual connection */}
@@ -141,14 +141,14 @@ const HowItWorksTutorial = () => {
           description="You're connected when there's mutual interest — returned glances, accepted icebreakers, or accepted chat requests. Photos soften to a medium blur."
           icon={Heart}
         >
-          <AvatarVisual blurLevel="medium" label="You" />
+          <AvatarVisual src={AVATAR_A} blurLevel="medium" label="You" />
           <div className="flex flex-col items-center justify-center">
             <div className="flex items-center gap-1">
               <Heart className="w-4 h-4 text-pink-400" />
               <Heart className="w-4 h-4 text-pink-400" />
             </div>
           </div>
-          <AvatarVisual blurLevel="medium" label="Them" />
+          <AvatarVisual src={AVATAR_B} blurLevel="medium" label="Them" />
         </StepCard>
 
         {/* Step 4 - Reveal choice */}
@@ -159,14 +159,14 @@ const HowItWorksTutorial = () => {
           icon={EyeOff}
         >
           <div className="flex flex-col items-center">
-            <AvatarVisual blurLevel="medium" label="You (revealed)" />
+            <AvatarVisual src={AVATAR_A} blurLevel="medium" label="You (revealed)" />
             <Eye className="w-4 h-4 text-indigo-400 mt-1" />
           </div>
           <div className="flex flex-col items-center justify-center">
             <span className="text-xs text-slate-500">waiting...</span>
           </div>
           <div className="flex flex-col items-center">
-            <AvatarVisual blurLevel="medium" label="Them (not yet)" />
+            <AvatarVisual src={AVATAR_B} blurLevel="medium" label="Them (not yet)" />
             <EyeOff className="w-4 h-4 text-slate-500 mt-1" />
           </div>
         </StepCard>
@@ -179,14 +179,14 @@ const HowItWorksTutorial = () => {
           icon={Sparkles}
         >
           <div className="flex flex-col items-center">
-            <AvatarVisual blurLevel="clear" label="You" />
+            <AvatarVisual src={AVATAR_A} blurLevel="clear" label="You" />
             <Eye className="w-4 h-4 text-emerald-400 mt-1" />
           </div>
           <div className="flex flex-col items-center justify-center">
             <Sparkles className="w-5 h-5 text-amber-400" />
           </div>
           <div className="flex flex-col items-center">
-            <AvatarVisual blurLevel="clear" label="Them" />
+            <AvatarVisual src={AVATAR_B} blurLevel="clear" label="Them" />
             <Eye className="w-4 h-4 text-emerald-400 mt-1" />
           </div>
         </StepCard>
@@ -205,7 +205,7 @@ const HowItWorksTutorial = () => {
           <div className="w-px h-16 bg-white/10" />
           <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] text-slate-400 font-medium">Full Profile</span>
-            <AvatarVisual blurLevel="clear" label="(mutual reveal)" />
+            <AvatarVisual src={AVATAR_A} blurLevel="clear" label="(mutual reveal)" />
           </div>
         </StepCard>
 
@@ -217,12 +217,12 @@ const HowItWorksTutorial = () => {
           icon={Camera}
         >
           <div className="flex items-center gap-4">
-            <AvatarVisual blurLevel="clear" />
+            <AvatarVisual src={AVATAR_A} blurLevel="clear" />
             <div className="flex flex-col items-center">
               <Camera className="w-6 h-6 text-indigo-400" />
               <span className="text-[10px] text-slate-400 mt-1">Real & recent</span>
             </div>
-            <AvatarVisual blurLevel="clear" />
+            <AvatarVisual src={AVATAR_B} blurLevel="clear" />
           </div>
         </StepCard>
 
