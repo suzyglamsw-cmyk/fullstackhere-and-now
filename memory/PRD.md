@@ -13,6 +13,33 @@ Building a real-time, location-based social connection app called "Here & Now" w
 - **Frontend:** React, TailwindCSS, Shadcn UI
 - **3rd Party:** Stripe, Google Maps Platform, OpenAI Whisper & Vision (Emergent LLM Key)
 
+## How It Works Tutorial (Added Apr 2025)
+
+### Quick Steps: How It Works Page
+- **Route:** `/how-it-works`
+- **File:** `/app/frontend/src/pages/HowItWorksTutorial.js`
+- Standalone, static, visual-only tutorial explaining the blur and reveal system
+- NO logic changes, NO backend calls, NO side effects
+
+### Visual Design
+- Gradient titles: `bg-gradient-to-r from-[#A66CFF] via-[#C77DFF] to-[#FF70A6] bg-clip-text text-transparent`
+- White body text
+- Numbered step cards with avatar visuals
+- Silhouette component for Step 6 (venue hiding)
+
+### The 7 Steps
+1. **Strangers** - Heavy blur, photos protected
+2. **Someone shows interest** - Heavy blur until both respond
+3. **Mutual connection** - Medium blur after mutual interest
+4. **Reveal choice** - Medium blur, nothing changes until both reveal
+5. **Mutual reveal** - Clear photos everywhere
+6. **Hide photo in venues** - Silhouette in venues, clear in full profile for mutual reveals
+7. **Keep it real** - Encouragement to use real, recent photos
+
+### Access Points
+- **HereHub (Connections.js):** Info icon (ℹ️) in header navigates to tutorial
+- **Settings.js:** "How It Works" menu item with HelpCircle icon
+
 ## Messaging System (Updated Apr 2025)
 
 ### Messages Layout

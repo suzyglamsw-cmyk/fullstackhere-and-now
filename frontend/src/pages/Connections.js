@@ -8,7 +8,7 @@ import axios from "axios";
 import Layout from "../components/Layout";
 import { UserCard } from "../components/UserCard";
 import { NotForNowSheet } from "../components/NotForNowSheet";
-import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Snowflake, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2, Ban, UserMinus, MoreVertical, Wine, Archive, CheckSquare, Square, Crown, User, VolumeX, Volume2 } from "lucide-react";
+import { MessageCircle, MapPin, Loader2, Users, Sparkles, Eye, Heart, Snowflake, UserPlus, Check, X, Clock, UserCheck, ArrowUpRight, ArrowDownLeft, MessageSquare, Trash2, Ban, UserMinus, MoreVertical, Wine, Archive, CheckSquare, Square, Crown, User, VolumeX, Volume2, Info } from "lucide-react";
 import { getErrorMessage } from "../utils/errorUtils";
 import { obscureBioText } from "../utils/bioObscure";
 import BlurredImage from "../components/BlurredImage";
@@ -859,9 +859,21 @@ const Connections = () => {
     <Layout>
       <div className="max-w-4xl mx-auto px-4 py-6 pb-32" data-testid="connections-page">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Match List</h1>
-          <p className="text-slate-400">People you've connected with</p>
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Match List</h1>
+            <p className="text-slate-400">People you've connected with</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/how-it-works")}
+            className="text-slate-400 hover:text-white hover:bg-white/10 rounded-xl p-2"
+            data-testid="how-it-works-btn"
+            title="How It Works"
+          >
+            <Info className="w-5 h-5" />
+          </Button>
         </div>
 
         {/* Tabs */}

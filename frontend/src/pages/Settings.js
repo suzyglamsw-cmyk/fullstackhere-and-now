@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import SilhouetteAvatar from "../components/SilhouetteAvatar";
-import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, Eye, MapPin, Shield, ShieldOff, UserX } from "lucide-react";
+import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, Eye, MapPin, Shield, ShieldOff, UserX, HelpCircle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, isSubscribedToPush } from "../utils/pushNotifications";
 
@@ -315,7 +315,27 @@ const Settings = () => {
           </div>
         </div>
 
-        {/* 3. For Venues Section */}
+        {/* 3. Help Section */}
+        <div className="glass rounded-2xl p-6 mb-6">
+          <button
+            data-testid="how-it-works-link"
+            onClick={() => navigate("/how-it-works")}
+            className="w-full flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <HelpCircle className="w-5 h-5 text-purple-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-white font-medium">How It Works</p>
+                <p className="text-slate-400 text-sm">Quick guide to photos & reveals</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        {/* 4. For Venues Section */}
         <div className="glass rounded-2xl p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center">
