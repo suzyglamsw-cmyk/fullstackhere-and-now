@@ -608,8 +608,13 @@ const Discovery = () => {
                 <Users className="w-5 h-5 text-cyan-400" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Not Here</h1>
-                <p className="text-sm text-slate-400">People nearby not at a venue</p>
+                <h1 
+                  className="text-xl font-bold bg-clip-text text-transparent"
+                  style={{ backgroundImage: 'linear-gradient(90deg, #a855f7, #c084fc, #ec4899)' }}
+                >
+                  Not Here
+                </h1>
+                <p className="text-sm text-white">People nearby not at a venue</p>
               </div>
             </div>
 
