@@ -696,7 +696,11 @@ const Connections = () => {
   // Glance back at someone who glanced at you
   const handleGlanceBack = async (userId, displayName) => {
     try {
-      await axios.post(`${API}/glances`, { to_user_id: userId });
+      // Need venue_id - get it from the glance data or use a default
+      const glance = glances.incoming?.find(g => (g.from_user_id || g.user_id) === userId);
+      const venueId = glance?.venue_id || "glance-back-venue";
+      
+      await axios.post(`${API}/glance`, { to_user_id: userId, venue_id: venueId });
       toast.success(`Glanced back at ${displayName}!`);
       setMatchedGlances(prev => new Set([...prev, userId]));
       fetchAllData();
