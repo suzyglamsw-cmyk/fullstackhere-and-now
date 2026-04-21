@@ -481,7 +481,7 @@ const Discovery = () => {
                 }
               `}</style>
             </h1>
-            <p className="text-slate-300/70 text-sm mt-2">Choose how you want to explore people around you.</p>
+            <p className="text-white text-sm mt-2">Choose how you want to explore people around you.</p>
           </div>
           
           <div className="w-full max-w-md mx-auto space-y-4">
