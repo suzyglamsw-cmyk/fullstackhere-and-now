@@ -80,7 +80,7 @@ export const SelfCard = ({
       className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-2xl overflow-hidden border-2 border-indigo-500/50 hover:border-indigo-400 transition-all cursor-pointer group"
     >
       {/* Photo - CLEAR for self (never blurred except in Preview Mode) */}
-      <div className="relative aspect-[3/4]">
+      <div className="relative aspect-square">
         {showSilhouette ? (
           <SilhouetteAvatar />
         ) : getPhotoUrl(user.avatar_url) || getPhotoUrl(user.photos?.[0]) ? (
@@ -258,7 +258,7 @@ export const UserCard = ({
       }`}
     >
       {/* Photo */}
-      <div className="relative aspect-[3/4]">
+      <div className="relative aspect-square">
         {showSilhouette ? (
           <SilhouetteAvatar />
         ) : (getPhotoUrl(user.avatar_url) || getPhotoUrl(user.thumbnail_url) || getPhotoUrl(user.photos?.[0])) ? (
