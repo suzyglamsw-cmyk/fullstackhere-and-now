@@ -179,7 +179,13 @@ const Register = () => {
   if (step === "age-gate") {
     return (
       <div className="min-h-screen hero-gradient flex flex-col">
-        <div className="p-4">
+        {/* Background Effects - matching landing page */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl" />
+        </div>
+
+        <div className="relative p-4">
           <Button
             data-testid="back-btn"
             variant="ghost"
@@ -191,7 +197,7 @@ const Register = () => {
           </Button>
         </div>
 
-        <div className="flex-1 flex items-center justify-center px-4 pb-20">
+        <div className="relative flex-1 flex items-center justify-center px-4 pb-20">
           <div className="w-full max-w-md">
             <div className="flex items-center justify-center mb-10">
               <div className="flex items-center gap-3">
@@ -202,25 +208,25 @@ const Register = () => {
 
             <div className="glass rounded-2xl p-8">
               <div className="flex justify-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <Shield className="w-8 h-8 text-amber-400" />
+                <div className="w-16 h-16 rounded-full bg-[#C9A7FF]/20 flex items-center justify-center">
+                  <Shield className="w-8 h-8 text-[#C9A7FF]" />
                 </div>
               </div>
 
               <h1 className="text-2xl font-bold text-white text-center mb-4">Age Verification</h1>
               
               <div className="space-y-4 mb-8">
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                    <p className="text-amber-200 text-sm">
-                      <strong>Here & Now is for adults 18+.</strong> By continuing, you confirm you are 18 years of age or older.
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-slate-400 text-sm text-center">
-                  In Here & Now, you decide when you're seen, where you're seen, and how you're seen.
+                <p className="text-white text-center leading-relaxed">
+                  Here & Now is for adults 18+.
+                  <br />
+                  By continuing, you're confirming you're over 18 and happy with our{" "}
+                  <Link 
+                    to="/community-guidelines" 
+                    className="text-[#C9A7FF] hover:underline font-medium"
+                    data-testid="guidelines-link"
+                  >
+                    community guidelines
+                  </Link>.
                 </p>
               </div>
 
@@ -230,10 +236,16 @@ const Register = () => {
                   data-testid="age-confirm-checkbox"
                   checked={ageConfirmed}
                   onCheckedChange={setAgeConfirmed}
-                  className="mt-1 border-slate-500 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                  className="mt-1 border-[#C9A7FF] data-[state=checked]:bg-[#C9A7FF] data-[state=checked]:border-[#C9A7FF] data-[state=checked]:text-slate-900"
                 />
-                <label htmlFor="age-confirm" className="text-slate-300 text-sm cursor-pointer">
-                  I confirm that I am <strong>18 years of age or older</strong> and agree to the community guidelines.
+                <label htmlFor="age-confirm" className="text-white text-sm cursor-pointer leading-relaxed">
+                  I confirm I am <strong>18 or older</strong> and agree to the{" "}
+                  <Link 
+                    to="/community-guidelines" 
+                    className="text-[#C9A7FF] hover:underline"
+                  >
+                    community guidelines
+                  </Link>.
                 </label>
               </div>
 
@@ -246,8 +258,8 @@ const Register = () => {
                 Continue
               </Button>
 
-              <p className="text-center text-slate-500 text-xs mt-6">
-                Users who cannot confirm they are 18+ cannot create an account.
+              <p className="text-center text-slate-400 text-xs mt-6">
+                If you're not 18 yet, you'll need to wait a little longer.
               </p>
             </div>
           </div>

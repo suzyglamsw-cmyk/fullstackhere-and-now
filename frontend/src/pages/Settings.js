@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import Layout from "../components/Layout";
 import SilhouetteAvatar from "../components/SilhouetteAvatar";
-import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, Eye, MapPin, Shield, ShieldOff, UserX, HelpCircle } from "lucide-react";
+import { Loader2, LogOut, Trash2, Crown, Coins, ChevronRight, FileText, Wrench, AlertTriangle, Bell, Share2, QrCode, X, Eye, MapPin, Shield, ShieldOff, UserX, HelpCircle, Heart } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, isSubscribedToPush } from "../utils/pushNotifications";
 
@@ -320,7 +320,7 @@ const Settings = () => {
           <button
             data-testid="how-it-works-link"
             onClick={() => navigate("/how-it-works")}
-            className="w-full flex items-center justify-between"
+            className="w-full flex items-center justify-between mb-4"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
@@ -329,6 +329,23 @@ const Settings = () => {
               <div className="text-left">
                 <p className="text-white font-medium">How It Works</p>
                 <p className="text-slate-400 text-sm">Quick guide to photos & reveals</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-slate-400" />
+          </button>
+          
+          <button
+            data-testid="community-guidelines-link"
+            onClick={() => navigate("/community-guidelines")}
+            className="w-full flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center">
+                <Heart className="w-5 h-5 text-pink-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-white font-medium">Community Guidelines</p>
+                <p className="text-slate-400 text-sm">How we keep things warm & safe</p>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400" />

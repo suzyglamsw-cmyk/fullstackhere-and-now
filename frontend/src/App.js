@@ -30,6 +30,7 @@ import TestTools from "./pages/TestTools";
 import AdminReports from "./pages/AdminReports";
 import UserProfile from "./pages/UserProfile";
 import HowItWorksTutorial from "./pages/HowItWorksTutorial";
+import CommunityGuidelines from "./pages/CommunityGuidelines";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -363,6 +364,10 @@ function App() {
                   <HowItWorksTutorial />
                 </ProtectedRoute>
               }
+            />
+            <Route
+              path="/community-guidelines"
+              element={<CommunityGuidelines />}
             />
           </Routes>
         </BrowserRouter>
