@@ -118,18 +118,18 @@ const Landing = () => {
       </div>
 
       {/* Features Section */}
-      <div className="relative py-16 px-4">
+      <div className="relative py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">How it works</h2>
             <p className="text-slate-400">Simple, spontaneous, safe.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="group p-5 rounded-2xl bg-slate-900/40 border border-white/5 hover:border-white/10 transition-all duration-300"
+                className="group p-4 rounded-2xl bg-slate-900/40 border border-white/5 hover:border-white/10 transition-all duration-300"
               >
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-pink-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
@@ -145,7 +145,7 @@ const Landing = () => {
           </div>
 
           {/* Additional Info */}
-          <div className="mt-12 text-center space-y-4">
+          <div className="mt-8 text-center space-y-3">
             <p className="text-slate-400 leading-relaxed max-w-2xl mx-auto">
               All profiles begin with a heavy blur, which softens once a mutual connection is made.
             </p>
