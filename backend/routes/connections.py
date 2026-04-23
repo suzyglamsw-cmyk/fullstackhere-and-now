@@ -73,8 +73,13 @@ async def send_push_notification_from_route(user_id: str, title: str, body: str,
         
         for sub in subscriptions:
             try:
+                # Build subscription_info from top-level fields (matching server.py pattern)
+                subscription_info = {
+                    "endpoint": sub["endpoint"],
+                    "keys": sub["keys"]
+                }
                 webpush(
-                    subscription_info=sub["subscription"],
+                    subscription_info=subscription_info,
                     data=payload,
                     vapid_private_key=vapid_private_key,
                     vapid_claims=vapid_claims
