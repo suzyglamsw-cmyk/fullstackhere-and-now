@@ -2465,12 +2465,11 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
     """
     Block a user - BILATERAL blocking:
     - Both users are added to each other's blocked_users list
-    - Removes from discovery, matches, recents, and chat for both
-    - Clears all notifications and interaction facilities
+    - Removes from discovery, matches, recents for both
     - Prevents future messaging, visibility, matching, and presence
     - PRESERVES reveal status (db.reveals) for photo clarity after unblock
     - PRESERVES chat history (soft delete) for restoration after unblock
-    - Does NOT preserve interaction state (glances, connections, mutual match)
+    - PRESERVES action states (glances, icebreakers, chat_requests) to prevent block detection
     """
     if data.user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="Cannot block yourself")
@@ -2507,8 +2506,11 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         {"$inc": {"blocks_received_count": 1}}
     )
     
-    # Remove ALL interaction states (NOT restored on unblock)
-    # 1. Remove from friends (both directions)
+    # NOTE: We do NOT delete interaction states (glances, icebreakers, chat_requests)
+    # This prevents block detection - action states remain exactly as they were
+    # The blocked user will NOT see their actions reset
+    
+    # 1. Remove from friends (both directions) - friendship is severed
     await db.friends.delete_many({
         "$or": [
             {"user1_id": current_user["id"], "user2_id": data.user_id},
@@ -2516,7 +2518,7 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # 2. Remove connections (both directions) - NOT restored
+    # 2. Remove connections (both directions) - connection is severed
     await db.connections.delete_many({
         "$or": [
             {"user1_id": current_user["id"], "user2_id": data.user_id},
@@ -2524,31 +2526,11 @@ async def block_user(data: BlockUserRequest, current_user: dict = Depends(get_cu
         ]
     })
     
-    # 3. Remove glances (both directions) - NOT restored
-    await db.glances.delete_many({
-        "$or": [
-            {"from_user_id": current_user["id"], "to_user_id": data.user_id},
-            {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
-        ]
-    })
+    # 3. Glances are PRESERVED - do NOT delete
+    # 4. Icebreakers are PRESERVED - do NOT delete
+    # 5. Chat requests are PRESERVED - do NOT delete
     
-    # 4. Remove/cancel icebreakers (both directions) - NOT restored
-    await db.icebreakers.delete_many({
-        "$or": [
-            {"from_user_id": current_user["id"], "to_user_id": data.user_id},
-            {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
-        ]
-    })
-    
-    # 5. Remove/cancel chat requests (both directions) - NOT restored
-    await db.chat_requests.delete_many({
-        "$or": [
-            {"from_user_id": current_user["id"], "to_user_id": data.user_id},
-            {"from_user_id": data.user_id, "to_user_id": current_user["id"]}
-        ]
-    })
-    
-    # 6. Remove friend requests (both directions) - NOT restored
+    # 6. Remove friend requests (both directions) - requests are cancelled
     await db.friend_requests.delete_many({
         "$or": [
             {"from_user_id": current_user["id"], "to_user_id": data.user_id},
