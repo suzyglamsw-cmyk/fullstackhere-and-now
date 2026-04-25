@@ -295,16 +295,6 @@ export const UserCard = ({
               <Crown className="w-3 h-3 text-white" />
             </div>
           )}
-          
-          {/* Mutual connection badge */}
-          {isMatched && (
-            <div 
-              className="w-6 h-6 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg"
-              data-testid={`match-badge-${user.id}`}
-            >
-              <Sparkles className="w-3 h-3 text-white" />
-            </div>
-          )}
         </div>
         
         {/* Voice intro indicator (only when clear) */}
@@ -353,13 +343,6 @@ export const UserCard = ({
           
           {user.presence_note && (
             <p className="text-slate-400 text-xs mt-1 truncate">{user.presence_note}</p>
-          )}
-          
-          {user.shy_indicator && (
-            <div className="flex items-center gap-1 mt-1">
-              <Heart className="w-3 h-3 text-pink-400" />
-              <span className="text-pink-300 text-xs">May be shy</span>
-            </div>
           )}
         </div>
       </div>
