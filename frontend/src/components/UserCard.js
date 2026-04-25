@@ -287,13 +287,25 @@ export const UserCard = ({
           </button>
         )}
         
-        {/* Top-right badges (Premium, Match only) */}
+        {/* Top-right badges (Premium, Intent) */}
         <div className="absolute top-2 right-2 flex flex-col gap-1.5 items-end z-10">
           {/* Premium badge */}
           {user.is_premium && (
             <div className="w-6 h-6 rounded-full bg-amber-500/90 flex items-center justify-center shadow-lg">
               <Crown className="w-3 h-3 text-white" />
             </div>
+          )}
+          {/* Intent badge - anchored to top-right */}
+          {user.intent && (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+              user.intent === "dating" ? "bg-pink-500/30 text-pink-300" :
+              user.intent === "friends" ? "bg-emerald-500/30 text-emerald-300" :
+              "bg-purple-500/30 text-purple-300"
+            }`}>
+              {user.intent === "dating" ? "Dating" : 
+               user.intent === "friends" ? "Friends" : 
+               user.intent === "open_to_both" ? "Open" : ""}
+            </span>
           )}
         </div>
         
@@ -326,30 +338,16 @@ export const UserCard = ({
             </div>
           </div>
           
-          {/* Intent badge - What are you here for */}
-          {user.intent && (
-            <div className="mt-1">
-              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                user.intent === "dating" ? "bg-pink-500/30 text-pink-300" :
-                user.intent === "friends" ? "bg-emerald-500/30 text-emerald-300" :
-                "bg-purple-500/30 text-purple-300"
-              }`}>
-                {user.intent === "dating" ? "Dating" : 
-                 user.intent === "friends" ? "Friends" : 
-                 user.intent === "open_to_both" ? "Open to both" : ""}
-              </span>
-            </div>
-          )}
-          
+          {/* Presence Note - 6px margin from Name/Age */}
           {user.presence_note && (
-            <p className="text-slate-400 text-xs mt-1 truncate">{user.presence_note}</p>
+            <p className="text-slate-400 text-xs mt-1.5 truncate">{user.presence_note}</p>
           )}
         </div>
       </div>
       
-      {/* Mutual Connection Banner */}
+      {/* Mutual Connection Banner - 8px margin above */}
       {isMatched && (
-        <div className="bg-emerald-500/20 border-t border-emerald-500/30 px-3 py-2">
+        <div className="bg-emerald-500/20 border-t border-emerald-500/30 px-3 py-2 mt-2">
           <p className="text-emerald-300 text-xs text-center">
             You're mutual. Start a conversation
           </p>
@@ -365,8 +363,8 @@ export const UserCard = ({
         </div>
       )}
       
-      {/* Actions */}
-      <div className="p-3">
+      {/* Actions - 10px top padding for spacing from banners */}
+      <div className="p-3 pt-2.5">
         {isMatched ? (
           /* MUTUAL CONNECTION: Show Message button + Add Friend */
           <div className="flex gap-2">
