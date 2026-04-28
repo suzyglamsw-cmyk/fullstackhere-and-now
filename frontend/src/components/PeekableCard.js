@@ -59,26 +59,11 @@ export const PeekableCard = ({
   
   // Get clear photo URL for peek
   const getClearPhotoUrl = () => {
-    let url = "";
+    // Use first photo from photos array, or avatar_url as fallback
     if (user?.photos && user.photos.length > 0 && user.photos[0]) {
-      url = user.photos[0];
-    } else {
-      url = user?.avatar_url || user?.photo_url || "";
+      return user.photos[0];
     }
-    
-    if (!url) return "";
-    
-    // Replace blur=true with blur=false to get clear photo
-    if (url.includes('blur=true')) {
-      url = url.replace('blur=true', 'blur=false');
-    }
-    
-    // If relative URL, prepend API base
-    if (url.startsWith('/api/')) {
-      url = `${API}${url}`;
-    }
-    
-    return url;
+    return user?.avatar_url || user?.photo_url || "";
   };
   
   // Handle card tap
@@ -157,8 +142,7 @@ export const PeekableCard = ({
             bottom: 0,
             zIndex: 50,
             borderRadius: "1rem",
-            overflow: "hidden",
-            backgroundColor: "#000"
+            overflow: "hidden"
           }}
         >
           <img
@@ -168,11 +152,7 @@ export const PeekableCard = ({
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              objectPosition: "center",
-              filter: "none",
-              WebkitFilter: "none",
-              transform: "none",
-              opacity: 1
+              objectPosition: "center"
             }}
           />
         </div>
