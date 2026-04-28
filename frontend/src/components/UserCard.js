@@ -305,10 +305,10 @@ export const UserCard = ({
         )}
         
         {/* Name overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent px-3 pb-4 pt-8">
           {/* Name + Age - color-coded by gender (bold, exact hex) */}
           <p 
-            className="text-sm font-bold truncate"
+            className="text-base font-bold truncate leading-tight"
             style={{ 
               color: user.show_as === "male" ? "#3A7BFF" : 
                      user.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
@@ -319,11 +319,11 @@ export const UserCard = ({
           
           {/* Intent badge - left-aligned, full text, below name */}
           {user.intent && (
-            <div className="mt-1">
-              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                user.intent === "dating" ? "bg-pink-500/30 text-pink-300" :
-                user.intent === "friends" ? "bg-emerald-500/30 text-emerald-300" :
-                "bg-purple-500/30 text-purple-300"
+            <div className="mt-2">
+              <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold ${
+                user.intent === "dating" ? "bg-pink-500/40 text-pink-200" :
+                user.intent === "friends" ? "bg-emerald-500/40 text-emerald-200" :
+                "bg-purple-500/40 text-purple-200"
               }`}>
                 {user.intent === "dating" ? "Dating" : 
                  user.intent === "friends" ? "Friends" : 
@@ -334,7 +334,7 @@ export const UserCard = ({
           
           {/* Presence Note - below intent badge */}
           {user.presence_note && (
-            <p className="text-slate-400 text-xs mt-1.5 truncate">{user.presence_note}</p>
+            <p className="text-slate-300 text-[11px] mt-2 truncate leading-snug">{user.presence_note}</p>
           )}
         </div>
       </div>
