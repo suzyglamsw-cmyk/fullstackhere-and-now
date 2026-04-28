@@ -13,6 +13,30 @@ Building a real-time, location-based social connection app called "Here & Now" w
 - **Frontend:** React, TailwindCSS, Shadcn UI
 - **3rd Party:** Stripe, Google Maps Platform, OpenAI Whisper & Vision (Emergent LLM Key)
 
+## Gender-Based Name Coloring (Added Apr 2025)
+
+### Design
+- **Female users (`show_as: "female"`):** Bold magenta pink `#FF2D8D`
+- **Male users (`show_as: "male"`):** Bold royal blue `#3A7BFF`
+- **Unknown/unset gender:** White `#FFFFFF`
+
+### Applied Globally In:
+- `UserCard.js` component (grid view name overlay)
+- "They've revealed to you" horizontal strip (Connections.js)
+- Messages thread list (Connections.js)
+- Glances list - both received and sent (Connections.js)
+- Icebreakers list - both received and sent (Connections.js)
+- Chat Requests list - both received and sent (Connections.js)
+- Friend Requests list - both received and sent (Connections.js)
+
+### Backend Changes
+Added `show_as` field to API responses:
+- `/api/connections/revealed-to-me`
+- `/api/connections/glances`
+- `/api/connections/icebreakers`
+- `/api/connections/chat-requests`
+- `/api/messages/threads`
+
 ## How It Works Tutorial (Added Apr 2025)
 
 ### Quick Steps: How It Works Page

@@ -306,14 +306,14 @@ export const UserCard = ({
         
         {/* Name overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-          {/* Name + Age - color-coded by gender (smaller text) */}
-          <p className={`text-sm font-medium truncate ${
-            user.show_as === "male" 
-              ? "text-blue-300" 
-              : user.show_as === "female"
-              ? "text-pink-300"
-              : "text-white"
-          }`}>
+          {/* Name + Age - color-coded by gender (bold, exact hex) */}
+          <p 
+            className="text-sm font-bold truncate"
+            style={{ 
+              color: user.show_as === "male" ? "#3A7BFF" : 
+                     user.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+            }}
+          >
             {displayName}
           </p>
           

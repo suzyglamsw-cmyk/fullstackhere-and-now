@@ -115,7 +115,13 @@ const MessageThreadRow = ({ thread, navigate, formatDate, onMoveToQuiet, onMoveT
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h3 className={`text-sm truncate ${thread.unread_count > 0 ? "font-bold text-white" : "font-medium text-white"}`}>
+            <h3 
+              className={`text-sm truncate ${thread.unread_count > 0 ? "font-bold" : "font-medium"}`}
+              style={{ 
+                color: thread.show_as === "male" ? "#3A7BFF" : 
+                       thread.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+              }}
+            >
               {thread.display_name}
             </h3>
             <span className="text-xs text-slate-500 flex-shrink-0">
@@ -1024,7 +1030,15 @@ const Connections = () => {
                         </div>
                       )}
                     </div>
-                    <p className="font-medium text-white text-xs text-center truncate">{item.display_name}</p>
+                    <p 
+                      className="font-bold text-xs text-center truncate"
+                      style={{ 
+                        color: item.show_as === "male" ? "#3A7BFF" : 
+                               item.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+                      }}
+                    >
+                      {item.display_name}
+                    </p>
                     <p className="text-[10px] text-pink-300/80 text-center">Tap to see profile & options</p>
                   </div>
                 </div>
@@ -1379,7 +1393,15 @@ const Connections = () => {
 
                             {/* Info */}
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-white text-sm truncate">{glance.display_name}</p>
+                              <p 
+                                className="font-bold text-sm truncate"
+                                style={{ 
+                                  color: glance.show_as === "male" ? "#3A7BFF" : 
+                                         glance.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+                                }}
+                              >
+                                {glance.display_name}
+                              </p>
                               <p className={`text-xs truncate ${hasGlancedBack ? 'text-emerald-400 font-medium' : 'text-slate-400'}`}>
                                 {hasGlancedBack
                                   ? "Returned — now mutual"
@@ -1476,7 +1498,15 @@ const Connections = () => {
 
                         {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-white text-sm truncate">{glance.display_name}</p>
+                          <p 
+                            className="font-bold text-sm truncate"
+                            style={{ 
+                              color: glance.show_as === "male" ? "#3A7BFF" : 
+                                     glance.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+                            }}
+                          >
+                            {glance.display_name}
+                          </p>
                           <p className={`text-xs truncate ${glance.status === 'matched' || matchedGlances.has(glance.to_user_id || glance.user_id) ? 'text-emerald-400 font-medium' : 'text-slate-400'}`}>
                             {glance.status === 'matched' || matchedGlances.has(glance.to_user_id || glance.user_id)
                               ? "Returned — now mutual"
@@ -1607,7 +1637,15 @@ const Connections = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className={`font-semibold text-white truncate ${ib.is_new ? 'font-bold' : ''}`}>{ib.display_name}</h4>
+                          <h4 
+                            className={`font-bold truncate ${ib.is_new ? 'font-bold' : ''}`}
+                            style={{ 
+                              color: ib.show_as === "male" ? "#3A7BFF" : 
+                                     ib.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+                            }}
+                          >
+                            {ib.display_name}
+                          </h4>
                           <p className="text-slate-400 text-sm truncate">"{ib.message || ICEBREAKER_MESSAGES[ib.message_type || 0]}"</p>
                           <p className="text-slate-500 text-xs mt-1">
                             {ib.status === "pending" ? (
@@ -1693,7 +1731,15 @@ const Connections = () => {
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-white truncate">{ib.display_name}</h4>
+                          <h4 
+                            className="font-bold truncate"
+                            style={{ 
+                              color: ib.show_as === "male" ? "#3A7BFF" : 
+                                     ib.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+                            }}
+                          >
+                            {ib.display_name}
+                          </h4>
                           <p className="text-slate-400 text-sm truncate">"{ib.message || ICEBREAKER_MESSAGES[ib.message_type || 0]}"</p>
                           <p className="text-slate-500 text-xs mt-1">
                             {/* Status display based on premium and state */}
@@ -1828,7 +1874,15 @@ const Connections = () => {
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-white truncate">{request.display_name}</h4>
+                          <h4 
+                            className="font-bold truncate"
+                            style={{ 
+                              color: request.show_as === "male" ? "#3A7BFF" : 
+                                     request.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+                            }}
+                          >
+                            {request.display_name}
+                          </h4>
                           {request.bio && (
                             <p className="text-slate-400 text-sm truncate">
                               {obscureBioText(request.bio, request.is_connection_accepted)}
@@ -1912,7 +1966,15 @@ const Connections = () => {
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-white truncate">{request.display_name}</h4>
+                          <h4 
+                            className="font-bold truncate"
+                            style={{ 
+                              color: request.show_as === "male" ? "#3A7BFF" : 
+                                     request.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+                            }}
+                          >
+                            {request.display_name}
+                          </h4>
                           {request.bio && (
                             <p className="text-slate-400 text-sm truncate">
                               {obscureBioText(request.bio, request.is_connection_accepted)}
@@ -1996,7 +2058,15 @@ const Connections = () => {
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-white truncate">{request.display_name}</h4>
+                          <h4 
+                            className="font-bold truncate"
+                            style={{ 
+                              color: request.show_as === "male" ? "#3A7BFF" : 
+                                     request.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+                            }}
+                          >
+                            {request.display_name}
+                          </h4>
                           <p className="text-slate-500/70 text-xs">
                             Wants to be friends • {formatDate(request.created_at)}
                           </p>
@@ -2057,7 +2127,15 @@ const Connections = () => {
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-white truncate">{request.display_name}</h4>
+                          <h4 
+                            className="font-bold truncate"
+                            style={{ 
+                              color: request.show_as === "male" ? "#3A7BFF" : 
+                                     request.show_as === "female" ? "#FF2D8D" : "#FFFFFF" 
+                            }}
+                          >
+                            {request.display_name}
+                          </h4>
                           <p className="text-slate-500 text-xs flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             Pending • {formatDate(request.created_at)}

@@ -1291,6 +1291,7 @@ async def get_glances(current_user: dict = Depends(get_current_user)):
                 **g,
                 "user_id": g["to_user_id"],
                 "display_name": user.get("display_name"),
+                "show_as": user.get("show_as", ""),
                 "photo_url": profile_photo,  # Primary profile photo for BlurredImage
                 "avatar_url": user.get("avatar_url", ""),
                 "thumbnail_url": user.get("thumbnail_url", ""),
@@ -1309,6 +1310,7 @@ async def get_glances(current_user: dict = Depends(get_current_user)):
                 **g,
                 "user_id": g["from_user_id"],
                 "display_name": get_first_name(user.get("display_name")),
+                "show_as": user.get("show_as", ""),
                 "photo_url": profile_photo,  # Primary profile photo for BlurredImage
                 "avatar_url": user.get("avatar_url", ""),
                 "thumbnail_url": user.get("thumbnail_url", ""),
@@ -1399,6 +1401,7 @@ async def get_icebreakers(current_user: dict = Depends(get_current_user)):
                 **ib,
                 "user_id": ib["to_user_id"],
                 "display_name": user.get("display_name"),
+                "show_as": user.get("show_as", ""),
                 "photo_url": profile_photo,  # Primary profile photo for BlurredImage
                 "avatar_url": user.get("avatar_url", ""),
                 "thumbnail_url": user.get("thumbnail_url", ""),
@@ -1417,6 +1420,7 @@ async def get_icebreakers(current_user: dict = Depends(get_current_user)):
                 **ib,
                 "user_id": ib["from_user_id"],
                 "display_name": user.get("display_name"),
+                "show_as": user.get("show_as", ""),
                 "photo_url": profile_photo,  # Primary profile photo for BlurredImage
                 "avatar_url": user.get("avatar_url", ""),
                 "thumbnail_url": user.get("thumbnail_url", ""),
@@ -1508,6 +1512,7 @@ async def get_chat_requests(current_user: dict = Depends(get_current_user)):
                 **req,
                 "user_id": req["to_user_id"],
                 "display_name": user.get("display_name"),
+                "show_as": user.get("show_as", ""),
                 "photo_url": profile_photo,  # Primary profile photo for BlurredImage
                 "avatar_url": user.get("avatar_url", ""),  # Fallback only
                 "thumbnail_url": user.get("thumbnail_url", ""),
@@ -1526,6 +1531,7 @@ async def get_chat_requests(current_user: dict = Depends(get_current_user)):
                 **req,
                 "user_id": req["from_user_id"],
                 "display_name": user.get("display_name"),
+                "show_as": user.get("show_as", ""),
                 "photo_url": profile_photo,  # Primary profile photo for BlurredImage
                 "avatar_url": user.get("avatar_url", ""),  # Fallback only
                 "thumbnail_url": user.get("thumbnail_url", ""),
@@ -1709,6 +1715,7 @@ async def get_message_threads(current_user: dict = Depends(get_current_user)):
         threads.append({
             "user_id": user_id,
             "display_name": user.get("display_name", "Unknown"),
+            "show_as": user.get("show_as", ""),
             "avatar_url": user.get("avatar_url", ""),
             "photos": photo_urls,  # Full photos array for new avatar design
             "last_message": last_msg.get("content", "") if last_msg else "",
@@ -2257,6 +2264,7 @@ async def get_users_who_revealed_to_me(current_user: dict = Depends(get_current_
             "user_id": from_user_id,
             "display_name": user.get("display_name", "Unknown"),
             "photos": photo_urls,
+            "show_as": user.get("show_as", ""),
             "revealed_at": reveal.get("revealed_at"),
             "reveal_state": "they_revealed"  # They revealed, I haven't
         })
