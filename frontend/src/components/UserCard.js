@@ -178,7 +178,8 @@ export const UserCard = ({
   loading = {},
   globalPendingRef,
   context = 'discovery',
-  venueId = null
+  venueId = null,
+  disableClick = false  // When true, card click doesn't navigate (used by PeekableCard)
 }) => {
   const navigate = useNavigate();
   
@@ -233,8 +234,9 @@ export const UserCard = ({
     (user.hide_photo_in_venues && effectivePhotoState === 'unmatched') ||
     (serverHiddenPhoto && !user.is_self);
   
-  // Handle card click - navigate to profile
+  // Handle card click - navigate to profile (unless disabled)
   const handleClick = () => {
+    if (disableClick) return;
     navigate(`/profile/${user.id}`);
   };
   

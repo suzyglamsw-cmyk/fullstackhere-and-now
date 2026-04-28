@@ -5,20 +5,15 @@
  * - Here Now venue cards
  * - Not Here discovery cards
  * 
- * DOES NOT MODIFY:
- * - Blur logic (BlurredImage.js, getBlurValue())
- * - Reveal logic
- * - Any existing card behavior
+ * Peek shows the CLEAR profile photo briefly inside the small card.
+ * Does NOT touch blur logic at all - peek is a separate visual moment.
  * 
- * Peek is a brief visual glimpse only (0.15-0.25 seconds).
- * Controlled by target user's allow_peek setting.
- * 
- * Special case: hide_photo_in_venues = true (Here Now only)
- * - Shows silhouette as base image
- * - Peek flips the silhouette (not clear photo)
+ * 1st tap: Show clear photo overlay for 0.15-0.25s inside the card
+ * 2nd tap: Navigate to expanded profile (blur logic unchanged)
  */
 
 import { useState, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { UserCard } from "./UserCard";
 import axios from "axios";
 
@@ -35,6 +30,7 @@ export const PeekableCard = ({
   // All other UserCard props passed through
   ...cardProps
 }) => {
+  const navigate = useNavigate();
   const [isPeeking, setIsPeeking] = useState(false);
   const [hasPeekedLocal, setHasPeekedLocal] = useState(peekStatus?.has_peeked || false);
   
@@ -46,9 +42,11 @@ export const PeekableCard = ({
   // Determine if peek is enabled for this target
   const allowPeek = peekStatus?.allow_peek !== false; // Default true if undefined
   
-  // Determine if card should show gender border (peekable state)
-  // Border shown only if: allow_peek=true AND can_peek=true (not already peeked)
-  const showBorder = allowPeek && peekStatus?.can_peek && !hasPeekedLocal;
+  // Determine if card can be peeked (first tap = peek)
+  const canPeek = allowPeek && !hasPeekedLocal && peekStatus?.can_peek !== false;
+  
+  // Show gender border only if peekable
+  const showBorder = canPeek;
   
   // Get border color based on gender
   const getBorderColor = () => {
@@ -59,30 +57,37 @@ export const PeekableCard = ({
     return "#8B5CF6"; // Purple fallback
   };
   
+  // Get clear photo URL for peek
+  const getClearPhotoUrl = () => {
+    // Use first photo from photos array, or avatar_url as fallback
+    if (user?.photos && user.photos.length > 0 && user.photos[0]) {
+      return user.photos[0];
+    }
+    return user?.avatar_url || user?.photo_url || "";
+  };
+  
   // Handle card tap
   const handleCardClick = useCallback(async (e) => {
-    // If currently peeking, ignore clicks
-    if (isPeeking) {
-      e.stopPropagation();
-      e.preventDefault();
-      return;
-    }
-    
-    // If peek is not enabled or already peeked, let click propagate to UserCard
-    if (!allowPeek || hasPeekedLocal || !peekStatus?.can_peek) {
-      // Click will propagate to UserCard which handles navigation to profile
-      return;
-    }
-    
-    // First tap = Peek
     e.stopPropagation();
     e.preventDefault();
     
+    // If currently peeking, ignore clicks
+    if (isPeeking) {
+      return;
+    }
+    
+    // If peek not enabled or already peeked -> navigate to profile
+    if (!canPeek) {
+      navigate(`/profile/${user.id}`);
+      return;
+    }
+    
+    // First tap = Peek (show clear photo briefly)
     try {
       // Record peek on backend
       await axios.post(`${API}/api/peek/${user.id}`);
       
-      // Start peek animation
+      // Start peek - show clear photo
       setIsPeeking(true);
       
       // End peek after duration
@@ -94,70 +99,64 @@ export const PeekableCard = ({
       
     } catch (error) {
       console.error("Peek failed:", error);
-      // If peek already used (400) or disabled (403), update local state
+      // If peek already used (400) or disabled (403), mark as peeked and navigate
       if (error.response?.status === 400 || error.response?.status === 403) {
         setHasPeekedLocal(true);
+        navigate(`/profile/${user.id}`);
       }
     }
-  }, [isPeeking, allowPeek, hasPeekedLocal, peekStatus?.can_peek, user?.id, onPeekComplete]);
+  }, [isPeeking, canPeek, user?.id, navigate, onPeekComplete]);
   
-  // Border style for peekable state
-  const borderStyle = showBorder ? {
-    boxShadow: `0 0 0 3px ${getBorderColor()}`,
-    transition: "box-shadow 0.3s ease"
-  } : {};
-  
-  // During peek: temporarily remove blur by adding a class
-  const peekClass = isPeeking ? "peeking" : "";
-  
-  // Determine if this is a silhouette peek (Here Now + hide_photo_in_venues)
-  const isSilhouettePeek = context === "venue" && user?.hide_photo_in_venues === true;
+  const borderColor = getBorderColor();
+  const clearPhotoUrl = getClearPhotoUrl();
   
   return (
     <div 
-      className={`peekable-card-wrapper ${peekClass} ${isSilhouettePeek && isPeeking ? "silhouette-peek" : ""}`}
-      style={borderStyle}
+      className="peekable-card-wrapper"
+      style={{
+        position: "relative",
+        borderRadius: "1rem",
+        overflow: "hidden",
+        boxShadow: showBorder ? `0 0 0 3px ${borderColor}` : "none",
+        transition: "box-shadow 0.3s ease",
+        cursor: "pointer"
+      }}
       onClick={handleCardClick}
     >
+      {/* The normal UserCard (blurred per existing logic) - click disabled */}
       <UserCard
         user={user}
         {...cardProps}
         context={context}
-        // Pass peek state to UserCard for potential styling
-        _isPeeking={isPeeking}
-        _isSilhouettePeek={isSilhouettePeek}
+        disableClick={true}
       />
       
-      {/* CSS for peek animation */}
-      <style>{`
-        .peekable-card-wrapper {
-          border-radius: 1rem;
-          overflow: hidden;
-          position: relative;
-        }
-        
-        /* Regular peek: remove blur to show clear photo */
-        .peekable-card-wrapper.peeking:not(.silhouette-peek) img {
-          filter: none !important;
-          transform: scale(1) !important;
-          transition: filter 0.1s ease-out, transform 0.1s ease-out;
-        }
-        
-        /* Silhouette peek: just do a subtle "flip" animation on the silhouette */
-        .peekable-card-wrapper.silhouette-peek img {
-          animation: silhouette-flip 0.2s ease-in-out;
-        }
-        
-        @keyframes silhouette-flip {
-          0% { transform: scale(1) rotateY(0deg); }
-          50% { transform: scale(1.02) rotateY(10deg); }
-          100% { transform: scale(1) rotateY(0deg); }
-        }
-        
-        .peekable-card-wrapper:not(.peeking) img {
-          transition: filter 0.15s ease-in, transform 0.15s ease-in;
-        }
-      `}</style>
+      {/* Peek overlay - clear photo shown briefly on top */}
+      {isPeeking && clearPhotoUrl && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 50,
+            borderRadius: "1rem",
+            overflow: "hidden"
+          }}
+        >
+          <img
+            src={clearPhotoUrl}
+            alt="Peek"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center"
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
