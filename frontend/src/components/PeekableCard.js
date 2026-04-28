@@ -19,8 +19,8 @@ import axios from "axios";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-// Peek duration (in milliseconds): 0.15-0.25s -> 200ms
-const PEEK_DURATION = 200;
+// Peek duration (in milliseconds): doubled to 0.4s for better visibility
+const PEEK_DURATION = 400;
 
 export const PeekableCard = ({
   user,
