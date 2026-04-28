@@ -155,7 +155,8 @@ export const PeekableCard = ({
             bottom: 0,
             zIndex: 50,
             borderRadius: "1rem",
-            overflow: "hidden"
+            overflow: "hidden",
+            backgroundColor: "#000"
           }}
         >
           <img
@@ -165,7 +166,11 @@ export const PeekableCard = ({
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              objectPosition: "center"
+              objectPosition: "center",
+              filter: "none",
+              WebkitFilter: "none",
+              transform: "none",
+              opacity: 1
             }}
           />
         </div>
