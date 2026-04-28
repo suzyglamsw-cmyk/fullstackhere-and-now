@@ -59,7 +59,6 @@ export const PeekableCard = ({
   
   // Get clear photo URL for peek
   const getClearPhotoUrl = () => {
-    // Use first photo from photos array, or avatar_url as fallback
     let url = "";
     if (user?.photos && user.photos.length > 0 && user.photos[0]) {
       url = user.photos[0];
@@ -67,9 +66,16 @@ export const PeekableCard = ({
       url = user?.avatar_url || user?.photo_url || "";
     }
     
+    if (!url) return "";
+    
     // Replace blur=true with blur=false to get clear photo
-    if (url && url.includes('blur=true')) {
+    if (url.includes('blur=true')) {
       url = url.replace('blur=true', 'blur=false');
+    }
+    
+    // If relative URL, prepend API base
+    if (url.startsWith('/api/')) {
+      url = `${API}${url}`;
     }
     
     return url;
