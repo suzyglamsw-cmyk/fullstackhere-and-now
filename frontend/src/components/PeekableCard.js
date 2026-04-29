@@ -192,18 +192,18 @@ export const PeekableCard = ({
               }
               30% {
                 opacity: 1;
-                -webkit-mask-image: radial-gradient(circle 30px at 50% 35%, black 60%, transparent 100%);
-                mask-image: radial-gradient(circle 30px at 50% 35%, black 60%, transparent 100%);
+                -webkit-mask-image: radial-gradient(circle 50px at 50% 35%, black 60%, transparent 100%);
+                mask-image: radial-gradient(circle 50px at 50% 35%, black 60%, transparent 100%);
               }
               60% {
                 opacity: 1;
-                -webkit-mask-image: radial-gradient(circle 35px at 50% 35%, black 60%, transparent 100%);
-                mask-image: radial-gradient(circle 35px at 50% 35%, black 60%, transparent 100%);
+                -webkit-mask-image: radial-gradient(circle 60px at 50% 35%, black 60%, transparent 100%);
+                mask-image: radial-gradient(circle 60px at 50% 35%, black 60%, transparent 100%);
               }
               85% {
                 opacity: 0.7;
-                -webkit-mask-image: radial-gradient(circle 25px at 50% 35%, black 60%, transparent 100%);
-                mask-image: radial-gradient(circle 25px at 50% 35%, black 60%, transparent 100%);
+                -webkit-mask-image: radial-gradient(circle 45px at 50% 35%, black 60%, transparent 100%);
+                mask-image: radial-gradient(circle 45px at 50% 35%, black 60%, transparent 100%);
               }
               100% {
                 opacity: 0;
