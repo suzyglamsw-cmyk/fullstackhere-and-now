@@ -10,7 +10,7 @@ import { UserCard } from "./UserCard";
 import axios from "axios";
 
 const API = process.env.REACT_APP_BACKEND_URL;
-const PEEK_DURATION = 2000;
+const PEEK_DURATION = 1200; // Shorter duration for quick tease
 
 export const PeekableCard = ({
   user,
@@ -182,7 +182,8 @@ export const PeekableCard = ({
             }
             @keyframes irisOpen-${uid} {
               0% { clip-path: circle(0% at 50% 50%); }
-              90% { clip-path: circle(75% at 50% 50%); }
+              70% { clip-path: circle(35% at 50% 50%); }
+              85% { clip-path: circle(40% at 50% 50%); }
               100% { clip-path: circle(0% at 50% 50%); }
             }
           `}</style>
