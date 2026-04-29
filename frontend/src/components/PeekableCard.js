@@ -190,42 +190,31 @@ export const PeekableCard = ({
             }}
           />
           
-          {/* Clear image with thin line clip mask */}
+          {/* Clear image with thin line clip mask - 10px height */}
           <div
-            className="scanner-clear-layer"
+            className="scanner-line-mask"
             style={{
               position: "absolute",
-              width: "100%",
-              height: "100%",
-              overflow: "hidden"
+              left: 0,
+              right: 0,
+              height: "10px",
+              overflow: "hidden",
+              animation: "scannerSlide 2s ease-in-out forwards"
             }}
           >
-            <div
-              className="scanner-line-mask"
+            <img
+              src={clearPhotoUrl}
+              alt=""
+              className="scanner-clear-img"
               style={{
                 position: "absolute",
                 left: 0,
-                right: 0,
-                height: "4px",
-                overflow: "hidden",
-                animation: "scannerSlide 2s linear forwards"
+                width: "100%",
+                objectFit: "cover",
+                objectPosition: "center top",
+                animation: "imgOffset 2s ease-in-out forwards"
               }}
-            >
-              <img
-                src={clearPhotoUrl}
-                alt=""
-                className="scanner-clear-img"
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  width: "100%",
-                  height: "auto",
-                  minHeight: "100%",
-                  objectFit: "cover",
-                  objectPosition: "center top"
-                }}
-              />
-            </div>
+            />
           </div>
           
           {/* Scanner bar glow line */}
@@ -235,10 +224,11 @@ export const PeekableCard = ({
               position: "absolute",
               left: 0,
               right: 0,
-              height: "4px",
-              background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.9) 20%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.9) 80%, transparent 100%)",
-              boxShadow: "0 0 8px 2px rgba(255,255,255,0.6)",
-              animation: "scannerSlide 2s linear forwards"
+              height: "10px",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 30%, transparent 70%, rgba(255,255,255,0.3) 100%)",
+              boxShadow: "0 0 6px 1px rgba(255,255,255,0.4)",
+              pointerEvents: "none",
+              animation: "scannerSlide 2s ease-in-out forwards"
             }}
           />
         </div>
@@ -247,28 +237,22 @@ export const PeekableCard = ({
       {/* Scanner animation keyframes */}
       <style>{`
         @keyframes scannerSlide {
-          0% { top: 0%; }
-          100% { top: 100%; }
+          0% { top: 0px; }
+          100% { top: calc(100% - 10px); }
+        }
+        
+        @keyframes imgOffset {
+          0% { top: 0px; }
+          100% { top: calc(-100% + 10px); }
         }
         
         .scanner-line-mask {
-          top: 0%;
+          top: 0px;
         }
         
-        .scanner-line-mask .scanner-clear-img {
-          /* Image stays fixed, mask moves over it */
-          top: 0;
-          transform-origin: top center;
-        }
-        
-        /* Keep image position synced with mask movement */
-        @keyframes imgOffset {
-          0% { transform: translateY(0%); }
-          100% { transform: translateY(-100%); }
-        }
-        
-        .scanner-line-mask .scanner-clear-img {
-          animation: imgOffset 2s linear forwards;
+        .scanner-clear-img {
+          height: 100%;
+          min-height: 200px;
         }
       `}</style>
     </div>
