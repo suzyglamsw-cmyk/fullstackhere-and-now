@@ -277,31 +277,31 @@ export const PeekableCard = ({
         </div>
       )}
       
-      {/* Scanner animations with pixel-based travel distances */}
+      {/* Scanner animations with pixel-based travel distances - LINEAR for perfect sync */}
       <style>{`
         @keyframes windowMovePixels {
-          0% { top: 0; }
+          0% { top: 0px; }
           100% { top: var(--window-travel); }
         }
         
         @keyframes imageMovePixels {
-          0% { top: 0; }
+          0% { top: 0px; }
           100% { top: var(--image-travel); }
         }
         
         .scanner-window-animated {
-          top: 0;
-          animation: windowMovePixels 2s ease-in-out forwards;
+          top: 0px;
+          animation: windowMovePixels 2s linear forwards;
         }
         
         .scanner-image-animated {
-          top: 0;
-          animation: imageMovePixels 2s ease-in-out forwards;
+          top: 0px;
+          animation: imageMovePixels 2s linear forwards;
         }
         
         .scanner-glow-animated {
-          top: 0;
-          animation: windowMovePixels 2s ease-in-out forwards;
+          top: 0px;
+          animation: windowMovePixels 2s linear forwards;
         }
       `}</style>
     </div>
