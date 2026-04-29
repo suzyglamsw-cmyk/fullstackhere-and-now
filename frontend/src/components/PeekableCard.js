@@ -173,10 +173,10 @@ export const PeekableCard = ({
         disableClick={true}
       />
       
-      {/* Scanner-bar Peek overlay */}
-      {isScanning && clearPhotoUrl && (
+      {/* Scanner-bar Peek overlay - NO blur on container */}
+      {isScanning && (
         <div
-          className="scanner-peek-overlay"
+          className="scanner-peek-container"
           style={{
             position: "absolute",
             top: 0,
@@ -186,87 +186,91 @@ export const PeekableCard = ({
             zIndex: 50,
             borderRadius: "1rem",
             overflow: "hidden"
+            /* NO blur applied to container */
           }}
         >
-          {/* Blurred background layer */}
+          {/* BOTTOM LAYER: Blurred image - z-index 1, no mask, always visible */}
           <img
             src={blurredPhotoUrl}
             alt=""
-            className="scanner-blurred-layer"
             style={{
               position: "absolute",
+              top: 0,
+              left: 0,
               width: "100%",
               height: "100%",
               objectFit: "cover",
               objectPosition: "center",
+              zIndex: 1,
               filter: "blur(12px)",
               transform: "scale(1.1)"
+              /* NO mask on this layer */
             }}
           />
           
-          {/* Clear image with thin line clip mask - 10px height */}
+          {/* TOP LAYER: Clear image - z-index 2, mask applied, blur=false */}
           <div
-            className="scanner-line-mask"
+            className="scanner-mask-wrapper"
             style={{
               position: "absolute",
+              top: 0,
               left: 0,
-              right: 0,
-              height: "10px",
-              overflow: "hidden",
-              animation: "scannerSlide 2s ease-in-out forwards"
+              width: "100%",
+              height: "100%",
+              zIndex: 2,
+              overflow: "hidden"
+              /* NO blur here */
             }}
           >
             <img
               src={clearPhotoUrl}
               alt=""
-              className="scanner-clear-img"
               style={{
                 position: "absolute",
+                top: 0,
                 left: 0,
                 width: "100%",
+                height: "100%",
                 objectFit: "cover",
-                objectPosition: "center top",
-                animation: "imgOffset 2s ease-in-out forwards"
+                objectPosition: "center",
+                filter: "none",          /* Absolutely NO blur */
+                WebkitFilter: "none",    /* Absolutely NO blur */
+                clipPath: "inset(calc(var(--scan-pos) - 5px) 0 calc(100% - var(--scan-pos) - 5px) 0)",
+                animation: "scanMove 2s ease-in-out forwards"
               }}
             />
           </div>
           
-          {/* Scanner bar glow line */}
+          {/* Scanner glow line indicator - z-index 3 */}
           <div
-            className="scanner-glow-line"
             style={{
               position: "absolute",
               left: 0,
               right: 0,
               height: "10px",
-              background: "linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 30%, transparent 70%, rgba(255,255,255,0.3) 100%)",
-              boxShadow: "0 0 6px 1px rgba(255,255,255,0.4)",
-              pointerEvents: "none",
-              animation: "scannerSlide 2s ease-in-out forwards"
+              zIndex: 3,
+              background: "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.2) 100%)",
+              boxShadow: "0 0 8px 2px rgba(255,255,255,0.3)",
+              animation: "scanLineMove 2s ease-in-out forwards"
             }}
           />
         </div>
       )}
       
-      {/* Scanner animation keyframes */}
+      {/* Scanner animation */}
       <style>{`
-        @keyframes scannerSlide {
-          0% { top: 0px; }
+        @keyframes scanMove {
+          0% { --scan-pos: 0%; }
+          100% { --scan-pos: 100%; }
+        }
+        
+        @keyframes scanLineMove {
+          0% { top: 0%; }
           100% { top: calc(100% - 10px); }
         }
         
-        @keyframes imgOffset {
-          0% { top: 0px; }
-          100% { top: calc(-100% + 10px); }
-        }
-        
-        .scanner-line-mask {
-          top: 0px;
-        }
-        
-        .scanner-clear-img {
-          height: 100%;
-          min-height: 200px;
+        .scanner-mask-wrapper img {
+          --scan-pos: 0%;
         }
       `}</style>
     </div>
