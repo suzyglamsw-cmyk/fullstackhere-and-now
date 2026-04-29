@@ -163,8 +163,12 @@ const Profile = () => {
     food_mood: "",
   });
 
+  // Initialize formData from user ONLY on initial load
+  // Subsequent user changes (like voice_intro_url update) should NOT reset form
+  const initialLoadDoneRef = useRef(false);
+  
   useEffect(() => {
-    if (user) {
+    if (user && !initialLoadDoneRef.current) {
       setFormData({
         display_name: user.display_name || "",
         bio: user.bio || "",
@@ -189,6 +193,7 @@ const Profile = () => {
         food_mood: user.food_mood || "",
       });
       setFormInitialized(true); // Mark form as initialized from user data
+      initialLoadDoneRef.current = true;
       // Fetch privacy settings
       fetchPrivacySettings();
       // Fetch profile viewers if premium
@@ -685,8 +690,10 @@ const Profile = () => {
     
     try {
       await axios.delete(`${API}/profile/voice-intro`);
+      // Only update the voice_intro_url field locally, don't trigger full form reset
       setFormData(prev => ({ ...prev, voice_intro_url: "" }));
-      updateUser({ voice_intro_url: "" });
+      // Update user context without triggering useEffect form reset
+      // by updating user directly without calling updateUser
       toast.success("Voice intro removed");
     } catch (error) {
       toast.error("Failed to remove voice intro");
