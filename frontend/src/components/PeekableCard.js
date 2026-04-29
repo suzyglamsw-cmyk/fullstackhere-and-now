@@ -173,10 +173,10 @@ export const PeekableCard = ({
         disableClick={true}
       />
       
-      {/* Scanner-bar Peek overlay - NO blur on container */}
+      {/* Scanner-bar Peek overlay - Moving Window Technique */}
       {isScanning && (
         <div
-          className="scanner-peek-container"
+          className="scanner-container"
           style={{
             position: "absolute",
             top: 0,
@@ -186,10 +186,9 @@ export const PeekableCard = ({
             zIndex: 50,
             borderRadius: "1rem",
             overflow: "hidden"
-            /* NO blur applied to container */
           }}
         >
-          {/* BOTTOM LAYER: Blurred image - z-index 1, no mask, always visible */}
+          {/* BOTTOM LAYER: Blurred image - always visible */}
           <img
             src={blurredPhotoUrl}
             alt=""
@@ -204,44 +203,42 @@ export const PeekableCard = ({
               zIndex: 1,
               filter: "blur(12px)",
               transform: "scale(1.1)"
-              /* NO mask on this layer */
             }}
           />
           
-          {/* TOP LAYER: Clear image - z-index 2, mask applied, blur=false */}
+          {/* TOP LAYER: Moving 10px window with clear image inside */}
           <div
-            className="scanner-mask-wrapper"
+            className="scanner-window"
             style={{
               position: "absolute",
-              top: 0,
               left: 0,
-              width: "100%",
-              height: "100%",
+              right: 0,
+              height: "10px",
               zIndex: 2,
-              overflow: "hidden"
-              /* NO blur here */
+              overflow: "hidden",
+              animation: "windowMove 2s ease-in-out forwards"
             }}
           >
+            {/* Clear image - offset synced with window movement */}
             <img
               src={clearPhotoUrl}
               alt=""
               style={{
                 position: "absolute",
-                top: 0,
                 left: 0,
                 width: "100%",
-                height: "100%",
+                height: "auto",
+                minHeight: "calc(100% * 10)",
                 objectFit: "cover",
-                objectPosition: "center",
-                filter: "none",          /* Absolutely NO blur */
-                WebkitFilter: "none",    /* Absolutely NO blur */
-                clipPath: "inset(calc(var(--scan-pos) - 5px) 0 calc(100% - var(--scan-pos) - 5px) 0)",
-                animation: "scanMove 2s ease-in-out forwards"
+                objectPosition: "center top",
+                filter: "none",
+                WebkitFilter: "none",
+                animation: "imageOffset 2s ease-in-out forwards"
               }}
             />
           </div>
           
-          {/* Scanner glow line indicator - z-index 3 */}
+          {/* Scanner glow line */}
           <div
             style={{
               position: "absolute",
@@ -249,28 +246,29 @@ export const PeekableCard = ({
               right: 0,
               height: "10px",
               zIndex: 3,
-              background: "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.2) 100%)",
-              boxShadow: "0 0 8px 2px rgba(255,255,255,0.3)",
-              animation: "scanLineMove 2s ease-in-out forwards"
+              background: "linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.15) 100%)",
+              boxShadow: "0 0 6px rgba(255,255,255,0.4)",
+              pointerEvents: "none",
+              animation: "windowMove 2s ease-in-out forwards"
             }}
           />
         </div>
       )}
       
-      {/* Scanner animation */}
+      {/* Scanner animations */}
       <style>{`
-        @keyframes scanMove {
-          0% { --scan-pos: 0%; }
-          100% { --scan-pos: 100%; }
+        .scanner-window {
+          top: 0;
         }
         
-        @keyframes scanLineMove {
-          0% { top: 0%; }
+        @keyframes windowMove {
+          0% { top: 0; }
           100% { top: calc(100% - 10px); }
         }
         
-        .scanner-mask-wrapper img {
-          --scan-pos: 0%;
+        @keyframes imageOffset {
+          0% { top: 0; }
+          100% { top: calc(-100% + 10px); }
         }
       `}</style>
     </div>
