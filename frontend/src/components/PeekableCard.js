@@ -1,8 +1,7 @@
 /**
- * PeekableCard Component - Radial Iris Peek v2
+ * PeekableCard Component - Radial Iris Peek v3
  * 
- * Simple iris effect using clip-path circle animation
- * Updated: Forces circular iris for ALL users
+ * Soft feathered iris effect centered on eye area
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -11,7 +10,7 @@ import { UserCard } from "./UserCard";
 import axios from "axios";
 
 const API = process.env.REACT_APP_BACKEND_URL;
-const PEEK_DURATION = 1200; // Shorter duration for quick tease
+const PEEK_DURATION = 1500; // Total animation time
 
 export const PeekableCard = ({
   user,
@@ -31,7 +30,6 @@ export const PeekableCard = ({
     setHasPeekedLocal(peekStatus?.has_peeked || false);
   }, [peekStatus?.has_peeked]);
   
-  // Cancel on visibility change
   useEffect(() => {
     const onHide = () => {
       if (document.hidden && isPeeking) {
@@ -137,7 +135,6 @@ export const PeekableCard = ({
       
       {isPeeking && (
         <>
-          {/* Overlay container */}
           <div style={{
             position: "absolute",
             inset: 0,
@@ -146,7 +143,7 @@ export const PeekableCard = ({
             overflow: "hidden",
             pointerEvents: "none"
           }}>
-            {/* Blurred background */}
+            {/* Blurred background - always visible */}
             <img
               src={blurUrl}
               alt=""
@@ -161,7 +158,8 @@ export const PeekableCard = ({
               }}
             />
             
-            {/* Clear image with iris clip-path */}
+            {/* Clear image with soft feathered radial mask */}
+            {/* Positioned at 35% from top (eye level area) */}
             <img
               src={clearUrl}
               alt=""
@@ -172,20 +170,46 @@ export const PeekableCard = ({
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                clipPath: "circle(0% at 50% 50%)"
+                filter: "none",
+                WebkitFilter: "none",
+                opacity: 0,
+                WebkitMaskImage: "radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%)",
+                maskImage: "radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%)"
               }}
             />
           </div>
           
+          {/* Keyframes: slow expand (400ms), hold, gentle fade out */}
           <style>{`
             .iris-${uid} {
-              animation: irisOpen-${uid} ${PEEK_DURATION}ms ease-out forwards;
+              animation: irisReveal-${uid} ${PEEK_DURATION}ms ease-out forwards;
             }
-            @keyframes irisOpen-${uid} {
-              0% { clip-path: circle(0% at 50% 50%); }
-              70% { clip-path: circle(35% at 50% 50%); }
-              85% { clip-path: circle(40% at 50% 50%); }
-              100% { clip-path: circle(0% at 50% 50%); }
+            @keyframes irisReveal-${uid} {
+              0% {
+                opacity: 1;
+                -webkit-mask-image: radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%);
+                mask-image: radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%);
+              }
+              30% {
+                opacity: 1;
+                -webkit-mask-image: radial-gradient(circle 30px at 50% 35%, black 60%, transparent 100%);
+                mask-image: radial-gradient(circle 30px at 50% 35%, black 60%, transparent 100%);
+              }
+              60% {
+                opacity: 1;
+                -webkit-mask-image: radial-gradient(circle 35px at 50% 35%, black 60%, transparent 100%);
+                mask-image: radial-gradient(circle 35px at 50% 35%, black 60%, transparent 100%);
+              }
+              85% {
+                opacity: 0.7;
+                -webkit-mask-image: radial-gradient(circle 25px at 50% 35%, black 60%, transparent 100%);
+                mask-image: radial-gradient(circle 25px at 50% 35%, black 60%, transparent 100%);
+              }
+              100% {
+                opacity: 0;
+                -webkit-mask-image: radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%);
+                mask-image: radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%);
+              }
             }
           `}</style>
         </>
