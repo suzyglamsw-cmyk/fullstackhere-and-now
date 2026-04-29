@@ -1,15 +1,7 @@
 /**
  * PeekableCard Component - Radial Iris Peek
  * 
- * Wraps UserCard to add radial iris Peek functionality:
- * - Circle expands from center revealing clear photo
- * - 2000ms ease-out expansion
- * - Instantly snaps back to hidden at end
- * - One peek per user per session
- * 
- * NOT available for:
- * - Mutual connections (is_connection_accepted = true)
- * - Here Now when hide_photo_in_venues = true
+ * Simple iris effect using clip-path circle animation
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -18,8 +10,7 @@ import { UserCard } from "./UserCard";
 import axios from "axios";
 
 const API = process.env.REACT_APP_BACKEND_URL;
-
-const PEEK_DURATION = 2000; // 2 seconds
+const PEEK_DURATION = 2000;
 
 export const PeekableCard = ({
   user,
@@ -32,87 +23,63 @@ export const PeekableCard = ({
   const navigate = useNavigate();
   const [isPeeking, setIsPeeking] = useState(false);
   const [hasPeekedLocal, setHasPeekedLocal] = useState(peekStatus?.has_peeked || false);
-  const [imageLoaded, setImageLoaded] = useState(false);
   const cardRef = useRef(null);
-  const animationRef = useRef(null);
+  const timeoutRef = useRef(null);
   
-  // Sync with server state
   useEffect(() => {
     setHasPeekedLocal(peekStatus?.has_peeked || false);
   }, [peekStatus?.has_peeked]);
   
-  // Cancel animation if user leaves screen
+  // Cancel on visibility change
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const onHide = () => {
       if (document.hidden && isPeeking) {
         setIsPeeking(false);
-        if (animationRef.current) {
-          clearTimeout(animationRef.current);
-        }
+        clearTimeout(timeoutRef.current);
       }
     };
-    
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
   }, [isPeeking]);
   
-  // Peek eligibility
   const allowPeek = peekStatus?.allow_peek !== false;
   const hideInVenues = user?.hide_photo_in_venues === true;
   const isMutual = isMatched || user?.is_connection_accepted;
-  const peekDisabledForContext = isMutual || (context === "venue" && hideInVenues);
-  const canPeek = allowPeek && !hasPeekedLocal && !peekDisabledForContext && peekStatus?.can_peek !== false;
-  
+  const peekDisabled = isMutual || (context === "venue" && hideInVenues);
+  const canPeek = allowPeek && !hasPeekedLocal && !peekDisabled && peekStatus?.can_peek !== false;
   const showBorder = canPeek;
   
   const getBorderColor = () => {
     if (!showBorder) return "transparent";
-    const gender = user?.show_as || peekStatus?.show_as;
-    if (gender === "female") return "#FF2D8D";
-    if (gender === "male") return "#3A7BFF";
-    return "#8B5CF6";
+    const g = user?.show_as || peekStatus?.show_as;
+    return g === "female" ? "#FF2D8D" : g === "male" ? "#3A7BFF" : "#8B5CF6";
   };
   
-  // Build photo URLs
   const getPhotoUrl = () => {
-    let photoId = user?.photos?.[0] || user?.avatar_url || user?.photo_url || "";
-    if (!photoId) return "";
-    if (photoId.startsWith('/api/') || photoId.startsWith('http')) return photoId;
-    return `/api/photos/serve/${photoId}`;
+    const p = user?.photos?.[0] || user?.avatar_url || user?.photo_url || "";
+    if (!p) return "";
+    return p.startsWith('/api/') || p.startsWith('http') ? p : `/api/photos/serve/${p}`;
   };
   
-  const getClearPhotoUrl = () => {
-    let url = getPhotoUrl();
+  const addBlurParam = (url, blur) => {
     if (!url) return "";
-    if (url.includes('blur=')) {
-      return url.replace(/blur=(true|false)/g, 'blur=false');
-    }
-    return url + (url.includes('?') ? '&' : '?') + 'blur=false';
+    const val = blur ? 'true' : 'false';
+    if (url.includes('blur=')) return url.replace(/blur=(true|false)/g, `blur=${val}`);
+    return url + (url.includes('?') ? '&' : '?') + `blur=${val}`;
   };
   
-  const getBlurredPhotoUrl = () => {
-    let url = getPhotoUrl();
-    if (!url) return "";
-    if (url.includes('blur=')) {
-      return url.replace(/blur=(true|false)/g, 'blur=true');
-    }
-    return url + (url.includes('?') ? '&' : '?') + 'blur=true';
-  };
-  
-  const clearPhotoUrl = getClearPhotoUrl();
-  const blurredPhotoUrl = getBlurredPhotoUrl();
+  const clearUrl = addBlurParam(getPhotoUrl(), false);
+  const blurUrl = addBlurParam(getPhotoUrl(), true);
   
   // Preload clear image
   useEffect(() => {
-    if (canPeek && clearPhotoUrl) {
+    if (canPeek && clearUrl) {
       const img = new Image();
-      img.onload = () => setImageLoaded(true);
-      img.src = clearPhotoUrl;
+      img.src = clearUrl;
     }
-  }, [canPeek, clearPhotoUrl]);
+  }, [canPeek, clearUrl]);
   
-  // Handle tap
-  const handleCardClick = useCallback(async (e) => {
+  const handleClick = useCallback(async (e) => {
     e.stopPropagation();
     e.preventDefault();
     
@@ -123,56 +90,42 @@ export const PeekableCard = ({
       return;
     }
     
-    // Record peek on server
     try {
       await axios.post(`${API}/api/peek/${user.id}`);
-    } catch (error) {
-      if (error.response?.status === 400 || error.response?.status === 403) {
+    } catch (err) {
+      if (err.response?.status === 400 || err.response?.status === 403) {
         setHasPeekedLocal(true);
         navigate(`/profile/${user.id}`);
         return;
       }
     }
     
-    // Wait for image if not ready
-    if (!imageLoaded) {
-      const img = new Image();
-      img.src = clearPhotoUrl;
-      await new Promise(r => {
-        img.onload = r;
-        setTimeout(r, 300);
-      });
-    }
-    
-    // Start iris animation
     setIsPeeking(true);
     
-    // End after duration
-    animationRef.current = setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setIsPeeking(false);
       setHasPeekedLocal(true);
       onPeekComplete?.(user.id);
     }, PEEK_DURATION);
     
-  }, [isPeeking, canPeek, user?.id, navigate, onPeekComplete, imageLoaded, clearPhotoUrl]);
+  }, [isPeeking, canPeek, user?.id, navigate, onPeekComplete]);
   
-  const borderColor = getBorderColor();
+  const uid = user?.id?.replace(/-/g, '') || 'default';
   
   return (
     <div 
       ref={cardRef}
       className="peekable-card-wrapper"
+      onClick={handleClick}
       style={{
         position: "relative",
         borderRadius: "1rem",
         overflow: "hidden",
-        boxShadow: showBorder ? `0 0 0 3px ${borderColor}` : "none",
+        boxShadow: showBorder ? `0 0 0 3px ${getBorderColor()}` : "none",
         transition: "box-shadow 0.3s ease",
         cursor: "pointer"
       }}
-      onClick={handleCardClick}
     >
-      {/* Base UserCard */}
       <UserCard
         user={user}
         {...cardProps}
@@ -181,89 +134,59 @@ export const PeekableCard = ({
         disableClick={true}
       />
       
-      {/* Radial Iris Peek Overlay */}
       {isPeeking && (
-        <div
-          style={{
+        <>
+          {/* Overlay container */}
+          <div style={{
             position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            inset: 0,
             zIndex: 50,
             borderRadius: "1rem",
             overflow: "hidden",
             pointerEvents: "none"
-          }}
-        >
-          {/* Bottom layer: Blurred image */}
-          <img
-            src={blurredPhotoUrl}
-            alt=""
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: "center",
-              filter: "blur(12px)",
-              transform: "scale(1.05)"
-            }}
-          />
-          
-          {/* Top layer: Clear image inside expanding circle */}
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              width: "150%",
-              height: "150%",
-              transform: "translate(-50%, -50%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            <div
-              className={`iris-circle iris-circle-${user.id.replace(/-/g, '')}`}
+          }}>
+            {/* Blurred background */}
+            <img
+              src={blurUrl}
+              alt=""
               style={{
+                position: "absolute",
+                inset: 0,
                 width: "100%",
                 height: "100%",
-                borderRadius: "50%",
-                overflow: "hidden",
-                transform: "scale(0)",
-                animation: `irisExpand-${user.id.replace(/-/g, '')} ${PEEK_DURATION}ms ease-out forwards`
+                objectFit: "cover",
+                filter: "blur(12px)",
+                transform: "scale(1.05)"
               }}
-            >
-              <img
-                src={clearPhotoUrl}
-                alt=""
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  width: "calc(100% / 1.5)",
-                  height: "calc(100% / 1.5)",
-                  transform: "translate(-50%, -50%)",
-                  objectFit: "cover",
-                  objectPosition: "center"
-                }}
-              />
-            </div>
+            />
+            
+            {/* Clear image with iris clip-path */}
+            <img
+              src={clearUrl}
+              alt=""
+              className={`iris-${uid}`}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                clipPath: "circle(0% at 50% 50%)"
+              }}
+            />
           </div>
           
-          {/* Unique keyframes for this user */}
           <style>{`
-            @keyframes irisExpand-${user.id.replace(/-/g, '')} {
-              0% { transform: scale(0); }
-              95% { transform: scale(1.2); }
-              100% { transform: scale(0); }
+            .iris-${uid} {
+              animation: irisOpen-${uid} ${PEEK_DURATION}ms ease-out forwards;
+            }
+            @keyframes irisOpen-${uid} {
+              0% { clip-path: circle(0% at 50% 50%); }
+              90% { clip-path: circle(75% at 50% 50%); }
+              100% { clip-path: circle(0% at 50% 50%); }
             }
           `}</style>
-        </div>
+        </>
       )}
     </div>
   );
