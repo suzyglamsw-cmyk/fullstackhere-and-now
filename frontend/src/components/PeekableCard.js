@@ -39,20 +39,12 @@ export const PeekableCard = ({
   const navigate = useNavigate();
   const [isScanning, setIsScanning] = useState(false);
   const [hasPeekedLocal, setHasPeekedLocal] = useState(peekStatus?.has_peeked || false);
-  const [cardHeight, setCardHeight] = useState(0);
   const cardRef = useRef(null);
   
   // Update local state when peekStatus changes
   useEffect(() => {
     setHasPeekedLocal(peekStatus?.has_peeked || false);
   }, [peekStatus?.has_peeked]);
-  
-  // Get card height for animation calculations
-  useEffect(() => {
-    if (cardRef.current) {
-      setCardHeight(cardRef.current.offsetHeight);
-    }
-  }, []);
   
   // Determine if peek is enabled for this target
   const allowPeek = peekStatus?.allow_peek !== false;
@@ -207,10 +199,10 @@ export const PeekableCard = ({
         disableClick={true}
       />
       
-      {/* Scanner-bar Peek overlay - Moving Window Technique */}
-      {isScanning && cardHeight > 0 && (
+      {/* Scanner-bar Peek overlay - Single layer with animated mask */}
+      {isScanning && (
         <div
-          className="scanner-container"
+          className="scanner-overlay"
           style={{
             position: "absolute",
             top: 0,
@@ -219,10 +211,11 @@ export const PeekableCard = ({
             bottom: 0,
             zIndex: 50,
             borderRadius: "1rem",
-            overflow: "hidden"
+            overflow: "hidden",
+            pointerEvents: "none"
           }}
         >
-          {/* LAYER 1: Blurred image - full card, always visible as base */}
+          {/* Blurred background layer */}
           <img
             src={blurredPhotoUrl}
             alt=""
@@ -234,88 +227,69 @@ export const PeekableCard = ({
               height: "100%",
               objectFit: "cover",
               objectPosition: "center",
-              zIndex: 1,
               filter: "blur(12px)",
               transform: "scale(1.05)"
             }}
           />
           
-          {/* LAYER 2: Moving scanner window - clips the clear image */}
-          <div
-            className="scanner-window-animated"
+          {/* Clear image with animated clip-path - reveals 10px band that moves down */}
+          <img
+            src={clearPhotoUrl}
+            alt=""
+            className="scanner-reveal"
             style={{
               position: "absolute",
+              top: 0,
               left: 0,
-              right: 0,
-              height: `${SCANNER_HEIGHT}px`,
-              zIndex: 2,
-              overflow: "hidden",
-              "--window-travel": `${cardHeight - SCANNER_HEIGHT}px`
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+              filter: "none",
+              WebkitFilter: "none"
             }}
-          >
-            {/* Clear image positioned to align with the card background */}
-            {/* As window moves down by Y, image moves up by Y to show same region */}
-            <img
-              src={clearPhotoUrl}
-              alt=""
-              className="scanner-image-animated"
-              style={{
-                position: "absolute",
-                left: 0,
-                width: "100%",
-                height: `${cardHeight}px`,
-                objectFit: "cover",
-                objectPosition: "center",
-                filter: "none",
-                WebkitFilter: "none",
-                "--image-travel": `-${cardHeight - SCANNER_HEIGHT}px`
-              }}
-            />
-          </div>
+          />
           
-          {/* LAYER 3: Scanner glow line effect */}
+          {/* Scanner glow line */}
           <div
-            className="scanner-glow-animated"
+            className="scanner-line"
             style={{
               position: "absolute",
               left: 0,
               right: 0,
-              height: `${SCANNER_HEIGHT}px`,
-              zIndex: 3,
-              background: "linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.1) 100%)",
-              boxShadow: "0 0 8px rgba(255,255,255,0.5)",
-              pointerEvents: "none",
-              "--window-travel": `${cardHeight - SCANNER_HEIGHT}px`
+              height: "10px",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.1) 100%)",
+              boxShadow: "0 0 10px rgba(255,255,255,0.6)",
+              pointerEvents: "none"
             }}
           />
         </div>
       )}
       
-      {/* Scanner animations with pixel-based travel distances - LINEAR for perfect sync */}
+      {/* Scanner animation using clip-path for perfect alignment */}
       <style>{`
-        @keyframes windowMovePixels {
-          0% { top: 0px; }
-          100% { top: var(--window-travel); }
+        @keyframes scanReveal {
+          0% {
+            clip-path: inset(0% 0 calc(100% - 3%) 0);
+          }
+          100% {
+            clip-path: inset(97% 0 0% 0);
+          }
         }
         
-        @keyframes imageMovePixels {
-          0% { top: 0px; }
-          100% { top: var(--image-travel); }
+        @keyframes scanLineMove {
+          0% { top: 0%; }
+          100% { top: calc(100% - 10px); }
         }
         
-        .scanner-window-animated {
-          top: 0px;
-          animation: windowMovePixels 2s linear forwards;
+        .scanner-reveal {
+          clip-path: inset(0% 0 calc(100% - 3%) 0);
+          animation: scanReveal 2s linear forwards;
         }
         
-        .scanner-image-animated {
-          top: 0px;
-          animation: imageMovePixels 2s linear forwards;
-        }
-        
-        .scanner-glow-animated {
-          top: 0px;
-          animation: windowMovePixels 2s linear forwards;
+        .scanner-line {
+          top: 0%;
+          animation: scanLineMove 2s linear forwards;
         }
       `}</style>
     </div>
