@@ -1,7 +1,8 @@
 /**
- * PeekableCard Component - Radial Iris Peek
+ * PeekableCard Component - Radial Iris Peek v2
  * 
  * Simple iris effect using clip-path circle animation
+ * Updated: Forces circular iris for ALL users
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
