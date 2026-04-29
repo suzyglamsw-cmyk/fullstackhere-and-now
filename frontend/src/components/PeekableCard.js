@@ -1,7 +1,7 @@
 /**
- * PeekableCard Component - Radial Iris Peek v3
+ * PeekableCard Component - Soft Polygonal Iris Peek v4
  * 
- * Soft feathered iris effect centered on eye area
+ * 6-8 sided polygon with feathered edges, rotation, and gentle fade
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -10,7 +10,9 @@ import { UserCard } from "./UserCard";
 import axios from "axios";
 
 const API = process.env.REACT_APP_BACKEND_URL;
-const PEEK_DURATION = 1500; // Total animation time
+const EXPAND_DURATION = 400; // 350-450ms expansion
+const FADE_DURATION = 250;   // 200-300ms fade out
+const TOTAL_DURATION = EXPAND_DURATION + FADE_DURATION;
 
 export const PeekableCard = ({
   user,
@@ -105,11 +107,14 @@ export const PeekableCard = ({
       setIsPeeking(false);
       setHasPeekedLocal(true);
       onPeekComplete?.(user.id);
-    }, PEEK_DURATION);
+    }, TOTAL_DURATION);
     
   }, [isPeeking, canPeek, user?.id, navigate, onPeekComplete]);
   
   const uid = user?.id?.replace(/-/g, '') || 'default';
+  
+  // 8-sided polygon (octagon) - slightly irregular for organic feel
+  const polygonShape = "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)";
   
   return (
     <div 
@@ -158,58 +163,127 @@ export const PeekableCard = ({
               }}
             />
             
-            {/* Clear image with soft feathered radial mask */}
-            {/* Positioned at 35% from top (eye level area) */}
-            <img
-              src={clearUrl}
-              alt=""
-              className={`iris-${uid}`}
+            {/* Polygon mask container - positioned above center (35% from top) */}
+            <div
+              className={`poly-container-${uid}`}
+              style={{
+                position: "absolute",
+                top: "35%",
+                left: "50%",
+                width: "120px",
+                height: "120px",
+                transform: "translate(-50%, -50%) scale(0.05) rotate(0deg)",
+                transformOrigin: "center center"
+              }}
+            >
+              {/* Inner polygon with feathered edges */}
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  clipPath: polygonShape,
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  /* Feathered edge using radial gradient mask */
+                  WebkitMaskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, black 50%, transparent 100%)",
+                  maskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, black 50%, transparent 100%)"
+                }}
+              >
+                {/* Clear image - no blur */}
+                <img
+                  src={clearUrl}
+                  alt=""
+                  style={{
+                    position: "absolute",
+                    top: "-35%",
+                    left: "-50%",
+                    width: "calc(100vw)",
+                    height: "calc(100vh)",
+                    maxWidth: "none",
+                    objectFit: "cover",
+                    objectPosition: "center 35%",
+                    filter: "none",
+                    WebkitFilter: "none",
+                    transform: "scale(2)"
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Separate clear image properly positioned */}
+            <div
+              className={`poly-iris-${uid}`}
               style={{
                 position: "absolute",
                 inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                filter: "none",
-                WebkitFilter: "none",
-                opacity: 0,
-                WebkitMaskImage: "radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%)",
-                maskImage: "radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%)"
+                opacity: 1
               }}
-            />
+            >
+              <img
+                src={clearUrl}
+                alt=""
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  filter: "none",
+                  WebkitFilter: "none",
+                  /* Polygon clip + feathered radial mask combined */
+                  clipPath: polygonShape,
+                  WebkitMaskImage: "radial-gradient(ellipse 60px 60px at 50% 35%, black 40%, transparent 100%)",
+                  maskImage: "radial-gradient(ellipse 60px 60px at 50% 35%, black 40%, transparent 100%)",
+                  WebkitMaskSize: "100% 100%",
+                  maskSize: "100% 100%",
+                  transform: "rotate(0deg)",
+                  transformOrigin: "50% 35%"
+                }}
+              />
+            </div>
           </div>
           
-          {/* Keyframes: slow expand (400ms), hold, gentle fade out */}
           <style>{`
-            .iris-${uid} {
-              animation: irisReveal-${uid} ${PEEK_DURATION}ms ease-out forwards;
+            .poly-iris-${uid} {
+              animation: polyReveal-${uid} ${TOTAL_DURATION}ms ease-out forwards;
             }
-            @keyframes irisReveal-${uid} {
+            
+            .poly-iris-${uid} img {
+              animation: polyMask-${uid} ${TOTAL_DURATION}ms ease-out forwards;
+            }
+            
+            @keyframes polyReveal-${uid} {
               0% {
                 opacity: 1;
-                -webkit-mask-image: radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%);
-                mask-image: radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%);
               }
-              30% {
+              ${(EXPAND_DURATION / TOTAL_DURATION * 100).toFixed(0)}% {
                 opacity: 1;
-                -webkit-mask-image: radial-gradient(circle 50px at 50% 35%, black 60%, transparent 100%);
-                mask-image: radial-gradient(circle 50px at 50% 35%, black 60%, transparent 100%);
-              }
-              60% {
-                opacity: 1;
-                -webkit-mask-image: radial-gradient(circle 60px at 50% 35%, black 60%, transparent 100%);
-                mask-image: radial-gradient(circle 60px at 50% 35%, black 60%, transparent 100%);
-              }
-              85% {
-                opacity: 0.7;
-                -webkit-mask-image: radial-gradient(circle 45px at 50% 35%, black 60%, transparent 100%);
-                mask-image: radial-gradient(circle 45px at 50% 35%, black 60%, transparent 100%);
               }
               100% {
                 opacity: 0;
-                -webkit-mask-image: radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%);
-                mask-image: radial-gradient(circle 0px at 50% 35%, black 60%, transparent 100%);
               }
+            }
+            
+            @keyframes polyMask-${uid} {
+              0% {
+                -webkit-mask-image: radial-gradient(ellipse 5px 5px at 50% 35%, black 40%, transparent 100%);
+                mask-image: radial-gradient(ellipse 5px 5px at 50% 35%, black 40%, transparent 100%);
+                transform: rotate(0deg);
+              }
+              ${(EXPAND_DURATION / TOTAL_DURATION * 100).toFixed(0)}% {
+                -webkit-mask-image: radial-gradient(ellipse 60px 60px at 50% 35%, black 40%, transparent 100%);
+                mask-image: radial-gradient(ellipse 60px 60px at 50% 35%, black 40%, transparent 100%);
+                transform: rotate(8deg);
+              }
+              100% {
+                -webkit-mask-image: radial-gradient(ellipse 60px 60px at 50% 35%, black 40%, transparent 100%);
+                mask-image: radial-gradient(ellipse 60px 60px at 50% 35%, black 40%, transparent 100%);
+                transform: rotate(8deg);
+              }
+            }
+            
+            .poly-container-${uid} {
+              display: none;
             }
           `}</style>
         </>
