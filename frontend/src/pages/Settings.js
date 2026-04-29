@@ -403,29 +403,6 @@ const Settings = () => {
               <p className="text-slate-400 text-sm">Control how others see you</p>
             </div>
           </div>
-
-          <div className="space-y-4">
-            {/* Allow Peek Toggle */}
-            <div className="flex items-center justify-between p-4 rounded-xl bg-white/5">
-              <div className="flex-1 mr-4">
-                <p className="text-white font-medium">Allow Peek on my photos</p>
-                <p className="text-slate-400 text-sm">
-                  Let others briefly glimpse your unblurred photo before viewing your profile. 
-                  Mutual connections can still peek even if this is off.
-                </p>
-              </div>
-              {peekSaving ? (
-                <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
-              ) : (
-                <Switch
-                  data-testid="allow-peek-toggle"
-                  checked={allowPeek}
-                  onCheckedChange={handleAllowPeekChange}
-                  disabled={peekSaving}
-                />
-              )}
-            </div>
-          </div>
         </div>
 
         {/* 6. Notifications Section */}
