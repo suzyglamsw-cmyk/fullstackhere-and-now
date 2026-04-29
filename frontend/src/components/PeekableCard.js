@@ -232,22 +232,22 @@ export const PeekableCard = ({
             }}
           />
           
-          {/* Clear image - masked to show only 10px band */}
+          {/* Clear image - masked to show only scanning band */}
           <div 
-            className="scanner-mask-container"
             style={{
               position: "absolute",
               top: 0,
               left: 0,
               width: "100%",
               height: "100%",
-              overflow: "hidden"
+              overflow: "hidden",
+              clipPath: "polygon(0 0%, 100% 0%, 100% 5%, 0 5%)",
+              animation: `peekScan_${user.id.replace(/-/g, '')} 2s linear forwards`
             }}
           >
             <img
               src={clearPhotoUrl}
               alt=""
-              className="scanner-clear-img"
               style={{
                 position: "absolute",
                 top: 0,
@@ -264,46 +264,32 @@ export const PeekableCard = ({
           
           {/* Scanner glow line */}
           <div
-            className="scanner-line"
             style={{
               position: "absolute",
               left: 0,
               right: 0,
               height: "12px",
-              background: "linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.1) 100%)",
-              boxShadow: "0 0 12px rgba(255,255,255,0.6)",
-              pointerEvents: "none"
+              top: "0%",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.1) 100%)",
+              boxShadow: "0 0 15px rgba(255,255,255,0.7)",
+              pointerEvents: "none",
+              animation: `peekLine_${user.id.replace(/-/g, '')} 2s linear forwards`
             }}
           />
+          
+          {/* Unique keyframes for this specific user to avoid conflicts */}
+          <style>{`
+            @keyframes peekScan_${user.id.replace(/-/g, '')} {
+              0% { clip-path: polygon(0 0%, 100% 0%, 100% 5%, 0 5%); }
+              100% { clip-path: polygon(0 95%, 100% 95%, 100% 100%, 0 100%); }
+            }
+            @keyframes peekLine_${user.id.replace(/-/g, '')} {
+              0% { top: 0%; }
+              100% { top: calc(100% - 12px); }
+            }
+          `}</style>
         </div>
       )}
-      
-      {/* Scanner animation - moving 12px window using clip-path polygon */}
-      <style>{`
-        @keyframes maskMove {
-          0% {
-            clip-path: polygon(0 0%, 100% 0%, 100% 4%, 0 4%);
-          }
-          100% {
-            clip-path: polygon(0 96%, 100% 96%, 100% 100%, 0 100%);
-          }
-        }
-        
-        @keyframes lineMove {
-          0% { top: 0%; }
-          100% { top: calc(100% - 12px); }
-        }
-        
-        .scanner-mask-container {
-          clip-path: polygon(0 0%, 100% 0%, 100% 4%, 0 4%);
-          animation: maskMove 2s linear forwards;
-        }
-        
-        .scanner-line {
-          top: 0%;
-          animation: lineMove 2s linear forwards;
-        }
-      `}</style>
     </div>
   );
 };
