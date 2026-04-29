@@ -1,7 +1,7 @@
 /**
- * PeekableCard Component - Elegant Iris Peek v5
+ * PeekableCard Component - Camera Shutter Peek v6
  * 
- * Smooth, refined iris reveal with gentle expansion
+ * Aperture-style iris that opens from pinhole and closes slowly
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -10,9 +10,12 @@ import { UserCard } from "./UserCard";
 import axios from "axios";
 
 const API = process.env.REACT_APP_BACKEND_URL;
-const EXPAND_DURATION = 500;
-const FADE_DURATION = 300;
-const TOTAL_DURATION = EXPAND_DURATION + FADE_DURATION;
+
+// Timing: slow open, brief hold, slow close
+const OPEN_DURATION = 600;    // Time to fully open
+const HOLD_DURATION = 400;    // Time held open
+const CLOSE_DURATION = 800;   // Time to close (slower than open)
+const TOTAL_DURATION = OPEN_DURATION + HOLD_DURATION + CLOSE_DURATION;
 
 export const PeekableCard = ({
   user,
@@ -112,6 +115,10 @@ export const PeekableCard = ({
   
   const uid = user?.id?.replace(/-/g, '') || 'default';
   
+  // Calculate keyframe percentages
+  const openEnd = (OPEN_DURATION / TOTAL_DURATION * 100).toFixed(1);
+  const holdEnd = ((OPEN_DURATION + HOLD_DURATION) / TOTAL_DURATION * 100).toFixed(1);
+  
   return (
     <div 
       ref={cardRef}
@@ -144,7 +151,7 @@ export const PeekableCard = ({
             overflow: "hidden",
             pointerEvents: "none"
           }}>
-            {/* Blurred base layer */}
+            {/* Blurred base */}
             <img
               src={blurUrl}
               alt=""
@@ -159,132 +166,103 @@ export const PeekableCard = ({
               }}
             />
             
-            {/* Clear reveal layer with elegant iris */}
-            <div
-              className={`iris-reveal-${uid}`}
+            {/* Clear image with shutter mask */}
+            <img
+              src={clearUrl}
+              alt=""
+              className={`shutter-${uid}`}
               style={{
                 position: "absolute",
                 inset: 0,
-                opacity: 1
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                filter: "none",
+                WebkitFilter: "none"
               }}
-            >
-              <img
-                src={clearUrl}
-                alt=""
-                className={`iris-img-${uid}`}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  filter: "none",
-                  WebkitFilter: "none"
-                }}
-              />
-            </div>
+            />
           </div>
           
           <style>{`
-            .iris-reveal-${uid} {
-              animation: irisFade-${uid} ${TOTAL_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-            }
-            
-            .iris-img-${uid} {
+            .shutter-${uid} {
               -webkit-mask-image: radial-gradient(
-                circle 0px at 50% 33%,
-                rgba(0,0,0,1) 0%,
-                rgba(0,0,0,0.8) 40%,
-                rgba(0,0,0,0) 100%
+                circle 2px at 50% 35%,
+                black 0%,
+                black 60%,
+                transparent 100%
               );
               mask-image: radial-gradient(
-                circle 0px at 50% 33%,
-                rgba(0,0,0,1) 0%,
-                rgba(0,0,0,0.8) 40%,
-                rgba(0,0,0,0) 100%
+                circle 2px at 50% 35%,
+                black 0%,
+                black 60%,
+                transparent 100%
               );
-              animation: irisExpand-${uid} ${TOTAL_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+              animation: shutterAperture-${uid} ${TOTAL_DURATION}ms ease-in-out forwards;
             }
             
-            @keyframes irisExpand-${uid} {
+            @keyframes shutterAperture-${uid} {
+              /* Start: tiny pinhole */
               0% {
                 -webkit-mask-image: radial-gradient(
-                  circle 0px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.6) 50%,
-                  rgba(0,0,0,0) 100%
+                  circle 2px at 50% 35%,
+                  black 0%,
+                  black 50%,
+                  transparent 100%
                 );
                 mask-image: radial-gradient(
-                  circle 0px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.6) 50%,
-                  rgba(0,0,0,0) 100%
+                  circle 2px at 50% 35%,
+                  black 0%,
+                  black 50%,
+                  transparent 100%
                 );
               }
-              15% {
+              
+              /* Opening: gradual expansion */
+              ${openEnd}% {
                 -webkit-mask-image: radial-gradient(
-                  circle 8px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.6) 50%,
-                  rgba(0,0,0,0) 100%
+                  circle 65px at 50% 35%,
+                  black 0%,
+                  black 45%,
+                  transparent 100%
                 );
                 mask-image: radial-gradient(
-                  circle 8px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.6) 50%,
-                  rgba(0,0,0,0) 100%
+                  circle 65px at 50% 35%,
+                  black 0%,
+                  black 45%,
+                  transparent 100%
                 );
               }
-              40% {
+              
+              /* Hold open */
+              ${holdEnd}% {
                 -webkit-mask-image: radial-gradient(
-                  circle 35px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.6) 50%,
-                  rgba(0,0,0,0) 100%
+                  circle 65px at 50% 35%,
+                  black 0%,
+                  black 45%,
+                  transparent 100%
                 );
                 mask-image: radial-gradient(
-                  circle 35px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.6) 50%,
-                  rgba(0,0,0,0) 100%
+                  circle 65px at 50% 35%,
+                  black 0%,
+                  black 45%,
+                  transparent 100%
                 );
               }
-              62% {
-                -webkit-mask-image: radial-gradient(
-                  circle 55px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.5) 50%,
-                  rgba(0,0,0,0) 100%
-                );
-                mask-image: radial-gradient(
-                  circle 55px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.5) 50%,
-                  rgba(0,0,0,0) 100%
-                );
-              }
+              
+              /* Closing: slow retraction back to pinhole */
               100% {
                 -webkit-mask-image: radial-gradient(
-                  circle 55px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.5) 50%,
-                  rgba(0,0,0,0) 100%
+                  circle 2px at 50% 35%,
+                  black 0%,
+                  black 50%,
+                  transparent 100%
                 );
                 mask-image: radial-gradient(
-                  circle 55px at 50% 33%,
-                  rgba(0,0,0,1) 0%,
-                  rgba(0,0,0,0.5) 50%,
-                  rgba(0,0,0,0) 100%
+                  circle 2px at 50% 35%,
+                  black 0%,
+                  black 50%,
+                  transparent 100%
                 );
-              }
-            }
-            
-            @keyframes irisFade-${uid} {
-              0%, 60% {
-                opacity: 1;
-              }
-              100% {
-                opacity: 0;
               }
             }
           `}</style>
