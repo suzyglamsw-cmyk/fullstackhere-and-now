@@ -16,7 +16,7 @@ Building a real-time, location-based social connection app called "Here & Now" w
 ## Peek Feature (Added Apr 2025)
 
 ### Overview
-Peek is a brief visual glimpse (0.15-0.25s) of an unblurred photo (or silhouette flip). It is:
+Peek is a 2-second scanner-bar animation revealing a clear photo through a moving window. It is:
 - Tap-triggered (not automatic)
 - One-time only per viewer-target pair
 - Controlled ONLY by target's `allow_peek` setting
@@ -24,19 +24,28 @@ Peek is a brief visual glimpse (0.15-0.25s) of an unblurred photo (or silhouette
 
 ### Scope
 - **Enabled on:** Here Now venue cards, Not Here discovery cards
-- **NOT on:** Matches list, Chat, Full profile views, Expanded profiles, any other surface
+- **NOT on:** Matches list, Chat, Full profile views, Expanded profiles, mutual connections
 
 ### Behavior
 
 | `allow_peek` | `hide_photo_in_venues` | Here Now | Not Here |
 |--------------|------------------------|----------|----------|
-| ON | OFF | Blur → Clear peek | Blur → Clear peek |
-| ON | ON | Silhouette → Silhouette flip | Blur → Clear peek |
+| ON | OFF | Scanner reveals clear photo | Scanner reveals clear photo |
+| ON | ON | No peek (silhouette cards) | Scanner reveals clear photo |
 | OFF | any | No peek, Tap 1 → Profile | No peek, Tap 1 → Profile |
+
+### Scanner-Bar Animation (Implemented Apr 29, 2025)
+- **Duration:** 2000ms
+- **Technique:** "Moving Window" CSS animation
+  - A 10px tall overflow-hidden div moves from top to bottom
+  - Clear image inside translates in reverse to stay visually static
+  - Creates a scanning effect revealing clear pixels through blurred background
+- **Glow Effect:** Subtle white gradient line follows the scanner
+- **CSS Variables:** Uses `--window-travel` and `--image-travel` for pixel-based animation
 
 ### Tap Sequence
 1. **Default State:** Card shows gender-colored border (Pink=#FF2D8D female, Blue=#3A7BFF male) if peekable
-2. **First Tap → Peek:** Brief glimpse (0.15-0.25s), returns to blurred/silhouette, border disappears
+2. **First Tap → Peek:** 2-second scanner animation, then border disappears
 3. **Second Tap → Profile:** Opens expanded profile (still blurred per existing logic)
 
 ### User Toggle

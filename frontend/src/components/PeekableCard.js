@@ -16,7 +16,7 @@
  * - Only bar area is clear, rest stays blurred
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserCard } from "./UserCard";
 import axios from "axios";
@@ -25,6 +25,7 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 // Scanner animation duration
 const SCAN_DURATION = 2000; // 2 seconds
+const SCANNER_HEIGHT = 10; // pixels
 
 export const PeekableCard = ({
   user,
@@ -38,11 +39,20 @@ export const PeekableCard = ({
   const navigate = useNavigate();
   const [isScanning, setIsScanning] = useState(false);
   const [hasPeekedLocal, setHasPeekedLocal] = useState(peekStatus?.has_peeked || false);
+  const [cardHeight, setCardHeight] = useState(0);
+  const cardRef = useRef(null);
   
   // Update local state when peekStatus changes
   useEffect(() => {
     setHasPeekedLocal(peekStatus?.has_peeked || false);
   }, [peekStatus?.has_peeked]);
+  
+  // Get card height for animation calculations
+  useEffect(() => {
+    if (cardRef.current) {
+      setCardHeight(cardRef.current.offsetHeight);
+    }
+  }, []);
   
   // Determine if peek is enabled for this target
   const allowPeek = peekStatus?.allow_peek !== false;
@@ -84,10 +94,13 @@ export const PeekableCard = ({
     let url = getPhotoUrl();
     if (!url) return "";
     
-    // Remove any existing blur parameter and add blur=false
-    if (url.includes('?')) {
-      // Has query params - remove blur if exists, add blur=false
-      url = url.replace(/[?&]blur=(true|false)/g, '');
+    // Parse and rebuild URL with blur=false
+    // Handle both ?blur=X and &blur=X patterns
+    if (url.includes('blur=')) {
+      // Replace existing blur parameter value
+      url = url.replace(/blur=(true|false)/g, 'blur=false');
+    } else if (url.includes('?')) {
+      // Has query params but no blur - add blur=false
       url = url + '&blur=false';
     } else {
       // No query params - add blur=false
@@ -101,11 +114,15 @@ export const PeekableCard = ({
     let url = getPhotoUrl();
     if (!url) return "";
     
-    // Remove any existing blur parameter and add blur=true
-    if (url.includes('?')) {
-      url = url.replace(/[?&]blur=(true|false)/g, '');
+    // Parse and rebuild URL with blur=true
+    if (url.includes('blur=')) {
+      // Replace existing blur parameter value
+      url = url.replace(/blur=(true|false)/g, 'blur=true');
+    } else if (url.includes('?')) {
+      // Has query params but no blur - add blur=true
       url = url + '&blur=true';
     } else {
+      // No query params - add blur=true
       url = url + '?blur=true';
     }
     return url;
@@ -153,6 +170,7 @@ export const PeekableCard = ({
   
   return (
     <div 
+      ref={cardRef}
       className="peekable-card-wrapper"
       style={{
         position: "relative",
@@ -174,7 +192,7 @@ export const PeekableCard = ({
       />
       
       {/* Scanner-bar Peek overlay - Moving Window Technique */}
-      {isScanning && (
+      {isScanning && cardHeight > 0 && (
         <div
           className="scanner-container"
           style={{
@@ -206,69 +224,84 @@ export const PeekableCard = ({
             }}
           />
           
-          {/* TOP LAYER: Moving 10px window with clear image inside */}
+          {/* TOP LAYER: Moving window with clear image inside */}
+          {/* Window moves from top:0 to top:(cardHeight - SCANNER_HEIGHT)px */}
           <div
-            className="scanner-window"
+            className="scanner-window-animated"
             style={{
               position: "absolute",
               left: 0,
               right: 0,
-              height: "10px",
+              height: `${SCANNER_HEIGHT}px`,
               zIndex: 2,
               overflow: "hidden",
-              animation: "windowMove 2s ease-in-out forwards"
+              /* Animation handled by CSS class with CSS variables */
+              "--window-travel": `${cardHeight - SCANNER_HEIGHT}px`
             }}
           >
-            {/* Clear image - offset synced with window movement */}
+            {/* Clear image - height matches full card, positioned to stay visually static */}
             <img
               src={clearPhotoUrl}
               alt=""
+              className="scanner-image-animated"
               style={{
                 position: "absolute",
                 left: 0,
                 width: "100%",
-                height: "auto",
-                minHeight: "calc(100% * 10)",
+                height: `${cardHeight}px`,
                 objectFit: "cover",
-                objectPosition: "center top",
+                objectPosition: "center",
                 filter: "none",
                 WebkitFilter: "none",
-                animation: "imageOffset 2s ease-in-out forwards"
+                /* Animation handled by CSS class with CSS variables */
+                "--image-travel": `-${cardHeight - SCANNER_HEIGHT}px`
               }}
             />
           </div>
           
-          {/* Scanner glow line */}
+          {/* Scanner glow line - synced with window */}
           <div
+            className="scanner-glow-animated"
             style={{
               position: "absolute",
               left: 0,
               right: 0,
-              height: "10px",
+              height: `${SCANNER_HEIGHT}px`,
               zIndex: 3,
               background: "linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.15) 100%)",
               boxShadow: "0 0 6px rgba(255,255,255,0.4)",
               pointerEvents: "none",
-              animation: "windowMove 2s ease-in-out forwards"
+              "--window-travel": `${cardHeight - SCANNER_HEIGHT}px`
             }}
           />
         </div>
       )}
       
-      {/* Scanner animations */}
+      {/* Scanner animations with pixel-based travel distances */}
       <style>{`
-        .scanner-window {
+        @keyframes windowMovePixels {
+          0% { top: 0; }
+          100% { top: var(--window-travel); }
+        }
+        
+        @keyframes imageMovePixels {
+          0% { top: 0; }
+          100% { top: var(--image-travel); }
+        }
+        
+        .scanner-window-animated {
           top: 0;
+          animation: windowMovePixels 2s ease-in-out forwards;
         }
         
-        @keyframes windowMove {
-          0% { top: 0; }
-          100% { top: calc(100% - 10px); }
+        .scanner-image-animated {
+          top: 0;
+          animation: imageMovePixels 2s ease-in-out forwards;
         }
         
-        @keyframes imageOffset {
-          0% { top: 0; }
-          100% { top: calc(-100% + 10px); }
+        .scanner-glow-animated {
+          top: 0;
+          animation: windowMovePixels 2s ease-in-out forwards;
         }
       `}</style>
     </div>
