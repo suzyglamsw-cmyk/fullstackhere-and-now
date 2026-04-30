@@ -7104,6 +7104,38 @@ async def update_push_settings(settings: PushNotificationSettings, current_user:
     )
     return {"message": "Settings updated"}
 
+# Mobile Push Notifications (Expo)
+@api_router.post("/push/mobile/register")
+async def register_mobile_push(
+    body: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Register an Expo push token for mobile push notifications"""
+    token = body.get("token")
+    if not token:
+        raise HTTPException(status_code=400, detail="Push token is required")
+    
+    # Store the Expo push token
+    await db.mobile_push_tokens.update_one(
+        {"user_id": current_user["id"]},
+        {
+            "$set": {
+                "user_id": current_user["id"],
+                "expo_token": token,
+                "platform": body.get("platform", "android"),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    return {"message": "Mobile push token registered"}
+
+@api_router.delete("/push/mobile/unregister")
+async def unregister_mobile_push(current_user: dict = Depends(get_current_user)):
+    """Unregister mobile push token"""
+    await db.mobile_push_tokens.delete_one({"user_id": current_user["id"]})
+    return {"message": "Mobile push token removed"}
+
 @api_router.get("/push/vapid-public-key")
 async def get_vapid_public_key():
     """Get VAPID public key for push subscription"""

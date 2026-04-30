@@ -125,7 +125,10 @@ export const voiceAPI = {
 export const settingsAPI = {
   getPrivacy: () => api.get('/api/settings/privacy'),
   updatePrivacy: (data) => api.put('/api/settings/privacy', data),
-  registerPush: (token) => api.post('/api/notifications/register', { token }),
+  registerPush: (token) => api.post('/api/push/mobile/register', { token, platform: 'android' }),
+  unregisterPush: () => api.delete('/api/push/mobile/unregister'),
+  getPushSettings: () => api.get('/api/push/settings'),
+  updatePushSettings: (data) => api.put('/api/push/settings', data),
 };
 
 // Premium API

@@ -97,7 +97,7 @@ const ProfileScreen = ({ navigation }) => {
             icon={Edit}
             title="Edit Profile"
             subtitle="Photos, bio, preferences"
-            onPress={() => {/* Navigate to edit */}}
+            onPress={() => navigation.navigate('EditProfile')}
           />
         </View>
 

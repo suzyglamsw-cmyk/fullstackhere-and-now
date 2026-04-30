@@ -288,8 +288,92 @@ The preview simulates exactly what others see:
   - Fails open on technical errors (validation ran successfully on original upload)
 
 ## Pending Tasks
+- **P0**: Complete React Native mobile app implementation (IN PROGRESS)
 - **P1**: Consolidate `server.py` route duplication into `/routes/` modules
 - **P2**: Implement group check-ins
+- **P2**: Camera shutter animation refinement for Peek (deferred until mobile complete)
+
+## React Native Mobile App (Added Dec 2025)
+
+### Overview
+Converting the existing React web app into a native Android mobile app using React Native (Expo).
+
+### App Configuration
+- **App Name:** Here & Now
+- **Package ID:** `com.herenow.app`
+- **Framework:** React Native with Expo SDK 54
+- **Target Platform:** Android (Google Play)
+
+### Mobile App Structure
+```
+/app/mobile/
+├── App.js                          # Main entry point with navigation
+├── app.json                        # Expo configuration
+├── package.json                    # Dependencies
+├── src/
+│   ├── components/
+│   │   ├── Button.js               # Reusable button component
+│   │   ├── TextInput.js            # Reusable text input
+│   │   └── UserCard.js             # User profile card with blur
+│   ├── context/
+│   │   └── AuthContext.js          # Authentication state management
+│   ├── navigation/
+│   │   └── AppNavigator.js         # React Navigation setup
+│   ├── screens/
+│   │   ├── auth/
+│   │   │   ├── LoginScreen.js      # Login form
+│   │   │   ├── RegisterScreen.js   # Registration with DOB validation
+│   │   │   ├── ForgotPasswordScreen.js
+│   │   │   ├── OnboardingGenderScreen.js  # Gender/seeking selection
+│   │   │   └── ProfileSetupScreen.js      # Photo/bio setup
+│   │   └── main/
+│   │       ├── DiscoverScreen.js   # Here Now / Not Here tabs
+│   │       ├── VenuesScreen.js     # Google Maps integration
+│   │       ├── WhosHereScreen.js   # Venue people list
+│   │       ├── ConnectionsScreen.js # Glances/Reveals/Messages tabs
+│   │       ├── ChatScreen.js       # Real-time messaging
+│   │       ├── ProfileScreen.js    # Current user profile
+│   │       ├── EditProfileScreen.js # Edit profile with photos/voice
+│   │       ├── SettingsScreen.js   # App settings
+│   │       └── UserProfileScreen.js # View other user profiles
+│   └── utils/
+│       ├── api.js                  # Axios API client
+│       ├── constants.js            # Colors, spacing, API URL
+│       └── pushNotifications.js    # Expo push notifications
+```
+
+### Key Dependencies
+- `expo` v54 - Core Expo SDK
+- `expo-linear-gradient` - Gradient backgrounds
+- `expo-location` - GPS location access
+- `expo-camera` - Camera for photos
+- `expo-image-picker` - Photo library access
+- `expo-av` - Voice recording/playback
+- `expo-notifications` - Push notifications
+- `expo-secure-store` - Secure token storage
+- `react-native-maps` - Google Maps integration
+- `react-native-reanimated` - Animations
+- `@react-navigation/native` - Navigation
+
+### Backend Changes for Mobile
+- Added `POST /api/push/mobile/register` - Register Expo push tokens
+- Added `DELETE /api/push/mobile/unregister` - Unregister push tokens
+- New collection: `mobile_push_tokens` { user_id, expo_token, platform, updated_at }
+
+### Firebase Configuration
+- `google-services.json` must be added to `/app/mobile/` for FCM
+- Configured in `app.json` under `android.googleServicesFile`
+- Android notification channels: default, messages, connections, venues
+
+### Status
+- ✅ Project structure created
+- ✅ All screens implemented
+- ✅ Navigation configured
+- ✅ API integration complete
+- ✅ Push notification service created
+- ✅ Backend mobile push endpoint added
+- ⏳ Requires Firebase google-services.json from user
+- ⏳ Requires EAS build and testing on physical device
 
 ## Known Issues
 - `server.py` is 7800+ lines with duplicate logic that exists in `/routes/`
@@ -303,7 +387,8 @@ The preview simulates exactly what others see:
 - `/app/frontend/src/pages/ProfileTab.js` - Profile editing + preview
 - `/app/frontend/src/pages/UserProfile.js` - Viewing other users
 - `/app/frontend/src/utils/bioObscure.js` - Bio obscuring utility
+- `/app/mobile/` - React Native mobile app (NEW)
 
 ## Test Credentials
-- Email: `suzyglam.sw@googlemail.com`
-- Password: `keyboard`
+- Email: `test@mobile.com`
+- Password: `Test1234!`

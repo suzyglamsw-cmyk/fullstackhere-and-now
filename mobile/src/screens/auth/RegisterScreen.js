@@ -25,6 +25,7 @@ const RegisterScreen = ({ navigation }) => {
     password: '',
     confirmPassword: '',
     first_name: '',
+    date_of_birth: '',
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -58,6 +59,22 @@ const RegisterScreen = ({ navigation }) => {
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
+
+    if (!formData.date_of_birth) {
+      newErrors.date_of_birth = 'Date of birth is required';
+    } else {
+      // Validate age (must be 18+)
+      const birthDate = new Date(formData.date_of_birth);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        newErrors.date_of_birth = 'You must be 18 or older';
+      }
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -71,6 +88,8 @@ const RegisterScreen = ({ navigation }) => {
       email: formData.email.trim().toLowerCase(),
       password: formData.password,
       first_name: formData.first_name.trim(),
+      display_name: formData.first_name.trim(),
+      date_of_birth: formData.date_of_birth,
     });
     setLoading(false);
     
@@ -155,6 +174,16 @@ const RegisterScreen = ({ navigation }) => {
               error={errors.confirmPassword}
               secureTextEntry
               icon={<Lock color={COLORS.textMuted} size={20} />}
+            />
+
+            <TextInput
+              label="Date of Birth"
+              placeholder="YYYY-MM-DD"
+              value={formData.date_of_birth}
+              onChangeText={(v) => updateField('date_of_birth', v)}
+              error={errors.date_of_birth}
+              keyboardType="numeric"
+              maxLength={10}
             />
             
             <Button
