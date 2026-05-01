@@ -61,9 +61,6 @@
           "icon": "./assets/notification-icon.png",
           "color": "#a855f7"
         }
-      ],
-      [
-        "react-native-reanimated/plugin"
       ]
     ],
     "extra": {
