@@ -372,7 +372,7 @@ Converting the existing React web app into a native Android mobile app using Rea
 - ✅ API integration complete
 - ✅ Push notification service created
 - ✅ Backend mobile push endpoint added
-- ⏳ Requires Firebase google-services.json from user
+- ✅ Firebase google-services.json configured (Dec 2025)
 - ⏳ Requires EAS build and testing on physical device
 
 ## Known Issues

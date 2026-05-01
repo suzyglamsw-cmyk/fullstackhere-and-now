@@ -43,7 +43,7 @@ export async function registerForPushNotificationsAsync() {
   try {
     // Get Expo push token (works with FCM on Android)
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: 'here-and-now', // Must match app.json eas.projectId
+      projectId: 'hereandnow-5c927', // Firebase project ID from google-services.json
     });
     token = tokenData.data;
 
