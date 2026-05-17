@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,9 @@ import {
   RefreshControl,
   Image,
   ScrollView,
-  Modal,
-  Animated,
-  Dimensions,
-  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   MessageCircle,
   Eye,
@@ -28,28 +25,14 @@ import {
   ArrowDownLeft,
   Trash2,
   Info,
+  VolumeX,
+  Volume2,
   Archive,
-  X,
-  Check,
-  Ban,
 } from 'lucide-react-native';
 
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, API_URL } from '../src/utils/constants';
 import api from '../src/utils/api';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// Polite decline reasons for chat requests
-const POLITE_DECLINE_REASONS = [
-  { id: 'not_looking', emoji: '🙏', text: 'Not looking to chat right now' },
-  { id: 'settling_in', emoji: '🏠', text: 'Just got here, settling in' },
-  { id: 'with_friends', emoji: '👥', text: 'Here with friends tonight' },
-  { id: 'pass', emoji: '✌️', text: 'Going to pass, thanks' },
-];
-
-// LIGHT blur for HereHub (not heavy)
-const HEREHUB_BLUR_RADIUS = 5;
 
 const ConnectionsScreen = ({ route, navigation }) => {
   const initialTab = route.params?.tab || 'messages';
@@ -67,35 +50,9 @@ const ConnectionsScreen = ({ route, navigation }) => {
   const [friends, setFriends] = useState([]);
   const [connections, setConnections] = useState([]);
 
-  // Action sheet state
-  const [actionSheetVisible, setActionSheetVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [actionSheetType, setActionSheetType] = useState(null); // 'glance', 'icebreaker', 'chat', 'request'
-  const [actionLoading, setActionLoading] = useState(false);
-  
-  // Animation for action sheet
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-
   useEffect(() => {
     fetchAllData();
   }, []);
-
-  useEffect(() => {
-    if (actionSheetVisible) {
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 65,
-        friction: 11,
-      }).start();
-    } else {
-      Animated.timing(slideAnim, {
-        toValue: SCREEN_HEIGHT,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [actionSheetVisible]);
 
   const fetchAllData = async () => {
     try {
@@ -153,151 +110,14 @@ const ConnectionsScreen = ({ route, navigation }) => {
     return date.toLocaleDateString();
   };
 
-  // Use LIGHT blur for HereHub - only clear on reveal_state === 'both_revealed'
   const getPhotoUrl = (item) => {
     if (item.photos?.[0]) {
-      // Always request blurred from server, we control blur locally
-      return `${API_URL}/api/photos/serve/${item.photos[0]}`;
+      return `${API_URL}/api/photos/serve/${item.photos[0]}?blur=true`;
     }
     if (item.photo_url) {
-      return `${API_URL}/api/photos/serve/${item.photo_url}`;
+      return `${API_URL}/api/photos/serve/${item.photo_url}?blur=true`;
     }
     return null;
-  };
-
-  // Determine blur radius based on reveal state
-  const getBlurRadius = (item) => {
-    // Only clear (0) when both have revealed
-    if (item.reveal_state === 'both_revealed') {
-      return 0;
-    }
-    // HereHub uses LIGHT blur (not heavy)
-    return HEREHUB_BLUR_RADIUS;
-  };
-
-  // Show action sheet for an item
-  const openActionSheet = (item, type) => {
-    setSelectedItem(item);
-    setActionSheetType(type);
-    setActionSheetVisible(true);
-  };
-
-  const closeActionSheet = () => {
-    setActionSheetVisible(false);
-    setTimeout(() => {
-      setSelectedItem(null);
-      setActionSheetType(null);
-    }, 300);
-  };
-
-  // Action handlers
-  const handleGlanceBack = async () => {
-    if (!selectedItem) return;
-    setActionLoading(true);
-    try {
-      await api.post('/api/glance', {
-        to_user_id: selectedItem.user_id,
-        venue_id: 'herehub',
-      });
-      closeActionSheet();
-      fetchAllData();
-    } catch (error) {
-      console.error('Failed to glance back:', error);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleAcceptIcebreaker = async () => {
-    if (!selectedItem) return;
-    setActionLoading(true);
-    try {
-      await api.post(`/api/icebreaker/${selectedItem.id}/accept`);
-      closeActionSheet();
-      fetchAllData();
-    } catch (error) {
-      console.error('Failed to accept icebreaker:', error);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleDeclineIcebreaker = async () => {
-    if (!selectedItem) return;
-    setActionLoading(true);
-    try {
-      await api.post(`/api/icebreaker/${selectedItem.id}/decline`);
-      closeActionSheet();
-      fetchAllData();
-    } catch (error) {
-      console.error('Failed to decline icebreaker:', error);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleAcceptChatRequest = async () => {
-    if (!selectedItem) return;
-    setActionLoading(true);
-    try {
-      await api.post(`/api/chat-request/${selectedItem.id}/accept`);
-      closeActionSheet();
-      navigation.navigate('Chat', { userId: selectedItem.user_id });
-      fetchAllData();
-    } catch (error) {
-      console.error('Failed to accept chat request:', error);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handlePoliteDecline = async (reasonId) => {
-    if (!selectedItem) return;
-    setActionLoading(true);
-    try {
-      await api.post(`/api/chat-request/${selectedItem.id}/decline`, {
-        reason: reasonId,
-      });
-      closeActionSheet();
-      fetchAllData();
-    } catch (error) {
-      console.error('Failed to decline chat request:', error);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleRemoveFromView = async () => {
-    if (!selectedItem) return;
-    setActionLoading(true);
-    try {
-      const endpoint = actionSheetType === 'glance' 
-        ? `/api/glance/${selectedItem.id}/dismiss`
-        : actionSheetType === 'icebreaker'
-        ? `/api/icebreaker/${selectedItem.id}/dismiss`
-        : `/api/chat-request/${selectedItem.id}/dismiss`;
-      await api.post(endpoint);
-      closeActionSheet();
-      fetchAllData();
-    } catch (error) {
-      console.error('Failed to remove:', error);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleBlockUser = async () => {
-    if (!selectedItem) return;
-    setActionLoading(true);
-    try {
-      await api.post('/api/users/block', { user_id: selectedItem.user_id });
-      closeActionSheet();
-      fetchAllData();
-    } catch (error) {
-      console.error('Failed to block user:', error);
-    } finally {
-      setActionLoading(false);
-    }
   };
 
   // Counts for badges
@@ -311,7 +131,6 @@ const ConnectionsScreen = ({ route, navigation }) => {
     <TouchableOpacity
       style={[styles.tabButton, tab === id && styles.tabButtonActive]}
       onPress={() => setTab(id)}
-      data-testid={`tab-${id}`}
     >
       <Icon color={tab === id ? COLORS.text : COLORS.textSecondary} size={16} />
       <Text style={[styles.tabText, tab === id && styles.tabTextActive]}>{label}</Text>
@@ -335,23 +154,20 @@ const ConnectionsScreen = ({ route, navigation }) => {
     }
   };
 
-  // Message thread row (no checkbox)
   const renderMessageThread = ({ item: thread }) => {
     const photoUrl = getPhotoUrl(thread);
-    const blurRadius = getBlurRadius(thread);
     const genderColor = thread.show_as === 'male' ? COLORS.male : 
                        thread.show_as === 'female' ? COLORS.female : COLORS.text;
 
     return (
       <TouchableOpacity
-        style={styles.itemRow}
+        style={styles.threadRow}
         onPress={() => navigation.navigate('Chat', { userId: thread.user_id })}
         activeOpacity={0.7}
-        data-testid={`message-thread-${thread.user_id}`}
       >
-        <View style={styles.itemAvatar}>
+        <View style={styles.threadAvatar}>
           {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.avatarImage} blurRadius={blurRadius} />
+            <Image source={{ uri: photoUrl }} style={styles.avatarImage} blurRadius={5} />
           ) : (
             <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
               <Text style={styles.avatarText}>{thread.display_name?.charAt(0) || '?'}</Text>
@@ -359,14 +175,14 @@ const ConnectionsScreen = ({ route, navigation }) => {
           )}
           {thread.unread_count > 0 && <View style={styles.unreadDot} />}
         </View>
-        <View style={styles.itemContent}>
-          <View style={styles.itemHeader}>
-            <Text style={[styles.itemName, { color: genderColor }, thread.unread_count > 0 && styles.itemNameBold]} numberOfLines={1}>
+        <View style={styles.threadContent}>
+          <View style={styles.threadHeader}>
+            <Text style={[styles.threadName, { color: genderColor }, thread.unread_count > 0 && styles.threadNameBold]} numberOfLines={1}>
               {thread.display_name}
             </Text>
-            <Text style={styles.itemTime}>{formatDate(thread.last_message_at)}</Text>
+            <Text style={styles.threadTime}>{formatDate(thread.last_message_at)}</Text>
           </View>
-          <Text style={[styles.itemSubtext, thread.unread_count > 0 && styles.itemSubtextUnread]} numberOfLines={1}>
+          <Text style={[styles.threadMessage, thread.unread_count > 0 && styles.threadMessageUnread]} numberOfLines={1}>
             {thread.is_from_me && <Text style={styles.youPrefix}>You: </Text>}
             {thread.last_message || 'No messages yet'}
           </Text>
@@ -375,189 +191,51 @@ const ConnectionsScreen = ({ route, navigation }) => {
     );
   };
 
-  // Glance row - tap to open action sheet (no checkbox)
-  const renderGlanceItem = ({ item: glance, isOutgoing }) => {
+  const renderGlance = ({ item: glance, isOutgoing }) => {
     const photoUrl = getPhotoUrl(glance);
-    const blurRadius = getBlurRadius(glance);
     const genderColor = glance.show_as === 'male' ? COLORS.male : 
                        glance.show_as === 'female' ? COLORS.female : COLORS.text;
 
     return (
       <TouchableOpacity
-        style={styles.itemRow}
-        onPress={() => !isOutgoing && openActionSheet(glance, 'glance')}
-        onLongPress={() => navigation.navigate('UserProfile', { userId: glance.user_id })}
+        style={styles.glanceRow}
+        onPress={() => navigation.navigate('UserProfile', { userId: glance.user_id })}
         activeOpacity={0.7}
-        data-testid={`glance-item-${glance.id}`}
       >
-        <View style={styles.itemAvatar}>
+        <View style={styles.glanceAvatar}>
           {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.avatarImageSquare} blurRadius={blurRadius} />
+            <Image source={{ uri: photoUrl }} style={styles.avatarImageSmall} blurRadius={8} />
           ) : (
-            <View style={[styles.avatarImageSquare, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarText}>{glance.display_name?.charAt(0) || '?'}</Text>
+            <View style={[styles.avatarImageSmall, styles.avatarPlaceholder]}>
+              <Text style={styles.avatarTextSmall}>{glance.display_name?.charAt(0) || '?'}</Text>
+            </View>
+          )}
+          {glance.is_connection_accepted && (
+            <View style={styles.matchIndicator}>
+              <Heart color={COLORS.text} size={8} fill={COLORS.text} />
             </View>
           )}
         </View>
-        <View style={styles.itemContent}>
-          <Text style={[styles.itemName, { color: genderColor }]} numberOfLines={1}>
+        <View style={styles.glanceContent}>
+          <Text style={[styles.glanceName, { color: genderColor }]} numberOfLines={1}>
             {glance.display_name}
           </Text>
-          <Text style={styles.itemSubtext}>
+          <Text style={styles.glanceSubtext}>
             {isOutgoing ? 'You glanced' : 'Glanced at you'} · {formatDate(glance.created_at)}
           </Text>
         </View>
-        {!isOutgoing && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => openActionSheet(glance, 'glance')}
-            data-testid={`glance-back-btn-${glance.id}`}
-          >
+        {!isOutgoing && !glance.is_connection_accepted && (
+          <TouchableOpacity style={styles.glanceBackButton}>
             <Eye color={COLORS.text} size={14} />
-            <Text style={styles.actionButtonText}>Glance Back</Text>
+            <Text style={styles.glanceBackText}>Glance Back</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => {
-            setSelectedItem(glance);
-            setActionSheetType('glance');
-            handleRemoveFromView();
-          }}
-          data-testid={`delete-glance-${glance.id}`}
-        >
-          <Trash2 color={COLORS.textMuted} size={18} />
-        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
 
-  // Icebreaker row - tap to open action sheet (no checkbox)
-  const renderIcebreakerItem = ({ item: icebreaker, isOutgoing }) => {
-    const photoUrl = getPhotoUrl(icebreaker);
-    const blurRadius = getBlurRadius(icebreaker);
-    const genderColor = icebreaker.show_as === 'male' ? COLORS.male : 
-                       icebreaker.show_as === 'female' ? COLORS.female : COLORS.text;
-    const isPending = icebreaker.status === 'pending';
-
-    return (
-      <TouchableOpacity
-        style={styles.itemRow}
-        onPress={() => !isOutgoing && isPending && openActionSheet(icebreaker, 'icebreaker')}
-        onLongPress={() => navigation.navigate('UserProfile', { userId: icebreaker.user_id })}
-        activeOpacity={0.7}
-        data-testid={`icebreaker-item-${icebreaker.id}`}
-      >
-        <View style={styles.itemAvatar}>
-          {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.avatarImageSquare} blurRadius={blurRadius} />
-          ) : (
-            <View style={[styles.avatarImageSquare, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarText}>{icebreaker.display_name?.charAt(0) || '?'}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.itemContent}>
-          <Text style={[styles.itemName, { color: genderColor }]} numberOfLines={1}>
-            {icebreaker.display_name}
-          </Text>
-          <View style={styles.icebreakerMsgRow}>
-            <Snowflake color={COLORS.info} size={12} />
-            <Text style={styles.icebreakerMsg} numberOfLines={1}>
-              "{icebreaker.message || 'Icebreaker'}"
-            </Text>
-          </View>
-          <Text style={styles.itemSubtext}>
-            {isOutgoing ? 'You sent' : 'Icebreaker'} · {formatDate(icebreaker.created_at)}
-          </Text>
-        </View>
-        {!isOutgoing && isPending && (
-          <TouchableOpacity
-            style={styles.actionButtonOutline}
-            onPress={() => openActionSheet(icebreaker, 'icebreaker')}
-            data-testid={`respond-icebreaker-${icebreaker.id}`}
-          >
-            <Text style={styles.actionButtonOutlineText}>Respond</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => {
-            setSelectedItem(icebreaker);
-            setActionSheetType('icebreaker');
-            handleRemoveFromView();
-          }}
-          data-testid={`delete-icebreaker-${icebreaker.id}`}
-        >
-          <Trash2 color={COLORS.textMuted} size={18} />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  };
-
-  // Chat request row - tap to open action sheet (no checkbox)
-  const renderChatRequestItem = ({ item: request, isOutgoing }) => {
-    const photoUrl = getPhotoUrl(request);
-    const blurRadius = getBlurRadius(request);
-    const genderColor = request.show_as === 'male' ? COLORS.male : 
-                       request.show_as === 'female' ? COLORS.female : COLORS.text;
-    const isPending = request.status === 'pending';
-
-    return (
-      <TouchableOpacity
-        style={styles.itemRow}
-        onPress={() => !isOutgoing && isPending && openActionSheet(request, 'chat')}
-        onLongPress={() => navigation.navigate('UserProfile', { userId: request.user_id })}
-        activeOpacity={0.7}
-        data-testid={`chat-request-item-${request.id}`}
-      >
-        <View style={styles.itemAvatar}>
-          {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.avatarImageSquare} blurRadius={blurRadius} />
-          ) : (
-            <View style={[styles.avatarImageSquare, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarText}>{request.display_name?.charAt(0) || '?'}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.itemContent}>
-          <Text style={[styles.itemName, { color: genderColor }]} numberOfLines={1}>
-            {request.display_name}
-          </Text>
-          <View style={styles.chatRequestMsgRow}>
-            <MessageSquare color={COLORS.textSecondary} size={12} />
-            <Text style={styles.itemSubtext}>Wants to chat</Text>
-          </View>
-          <Text style={styles.itemSubtext}>· {formatDate(request.created_at)}</Text>
-        </View>
-        {!isOutgoing && isPending && (
-          <TouchableOpacity
-            style={styles.actionButtonPurple}
-            onPress={() => openActionSheet(request, 'chat')}
-            data-testid={`options-chat-request-${request.id}`}
-          >
-            <Text style={styles.actionButtonText}>Options</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => {
-            setSelectedItem(request);
-            setActionSheetType('chat');
-            handleRemoveFromView();
-          }}
-          data-testid={`delete-chat-request-${request.id}`}
-        >
-          <Trash2 color={COLORS.textMuted} size={18} />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  };
-
-  // Connection card (no checkbox)
   const renderConnection = ({ item: connection }) => {
     const photoUrl = getPhotoUrl(connection);
-    const blurRadius = getBlurRadius(connection);
     const genderColor = connection.show_as === 'male' ? COLORS.male : 
                        connection.show_as === 'female' ? COLORS.female : COLORS.text;
 
@@ -566,11 +244,10 @@ const ConnectionsScreen = ({ route, navigation }) => {
         style={styles.connectionCard}
         onPress={() => navigation.navigate('UserProfile', { userId: connection.user_id })}
         activeOpacity={0.7}
-        data-testid={`connection-card-${connection.user_id}`}
       >
         <View style={styles.connectionPhoto}>
           {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.connectionImage} blurRadius={blurRadius} />
+            <Image source={{ uri: photoUrl }} style={styles.connectionImage} blurRadius={5} />
           ) : (
             <View style={[styles.connectionImage, styles.avatarPlaceholder]}>
               <Text style={styles.connectionInitial}>{connection.display_name?.charAt(0) || '?'}</Text>
@@ -588,10 +265,10 @@ const ConnectionsScreen = ({ route, navigation }) => {
     );
   };
 
-  const renderEmptyState = (title, subtitle, IconComponent) => (
+  const renderEmptyState = (title, subtitle, icon: Icon) => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIcon}>
-        <IconComponent color={COLORS.textMuted} size={40} />
+        <Icon color={COLORS.textMuted} size={40} />
       </View>
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptySubtitle}>{subtitle}</Text>
@@ -617,13 +294,15 @@ const ConnectionsScreen = ({ route, navigation }) => {
         }
         
         return (
-          <ScrollView 
-            style={styles.listContainer}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
-          >
-            {activeThreads.length > 0 && activeThreads.map((thread) => (
-              <View key={thread.user_id}>{renderMessageThread({ item: thread })}</View>
-            ))}
+          <ScrollView style={styles.listContainer}>
+            {activeThreads.length > 0 && (
+              <FlatList
+                data={activeThreads}
+                renderItem={renderMessageThread}
+                keyExtractor={(item) => item.user_id}
+                scrollEnabled={false}
+              />
+            )}
             
             {/* Quiet Section */}
             <View style={styles.sectionHeader}>
@@ -631,9 +310,12 @@ const ConnectionsScreen = ({ route, navigation }) => {
               <Text style={styles.sectionTitle}>Quiet for now</Text>
             </View>
             {quietThreads.length > 0 ? (
-              quietThreads.map((thread) => (
-                <View key={thread.user_id}>{renderMessageThread({ item: thread })}</View>
-              ))
+              <FlatList
+                data={quietThreads}
+                renderItem={renderMessageThread}
+                keyExtractor={(item) => item.user_id}
+                scrollEnabled={false}
+              />
             ) : (
               <Text style={styles.emptySection}>(no threads yet)</Text>
             )}
@@ -646,10 +328,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
         }
         
         return (
-          <ScrollView 
-            style={styles.listContainer}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
-          >
+          <ScrollView style={styles.listContainer}>
             {glances.incoming?.length > 0 && (
               <>
                 <View style={styles.subsectionHeader}>
@@ -657,7 +336,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
                   <Text style={styles.subsectionTitle}>Received ({glances.incoming.length})</Text>
                 </View>
                 {glances.incoming.map((glance) => (
-                  <View key={glance.id}>{renderGlanceItem({ item: glance, isOutgoing: false })}</View>
+                  <View key={glance.id}>{renderGlance({ item: glance, isOutgoing: false })}</View>
                 ))}
               </>
             )}
@@ -669,7 +348,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
                   <Text style={styles.subsectionTitle}>Sent ({glances.outgoing.length})</Text>
                 </View>
                 {glances.outgoing.map((glance) => (
-                  <View key={glance.id}>{renderGlanceItem({ item: glance, isOutgoing: true })}</View>
+                  <View key={glance.id}>{renderGlance({ item: glance, isOutgoing: true })}</View>
                 ))}
               </>
             )}
@@ -683,10 +362,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
         }
         
         return (
-          <ScrollView 
-            style={styles.listContainer}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
-          >
+          <ScrollView style={styles.listContainer}>
             {icebreakers.incoming?.length > 0 && (
               <>
                 <View style={styles.subsectionHeader}>
@@ -694,7 +370,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
                   <Text style={styles.subsectionTitle}>Received ({icebreakers.incoming.length})</Text>
                 </View>
                 {icebreakers.incoming.map((ib) => (
-                  <View key={ib.id}>{renderIcebreakerItem({ item: ib, isOutgoing: false })}</View>
+                  <View key={ib.id}>{renderGlance({ item: ib, isOutgoing: false })}</View>
                 ))}
               </>
             )}
@@ -706,7 +382,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
                   <Text style={styles.subsectionTitle}>Sent ({icebreakers.outgoing.length})</Text>
                 </View>
                 {icebreakers.outgoing.map((ib) => (
-                  <View key={ib.id}>{renderIcebreakerItem({ item: ib, isOutgoing: true })}</View>
+                  <View key={ib.id}>{renderGlance({ item: ib, isOutgoing: true })}</View>
                 ))}
               </>
             )}
@@ -720,10 +396,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
         }
         
         return (
-          <ScrollView 
-            style={styles.listContainer}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
-          >
+          <ScrollView style={styles.listContainer}>
             {chatRequests.incoming?.length > 0 && (
               <>
                 <View style={styles.subsectionHeader}>
@@ -731,7 +404,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
                   <Text style={styles.subsectionTitle}>Received ({chatRequests.incoming.length})</Text>
                 </View>
                 {chatRequests.incoming.map((req) => (
-                  <View key={req.id}>{renderChatRequestItem({ item: req, isOutgoing: false })}</View>
+                  <View key={req.id}>{renderGlance({ item: req, isOutgoing: false })}</View>
                 ))}
               </>
             )}
@@ -743,7 +416,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
                   <Text style={styles.subsectionTitle}>Sent ({chatRequests.outgoing.length})</Text>
                 </View>
                 {chatRequests.outgoing.map((req) => (
-                  <View key={req.id}>{renderChatRequestItem({ item: req, isOutgoing: true })}</View>
+                  <View key={req.id}>{renderGlance({ item: req, isOutgoing: true })}</View>
                 ))}
               </>
             )}
@@ -756,10 +429,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
         }
         
         return (
-          <ScrollView 
-            style={styles.listContainer}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
-          >
+          <ScrollView style={styles.listContainer}>
             {friendRequests.incoming?.length > 0 && (
               <>
                 <View style={styles.subsectionHeader}>
@@ -767,7 +437,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
                   <Text style={styles.subsectionTitle}>Received ({friendRequests.incoming.length})</Text>
                 </View>
                 {friendRequests.incoming.map((req) => (
-                  <View key={req.id}>{renderGlanceItem({ item: req, isOutgoing: false })}</View>
+                  <View key={req.id}>{renderGlance({ item: req, isOutgoing: false })}</View>
                 ))}
               </>
             )}
@@ -779,7 +449,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
                   <Text style={styles.subsectionTitle}>Sent ({friendRequests.outgoing.length})</Text>
                 </View>
                 {friendRequests.outgoing.map((req) => (
-                  <View key={req.id}>{renderGlanceItem({ item: req, isOutgoing: true })}</View>
+                  <View key={req.id}>{renderGlance({ item: req, isOutgoing: true })}</View>
                 ))}
               </>
             )}
@@ -794,10 +464,9 @@ const ConnectionsScreen = ({ route, navigation }) => {
         return (
           <FlatList
             data={friends}
-            renderItem={({ item }) => renderGlanceItem({ item, isOutgoing: false })}
+            renderItem={({ item }) => renderGlance({ item, isOutgoing: false })}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContainer}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
           />
         );
 
@@ -814,170 +483,12 @@ const ConnectionsScreen = ({ route, navigation }) => {
             numColumns={2}
             contentContainerStyle={styles.connectionsGrid}
             columnWrapperStyle={styles.connectionsRow}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
           />
         );
 
       default:
         return null;
     }
-  };
-
-  // Render action sheet content based on type
-  const renderActionSheetContent = () => {
-    if (!selectedItem) return null;
-
-    const photoUrl = getPhotoUrl(selectedItem);
-    const blurRadius = getBlurRadius(selectedItem);
-
-    if (actionSheetType === 'glance') {
-      return (
-        <>
-          <View style={styles.sheetUserInfo}>
-            {photoUrl ? (
-              <Image source={{ uri: photoUrl }} style={styles.sheetAvatar} blurRadius={blurRadius} />
-            ) : (
-              <View style={[styles.sheetAvatar, styles.avatarPlaceholder]}>
-                <Text style={styles.sheetAvatarText}>{selectedItem.display_name?.charAt(0) || '?'}</Text>
-              </View>
-            )}
-            <Text style={styles.sheetUserName}>{selectedItem.display_name}</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.sheetAcceptButton}
-            onPress={handleGlanceBack}
-            disabled={actionLoading}
-            data-testid="action-glance-back"
-          >
-            {actionLoading ? (
-              <ActivityIndicator color={COLORS.text} />
-            ) : (
-              <>
-                <Eye color={COLORS.text} size={18} />
-                <Text style={styles.sheetAcceptText}>Glance Back</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.sheetDeclineButton} onPress={handleRemoveFromView} data-testid="action-remove-glance">
-            <X color={COLORS.textSecondary} size={18} />
-            <Text style={styles.sheetDeclineText}>Remove from view</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.sheetBlockButton} onPress={handleBlockUser} data-testid="action-block-user">
-            <Ban color={COLORS.error} size={18} />
-            <Text style={styles.sheetBlockText}>Block User</Text>
-          </TouchableOpacity>
-        </>
-      );
-    }
-
-    if (actionSheetType === 'icebreaker') {
-      return (
-        <>
-          <View style={styles.sheetUserInfo}>
-            {photoUrl ? (
-              <Image source={{ uri: photoUrl }} style={styles.sheetAvatar} blurRadius={blurRadius} />
-            ) : (
-              <View style={[styles.sheetAvatar, styles.avatarPlaceholder]}>
-                <Text style={styles.sheetAvatarText}>{selectedItem.display_name?.charAt(0) || '?'}</Text>
-              </View>
-            )}
-            <Text style={styles.sheetUserName}>{selectedItem.display_name}</Text>
-            <View style={styles.sheetIcebreakerBadge}>
-              <Snowflake color={COLORS.info} size={14} />
-              <Text style={styles.sheetIcebreakerText}>"{selectedItem.message || 'Fancy a chat?'}"</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.sheetAcceptButton}
-            onPress={handleAcceptIcebreaker}
-            disabled={actionLoading}
-            data-testid="action-accept-icebreaker"
-          >
-            {actionLoading ? (
-              <ActivityIndicator color={COLORS.text} />
-            ) : (
-              <>
-                <Check color={COLORS.text} size={18} />
-                <Text style={styles.sheetAcceptText}>Accept</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.sheetDeclineButton} onPress={handleDeclineIcebreaker} data-testid="action-decline-icebreaker">
-            <X color={COLORS.textSecondary} size={18} />
-            <Text style={styles.sheetDeclineText}>Decline</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.sheetBlockButton} onPress={handleBlockUser} data-testid="action-block-user">
-            <Ban color={COLORS.error} size={18} />
-            <Text style={styles.sheetBlockText}>Block User</Text>
-          </TouchableOpacity>
-        </>
-      );
-    }
-
-    if (actionSheetType === 'chat') {
-      return (
-        <>
-          <View style={styles.sheetUserInfo}>
-            {photoUrl ? (
-              <Image source={{ uri: photoUrl }} style={styles.sheetAvatar} blurRadius={blurRadius} />
-            ) : (
-              <View style={[styles.sheetAvatar, styles.avatarPlaceholder]}>
-                <Text style={styles.sheetAvatarText}>{selectedItem.display_name?.charAt(0) || '?'}</Text>
-              </View>
-            )}
-            <Text style={styles.sheetUserName}>{selectedItem.display_name}</Text>
-            <View style={styles.sheetChatBadge}>
-              <MessageSquare color={COLORS.textSecondary} size={14} />
-              <Text style={styles.sheetChatBadgeText}>Wants to chat with you</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.sheetAcceptButton}
-            onPress={handleAcceptChatRequest}
-            disabled={actionLoading}
-            data-testid="action-accept-chat"
-          >
-            {actionLoading ? (
-              <ActivityIndicator color={COLORS.text} />
-            ) : (
-              <>
-                <Check color={COLORS.text} size={18} />
-                <Text style={styles.sheetAcceptText}>Accept & Start Chat</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <Text style={styles.politeDeclineHeader}>POLITELY DECLINE</Text>
-          {POLITE_DECLINE_REASONS.map((reason) => (
-            <TouchableOpacity
-              key={reason.id}
-              style={styles.politeDeclineRow}
-              onPress={() => handlePoliteDecline(reason.id)}
-              data-testid={`polite-decline-${reason.id}`}
-            >
-              <Text style={styles.politeDeclineEmoji}>{reason.emoji}</Text>
-              <Text style={styles.politeDeclineText}>{reason.text}</Text>
-            </TouchableOpacity>
-          ))}
-
-          <View style={styles.sheetDivider} />
-
-          <TouchableOpacity style={styles.sheetRemoveRow} onPress={handleRemoveFromView} data-testid="action-remove-chat">
-            <Trash2 color={COLORS.textMuted} size={16} />
-            <Text style={styles.sheetRemoveText}>Remove from view</Text>
-          </TouchableOpacity>
-        </>
-      );
-    }
-
-    return null;
   };
 
   return (
@@ -989,7 +500,6 @@ const ConnectionsScreen = ({ route, navigation }) => {
           <TouchableOpacity 
             style={styles.infoButton}
             onPress={() => navigation.navigate('HowItWorks')}
-            data-testid="how-it-works-btn"
           >
             <Info color={COLORS.textSecondary} size={20} />
           </TouchableOpacity>
@@ -997,7 +507,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
         <Text style={styles.headerSubtitle}>What's happening now.</Text>
       </View>
 
-      {/* Tabs - NO Select All bar */}
+      {/* Tabs */}
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false} 
@@ -1013,38 +523,10 @@ const ConnectionsScreen = ({ route, navigation }) => {
         <TabButton id="connections" label="Mutual" icon={Users} badge={0} />
       </ScrollView>
 
-      {/* Content - NO checkboxes, NO Select All */}
+      {/* Content */}
       <View style={styles.content}>
         {renderContent()}
       </View>
-
-      {/* Action Sheet Modal - Grounded black themed box */}
-      <Modal
-        visible={actionSheetVisible}
-        transparent
-        animationType="none"
-        onRequestClose={closeActionSheet}
-      >
-        <TouchableOpacity 
-          style={styles.sheetOverlay} 
-          activeOpacity={1} 
-          onPress={closeActionSheet}
-        >
-          <Animated.View
-            style={[
-              styles.sheetContainer,
-              { transform: [{ translateY: slideAnim }] },
-            ]}
-          >
-            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-              {/* Drag handle */}
-              <View style={styles.sheetHandle} />
-              
-              {renderActionSheetContent()}
-            </TouchableOpacity>
-          </Animated.View>
-        </TouchableOpacity>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -1161,19 +643,17 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     paddingLeft: SPACING.sm,
   },
-  
-  // Item rows (no checkbox)
-  itemRow: {
+  threadRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: SPACING.md,
     backgroundColor: COLORS.card,
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.md,
     marginBottom: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  itemAvatar: {
+  threadAvatar: {
     position: 'relative',
     marginRight: SPACING.md,
   },
@@ -1182,7 +662,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
   },
-  avatarImageSquare: {
+  avatarImageSmall: {
     width: 48,
     height: 48,
     borderRadius: BORDER_RADIUS.md,
@@ -1197,6 +677,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textMuted,
   },
+  avatarTextSmall: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+  },
   unreadDot: {
     position: 'absolute',
     top: -2,
@@ -1208,96 +693,89 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.background,
   },
-  itemContent: {
+  threadContent: {
     flex: 1,
   },
-  itemHeader: {
+  threadHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 2,
   },
-  itemName: {
+  threadName: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '500',
     flex: 1,
   },
-  itemNameBold: {
+  threadNameBold: {
     fontWeight: '700',
   },
-  itemTime: {
+  threadTime: {
     fontSize: FONT_SIZES.xs,
     color: COLORS.textMuted,
   },
-  itemSubtext: {
+  threadMessage: {
     fontSize: FONT_SIZES.xs,
     color: COLORS.textMuted,
   },
-  itemSubtextUnread: {
+  threadMessageUnread: {
     color: COLORS.textSecondary,
     fontWeight: '500',
   },
   youPrefix: {
     color: COLORS.textMuted,
   },
-  icebreakerMsgRow: {
+  glanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
+    padding: SPACING.md,
+    backgroundColor: COLORS.card,
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  icebreakerMsg: {
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.info,
+  glanceAvatar: {
+    position: 'relative',
+    marginRight: SPACING.md,
+  },
+  matchIndicator: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  glanceContent: {
     flex: 1,
   },
-  chatRequestMsgRow: {
+  glanceName: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+  },
+  glanceSubtext: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  glanceBackButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
     gap: 4,
   },
-  
-  // Action buttons on rows
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.accent,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.full,
-    gap: 4,
-    marginRight: SPACING.sm,
-  },
-  actionButtonText: {
+  glanceBackText: {
     fontSize: FONT_SIZES.xs,
     fontWeight: '600',
     color: COLORS.text,
   },
-  actionButtonOutline: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.textSecondary,
-    marginRight: SPACING.sm,
-  },
-  actionButtonOutlineText: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  actionButtonPurple: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.primary,
-    marginRight: SPACING.sm,
-  },
-  deleteButton: {
-    padding: SPACING.sm,
-  },
-
-  // Connections grid
   connectionsGrid: {
     padding: SPACING.md,
   },
@@ -1343,8 +821,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: COLORS.accent,
   },
-  
-  // Empty states
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -1370,160 +846,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     color: COLORS.textSecondary,
     textAlign: 'center',
-  },
-
-  // Action Sheet styles - Grounded black themed
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'flex-end',
-  },
-  sheetContainer: {
-    backgroundColor: '#1a1a2e', // Dark blue-black theme
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 40,
-    paddingHorizontal: SPACING.lg,
-  },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: COLORS.textMuted,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  sheetUserInfo: {
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-  },
-  sheetAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: SPACING.md,
-    borderWidth: 2,
-    borderColor: COLORS.info,
-  },
-  sheetAvatarText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-  },
-  sheetUserName: {
-    fontSize: FONT_SIZES.xl,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-  },
-  sheetIcebreakerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.info}20`,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.full,
-    borderWidth: 1,
-    borderColor: `${COLORS.info}40`,
-    gap: SPACING.xs,
-  },
-  sheetIcebreakerText: {
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.info,
-  },
-  sheetChatBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.full,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: SPACING.xs,
-  },
-  sheetChatBadgeText: {
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.textSecondary,
-  },
-  sheetAcceptButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#10b981', // Green
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  sheetAcceptText: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  sheetDeclineButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
-  },
-  sheetDeclineText: {
-    fontSize: FONT_SIZES.md,
-    color: COLORS.textSecondary,
-  },
-  sheetBlockButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    gap: SPACING.sm,
-  },
-  sheetBlockText: {
-    fontSize: FONT_SIZES.md,
-    color: COLORS.error,
-  },
-  
-  // Polite decline section for chat requests
-  politeDeclineHeader: {
-    fontSize: FONT_SIZES.xs,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: SPACING.md,
-    marginBottom: SPACING.md,
-    letterSpacing: 1,
-  },
-  politeDeclineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-    gap: SPACING.md,
-  },
-  politeDeclineEmoji: {
-    fontSize: 20,
-  },
-  politeDeclineText: {
-    fontSize: FONT_SIZES.md,
-    color: COLORS.text,
-  },
-  sheetDivider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: SPACING.md,
-  },
-  sheetRemoveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    gap: SPACING.sm,
-  },
-  sheetRemoveText: {
-    fontSize: FONT_SIZES.md,
-    color: COLORS.textMuted,
   },
 });
 
