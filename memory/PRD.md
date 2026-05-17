@@ -375,6 +375,38 @@ Converting the existing React web app into a native Android mobile app using Rea
 - ✅ Firebase google-services.json configured (Dec 2025)
 - ⏳ Requires EAS build and testing on physical device
 
+## Mobile Missing Screens Port (May 2025)
+
+### Created Files in `/app/mobile/missing-screens/`
+Isolated directory for newly ported React Native screens (DO NOT TOUCH `/app/mobile/src/screens/`):
+- `DiscoverScreen.js` - Mode selector + Not Here discovery
+- `VenuesScreen.js` - Venue cards with check-in
+- `WhosHereScreen.js` - Venue people grid
+- `ConnectionsScreen.js` - HereHub with tabs (Messages, Glances, Icebreakers, Chat Requests, etc.)
+- `ChatScreen.js` - Real-time messaging
+- `SettingsScreen.js` - Push notifications, blocked users, account management
+- `UserProfileScreen.js` - Full profile with actions (glance, icebreaker, chat, reveal, block)
+- `HowItWorksScreen.js` - Visual step-by-step tutorial
+
+### ConnectionsScreen (HereHub) Updates (May 17, 2025)
+**Per User Request - Matching Web Design:**
+1. **Removed bulk-select entirely** - No checkboxes, no Select All bar
+2. **Per-item action sheet** - Grounded black themed box that slides up from bottom
+3. **LIGHT blur for HereHub** (blurRadius: 5) - Not heavy blur
+4. **Clear only on `reveal_state === 'both_revealed'`** - Friends and accepted connections do NOT auto-clear
+5. **Polite decline reasons for chat requests:**
+   - 🙏 "Not looking to chat right now"
+   - 🏠 "Just got here, settling in"
+   - 👥 "Here with friends tonight"
+   - ✌️ "Going to pass, thanks"
+6. **Action sheet styling:**
+   - Dark blue-black background (#1a1a2e)
+   - Rounded top corners (24px radius)
+   - Drag handle indicator
+   - User avatar + name display
+   - Green "Accept" button
+   - Decline/Block options below
+
 ## Known Issues
 - `server.py` is 7800+ lines with duplicate logic that exists in `/routes/`
 
