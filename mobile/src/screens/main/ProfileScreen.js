@@ -12,19 +12,14 @@ import { Settings, Edit, Crown, ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAuth } from '../../context/AuthContext';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, API_URL } from '../../utils/constants';
+import { buildPhotoUrl } from '../../utils/api';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../utils/constants';
 
 const ProfileScreen = ({ navigation }) => {
   const { user } = useAuth();
 
-  const getPhotoUrl = () => {
-    if (user?.photos?.[0]) {
-      return `${API_URL}/api/photos/serve/${user.photos[0]}?blur=false`;
-    }
-    return null;
-  };
-
-  const photoUrl = getPhotoUrl();
+  // Own profile - always show clear
+  const photoUrl = buildPhotoUrl(user, { blur: false, revealState: 'both_revealed' });
 
   const MenuItem = ({ icon: Icon, title, subtitle, onPress, badge }) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>

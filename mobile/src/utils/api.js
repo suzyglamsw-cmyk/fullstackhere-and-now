@@ -113,6 +113,80 @@ export const photosAPI = {
   getUrl: (photoId, blur = true) => `${API_URL}/api/photos/serve/${photoId}?blur=${blur}`,
 };
 
+/**
+ * Canonical photo URL builder - USE THIS FOR ALL USER PHOTO LOADS
+ * 
+ * @param {Object} user - User object containing photos array and/or avatar_url
+ * @param {Object} options - Configuration options
+ * @param {number} options.index - Photo index to retrieve (default: 0)
+ * @param {boolean} options.blur - Whether to request blurred version from server (default: true)
+ * @param {string} options.revealState - 'both_revealed' | 'one_revealed' | 'none' for reveal logic
+ * @param {boolean} options.isMutual - Whether this is a mutual connection
+ * @returns {string|null} - The photo URL or null if no photo available
+ */
+export const buildPhotoUrl = (user, options = {}) => {
+  const { 
+    index = 0, 
+    blur = true, 
+    revealState = 'none',
+    isMutual = false 
+  } = options;
+
+  // If no user, return null
+  if (!user) return null;
+
+  // Determine if we should show clear image
+  // Only clear when reveal_state === 'both_revealed'
+  const shouldBlur = revealState !== 'both_revealed' && blur;
+
+  // Check for photos array first (preferred)
+  if (user.photos && user.photos[index]) {
+    const photoId = user.photos[index];
+    return `${API_URL}/api/photos/serve/${photoId}?blur=${shouldBlur}`;
+  }
+
+  // Fallback to avatar_url
+  if (user.avatar_url) {
+    // If it's already a full URL, return as-is
+    if (user.avatar_url.startsWith('http')) {
+      return user.avatar_url;
+    }
+    // Otherwise prepend API_URL
+    return `${API_URL}${user.avatar_url}`;
+  }
+
+  return null;
+};
+
+/**
+ * Get blur radius for React Native Image component
+ * Based on reveal state and connection type
+ * 
+ * @param {string} revealState - 'both_revealed' | 'one_revealed' | 'none'
+ * @param {boolean} isMutual - Whether this is a mutual connection
+ * @param {string} context - 'herehub' | 'venue' | 'profile' | 'discovery'
+ * @returns {number} - Blur radius value
+ */
+export const getBlurRadius = (revealState, isMutual = false, context = 'default') => {
+  // Clear only when both have revealed
+  if (revealState === 'both_revealed') {
+    return 0;
+  }
+  
+  // HereHub uses LIGHT blur (5)
+  if (context === 'herehub') {
+    return 5;
+  }
+  
+  // Mutual connections get lighter blur
+  if (isMutual) {
+    return 6;
+  }
+  
+  // Default heavy blur
+  return 12;
+};
+
 // Voice Intro API
 export const voiceAPI = {
   upload: (formData) => api.post('/api/profile/voice-intro', formData, {

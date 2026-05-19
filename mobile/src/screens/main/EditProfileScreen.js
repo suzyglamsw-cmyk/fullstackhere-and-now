@@ -24,7 +24,7 @@ import {
 } from 'lucide-react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { authAPI, photosAPI, voiceAPI } from '../../utils/api';
+import { authAPI, photosAPI, voiceAPI, buildPhotoUrl } from '../../utils/api';
 import Button from '../../components/Button';
 import TextInput from '../../components/TextInput';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, API_URL } from '../../utils/constants';
@@ -305,8 +305,9 @@ const EditProfileScreen = ({ navigation }) => {
           <View style={styles.photosGrid}>
             {[0, 1, 2].map((index) => {
               const photoId = formData.photos[index];
+              // Own photos - always clear (no blur)
               const photoUrl = photoId
-                ? `${API_URL}/api/photos/serve/${photoId}?blur=false`
+                ? buildPhotoUrl({ photos: [photoId] }, { blur: false, revealState: 'both_revealed' })
                 : null;
 
               return (

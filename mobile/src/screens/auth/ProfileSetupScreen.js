@@ -13,10 +13,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { Camera, Plus, X } from 'lucide-react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { authAPI, photosAPI } from '../../utils/api';
+import { authAPI, photosAPI, buildPhotoUrl } from '../../utils/api';
 import Button from '../../components/Button';
 import TextInput from '../../components/TextInput';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, API_URL } from '../../utils/constants';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../utils/constants';
 
 const ProfileSetupScreen = ({ navigation }) => {
   const { user, updateUser } = useAuth();
@@ -159,8 +159,9 @@ const ProfileSetupScreen = ({ navigation }) => {
           <View style={styles.photosGrid}>
             {[0, 1, 2].map((index) => {
               const photoId = formData.photos[index];
+              // Own photos during setup - always clear
               const photoUrl = photoId 
-                ? `${API_URL}/api/photos/serve/${photoId}?blur=false`
+                ? buildPhotoUrl({ photos: [photoId] }, { blur: false, revealState: 'both_revealed' })
                 : null;
 
               return (

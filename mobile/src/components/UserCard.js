@@ -3,30 +3,26 @@ import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MapPin, Clock } from 'lucide-react-native';
 import { COLORS, BORDER_RADIUS, FONT_SIZES, SPACING } from '../utils/constants';
-import { API_URL } from '../utils/constants';
+import { buildPhotoUrl, getBlurRadius } from '../utils/api';
 
 export const UserCard = ({
   user,
   onPress,
-  context = 'venue', // venue, discovery, connection
+  context = 'venue', // venue, discovery, connection, herehub
   isMatched = false,
   showActions = true,
-  blurLevel = 'heavy', // heavy, light, none
+  blurLevel = 'heavy', // heavy, light, none - kept for backward compatibility
   style,
 }) => {
-  const getPhotoUrl = () => {
-    if (user?.photos?.[0]) {
-      const photoId = user.photos[0];
-      const blur = blurLevel !== 'none';
-      return `${API_URL}/api/photos/serve/${photoId}?blur=${blur}`;
-    }
-    if (user?.avatar_url) {
-      return user.avatar_url.startsWith('http') 
-        ? user.avatar_url 
-        : `${API_URL}${user.avatar_url}`;
-    }
-    return null;
-  };
+  // Convert blurLevel to revealState for the canonical function
+  const revealState = blurLevel === 'none' ? 'both_revealed' : 
+                      (user?.reveal_state || (user?.is_revealed ? 'both_revealed' : 'none'));
+  
+  // Use canonical buildPhotoUrl
+  const photoUrl = buildPhotoUrl(user, { 
+    blur: blurLevel !== 'none', 
+    revealState 
+  });
 
   const getNameColor = () => {
     const gender = user?.show_as;
@@ -35,13 +31,13 @@ export const UserCard = ({
     return COLORS.rainbow;
   };
 
-  const getBlurRadius = () => {
-    if (blurLevel === 'none') return 0;
-    if (blurLevel === 'light') return 6;
-    return 12;
-  };
+  // Use canonical getBlurRadius
+  const blurRadius = getBlurRadius(revealState, isMatched, context);
 
-  const photoUrl = getPhotoUrl();
+  const photoUrl = buildPhotoUrl(user, { 
+    blur: blurLevel !== 'none', 
+    revealState 
+  });
   const displayName = user?.display_name || user?.first_name || 'Unknown';
   const age = user?.age;
 
@@ -57,7 +53,7 @@ export const UserCard = ({
           <Image
             source={{ uri: photoUrl }}
             style={styles.photo}
-            blurRadius={getBlurRadius()}
+            blurRadius={blurRadius}
           />
         ) : (
           <View style={[styles.photo, styles.photoPlaceholder]}>

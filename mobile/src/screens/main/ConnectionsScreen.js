@@ -13,8 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Eye, Heart, MessageCircle, Snowflake, ChevronRight } from 'lucide-react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import { connectionsAPI, messagesAPI } from '../../utils/api';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, API_URL } from '../../utils/constants';
+import { connectionsAPI, messagesAPI, buildPhotoUrl, getBlurRadius } from '../../utils/api';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../utils/constants';
 
 const ConnectionsScreen = ({ route, navigation }) => {
   const initialTab = route.params?.tab || 'glances';
@@ -75,9 +75,17 @@ const ConnectionsScreen = ({ route, navigation }) => {
   ];
 
   const ConnectionItem = ({ item, type }) => {
-    const photoUrl = item.avatar_url 
-      ? (item.avatar_url.startsWith('http') ? item.avatar_url : `${API_URL}${item.avatar_url}`)
-      : null;
+    // Use canonical buildPhotoUrl for HereHub (connections screen)
+    const photoUrl = buildPhotoUrl(item, { 
+      blur: true, 
+      revealState: item.reveal_state || (item.is_revealed ? 'both_revealed' : 'none')
+    });
+    // HereHub uses LIGHT blur
+    const blurRadius = getBlurRadius(
+      item.reveal_state || (item.is_revealed ? 'both_revealed' : 'none'),
+      false,
+      'herehub'
+    );
     const displayName = item.display_name || item.first_name || 'Unknown';
     const nameColor = getNameColor(item.show_as);
 
@@ -99,7 +107,7 @@ const ConnectionsScreen = ({ route, navigation }) => {
           <Image
             source={{ uri: photoUrl }}
             style={styles.avatar}
-            blurRadius={item.is_revealed ? 0 : 10}
+            blurRadius={blurRadius}
           />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder]}>

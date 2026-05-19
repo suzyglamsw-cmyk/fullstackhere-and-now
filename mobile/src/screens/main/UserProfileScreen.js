@@ -25,7 +25,7 @@ import {
 } from 'lucide-react-native';
 
 import { useAuth } from '../../context/AuthContext';
-import api, { connectionsAPI, messagesAPI } from '../../utils/api';
+import api, { connectionsAPI, messagesAPI, buildPhotoUrl, getBlurRadius } from '../../utils/api';
 import Button from '../../components/Button';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, API_URL } from '../../utils/constants';
 
@@ -64,16 +64,12 @@ const UserProfileScreen = ({ route, navigation }) => {
     }
   };
 
+  // Use canonical buildPhotoUrl
   const getPhotoUrl = () => {
-    if (profile?.photos?.[0]) {
-      return `${API_URL}/api/photos/serve/${profile.photos[0]}?blur=${!profile.is_revealed}`;
-    }
-    if (profile?.avatar_url) {
-      return profile.avatar_url.startsWith('http')
-        ? profile.avatar_url
-        : `${API_URL}${profile.avatar_url}`;
-    }
-    return null;
+    return buildPhotoUrl(profile, {
+      blur: true,
+      revealState: profile?.reveal_state || (profile?.is_revealed ? 'both_revealed' : 'none')
+    });
   };
 
   const getNameColor = () => {
@@ -142,6 +138,12 @@ const UserProfileScreen = ({ route, navigation }) => {
 
   const isMutualMatch = profile?.is_connection_accepted === true;
   const photoUrl = getPhotoUrl();
+  // Get blur radius based on reveal state
+  const blurRadius = getBlurRadius(
+    profile?.reveal_state || (profile?.is_revealed ? 'both_revealed' : 'none'),
+    isMutualMatch,
+    'profile'
+  );
 
   if (loading) {
     return (
@@ -184,7 +186,7 @@ const UserProfileScreen = ({ route, navigation }) => {
             <Image
               source={{ uri: photoUrl }}
               style={styles.mainPhoto}
-              blurRadius={profile.is_revealed ? 0 : isMutualMatch ? 6 : 12}
+              blurRadius={blurRadius}
             />
           ) : (
             <View style={[styles.mainPhoto, styles.photoPlaceholder]}>
@@ -396,9 +398,12 @@ const UserProfileScreen = ({ route, navigation }) => {
                   {profile.photos.slice(1).map((photo, index) => (
                     <Image
                       key={index}
-                      source={{ uri: `${API_URL}/api/photos/serve/${photo}?blur=${!profile.is_revealed}` }}
+                      source={{ uri: buildPhotoUrl({ photos: [photo] }, { 
+                        blur: true, 
+                        revealState: profile.reveal_state || (profile.is_revealed ? 'both_revealed' : 'none')
+                      }) }}
                       style={styles.thumbnail}
-                      blurRadius={profile.is_revealed ? 0 : isMutualMatch ? 6 : 12}
+                      blurRadius={blurRadius}
                     />
                   ))}
                 </View>
