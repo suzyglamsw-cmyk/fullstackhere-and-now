@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,11 +25,34 @@ import {
   Trash2,
   ChevronRight,
   MapPin,
+  Zap,
 } from 'lucide-react-native';
 
 import { useAuth } from '../../context/AuthContext';
 import api, { settingsAPI } from '../../utils/api';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../utils/constants';
+
+const SettingsScreen = ({ navigation }) => {
+  const { user, logout } = useAuth();
+  const [deleting, setDeleting] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [dailyActions, setDailyActions] = useState(null);
+  const [loadingActions, setLoadingActions] = useState(true);
+
+  useEffect(() => {
+    fetchDailyActions();
+  }, []);
+
+  const fetchDailyActions = async () => {
+    try {
+      const response = await api.get('/api/daily-actions/status');
+      setDailyActions(response.data);
+    } catch (error) {
+      console.error('Failed to fetch daily actions:', error);
+    } finally {
+      setLoadingActions(false);
+    }
+  };
 
 const SettingsScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
@@ -134,6 +157,64 @@ const SettingsScreen = ({ navigation }) => {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
+        {/* Daily Actions Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Daily Actions</Text>
+          <View style={styles.sectionContent}>
+            {loadingActions ? (
+              <View style={styles.loadingActions}>
+                <ActivityIndicator color={COLORS.primary} />
+              </View>
+            ) : dailyActions ? (
+              <View style={styles.dailyActionsCard}>
+                <View style={styles.dailyActionsHeader}>
+                  <View style={[styles.menuIcon, { backgroundColor: `${COLORS.primary}20` }]}>
+                    <Zap color={COLORS.primary} size={20} />
+                  </View>
+                  <View style={styles.dailyActionsInfo}>
+                    <Text style={styles.dailyActionsTitle}>
+                      {dailyActions.daily_remaining} / {dailyActions.daily_limit} remaining
+                    </Text>
+                    <Text style={styles.dailyActionsSubtitle}>
+                      Resets daily at 5:00 AM
+                    </Text>
+                  </View>
+                </View>
+                
+                {/* Progress bar */}
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${(dailyActions.daily_remaining / dailyActions.daily_limit) * 100}%` }
+                    ]} 
+                  />
+                </View>
+                
+                <Text style={styles.dailyActionsDescription}>
+                  Daily actions cover glances, icebreakers, and chat requests.
+                  {dailyActions.is_premium 
+                    ? ' Premium members get 20 actions per day.'
+                    : ' Upgrade to Premium for 20 actions per day.'}
+                </Text>
+                
+                {/* Token balance */}
+                <View style={styles.tokenBalanceRow}>
+                  <Coins color={COLORS.warning} size={16} />
+                  <Text style={styles.tokenBalanceText}>
+                    {dailyActions.token_balance} tokens available
+                  </Text>
+                </View>
+                <Text style={styles.tokenDescription}>
+                  Tokens are used when daily actions run out. They never expire.
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.errorText}>Unable to load daily actions</Text>
+            )}
+          </View>
+        </View>
+
         {/* Upgrades Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Upgrades</Text>
@@ -141,14 +222,16 @@ const SettingsScreen = ({ navigation }) => {
             <MenuItem
               icon={Crown}
               title="Premium"
-              subtitle={user?.is_premium ? 'Active' : 'Unlock extra features'}
+              subtitle={user?.is_premium 
+                ? 'Active - 20 daily actions' 
+                : 'Get 20 daily actions (vs 5 free)'}
               iconBg={`${COLORS.warning}20`}
               onPress={() => Alert.alert('Premium', 'Premium features coming soon!')}
             />
             <MenuItem
               icon={Coins}
-              title="Tokens"
-              subtitle={`Balance: ${user?.token_balance || 0}`}
+              title="Buy Tokens"
+              subtitle={`Balance: ${dailyActions?.token_balance || user?.token_balance || 0} tokens`}
               iconBg={`${COLORS.warning}20`}
               onPress={() => Alert.alert('Tokens', 'Token purchase coming soon!')}
             />
@@ -422,6 +505,71 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: FONT_SIZES.sm,
     color: COLORS.textMuted,
+  },
+  // Daily Actions styles
+  loadingActions: {
+    padding: SPACING.lg,
+    alignItems: 'center',
+  },
+  dailyActionsCard: {
+    padding: SPACING.md,
+  },
+  dailyActionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  dailyActionsInfo: {
+    flex: 1,
+  },
+  dailyActionsTitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  dailyActionsSubtitle: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textMuted,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: COLORS.border,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: SPACING.md,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: COLORS.primary,
+    borderRadius: 4,
+  },
+  dailyActionsDescription: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+    marginBottom: SPACING.md,
+  },
+  tokenBalanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+  tokenBalanceText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  tokenDescription: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textMuted,
+    lineHeight: 18,
+  },
+  errorText: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.error,
+    padding: SPACING.md,
+    textAlign: 'center',
   },
 });
 

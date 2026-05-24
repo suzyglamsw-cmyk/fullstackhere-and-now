@@ -13,6 +13,33 @@ Building a real-time, location-based social connection app called "Here & Now" w
 - **Frontend:** React, TailwindCSS, Shadcn UI
 - **3rd Party:** Stripe, Google Maps Platform, OpenAI Whisper & Vision (Emergent LLM Key)
 
+## Daily Actions System (Implemented May 2025)
+
+### Overview
+Unified daily action system that consolidates glances, icebreakers, and chat requests into a single pool:
+
+| User Type | Daily Actions |
+|-----------|---------------|
+| Free      | 5             |
+| Premium   | 20            |
+
+### Behavior
+- **Reset Time:** 5:00 AM user local time daily
+- **Shared Pool:** All action types (glances, icebreakers, chat requests) consume from the same daily allocation
+- **Token Fallback:** When daily actions are exhausted, purchased tokens are used automatically
+- **Tokens Never Expire:** Token balance persists indefinitely, only changes when added or used
+
+### Endpoints
+- `GET /api/daily-actions/status` - Get current daily action status
+- `GET /api/tokens/balance` - Get token balance and daily action info
+- `GET /api/premium/status` - Get premium status with daily actions info
+
+### Database Fields
+- `daily_actions_used`: Current day's usage count
+- `daily_actions_reset_at`: Next reset timestamp
+- `token_balance`: Purchased tokens (never expire)
+- Legacy fields maintained for backward compatibility
+
 ## Peek Feature (Added Apr 2025)
 
 ### Overview

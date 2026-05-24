@@ -16,10 +16,9 @@ const Premium = () => {
   const [tokenPackages, setTokenPackages] = useState([]);
   const [balance, setBalance] = useState({ 
     balance: 0, 
-    daily_glances_remaining: 0,
-    daily_icebreakers_remaining: 0,
-    daily_icebreaker_limit: 1,
-    daily_glance_limit: 5,
+    daily_actions_remaining: 5,
+    daily_actions_limit: 5,
+    daily_actions_used: 0,
     is_premium: false 
   });
   const [loading, setLoading] = useState(true);
@@ -94,10 +93,10 @@ const Premium = () => {
   };
 
   const benefits = [
-    "15 glances a day — have a proper look round",
-    "15 icebreakers a day — plenty to play with",
+    "20 daily actions (glances, icebreakers & chat requests)",
     "See when your icebreaker was viewed",
-    "See who viewed your profile (last 48h)"
+    "See who viewed your profile (last 48h)",
+    "Priority visibility at venues"
   ];
 
   return (
@@ -161,8 +160,8 @@ const Premium = () => {
               
               {/* Additional info */}
               <div className="text-sm text-slate-400 mb-6 space-y-2">
-                <p>Free users get 3 and 3, so you're getting the good stuff here. More chances, more chats, more 'oh go on then'.</p>
-                <p className="text-slate-500">Premium keeps it simple: No boosts, no gimmicks, no pressure. Just more room to be yourself and see who's about.</p>
+                <p>Free users get 5 daily actions, Premium gets you 20. More chances, more chats, more 'oh go on then'.</p>
+                <p className="text-slate-500">Actions cover glances, icebreakers, and chat requests. They reset at 5am daily. Tokens can be purchased anytime and never expire.</p>
               </div>
 
               {/* Premium Purchase Options - Using API data */}
@@ -209,47 +208,46 @@ const Premium = () => {
           )}
         </div>
 
-        {/* SECTION 2: Daily Allowances - Human Readable */}
+        {/* SECTION 2: Daily Actions - Unified */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-1">Your Daily Allowances</h2>
-          <p className="text-slate-500 text-xs mb-4">(Resets daily at 5am)</p>
+          <h2 className="text-lg font-semibold text-white mb-1">Daily Actions</h2>
+          <p className="text-slate-500 text-xs mb-4">(Resets daily at 5:00 AM)</p>
           <div className="glass rounded-2xl p-5 space-y-4">
-            {/* Glances */}
+            {/* Daily Actions */}
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center">
-                <Eye className="w-5 h-5 text-pink-400" />
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                <Eye className="w-5 h-5 text-indigo-400" />
               </div>
               <div className="flex-1">
                 <p className="text-white font-medium">
-                  {balance.daily_glances_remaining} {balance.daily_glances_remaining === 1 ? 'glance' : 'glances'} left today
+                  {balance.daily_actions_remaining} / {balance.daily_actions_limit} actions left today
                 </p>
-                <p className="text-slate-500 text-xs">Have a quick look round.</p>
+                <p className="text-slate-500 text-xs">
+                  Covers glances, icebreakers, and chat requests.
+                </p>
               </div>
             </div>
 
-            {/* Icebreakers */}
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-                <Snowflake className="w-5 h-5 text-cyan-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-white font-medium">
-                  {balance.daily_icebreakers_remaining} {balance.daily_icebreakers_remaining === 1 ? 'icebreaker' : 'icebreakers'} left today
-                </p>
-                <p className="text-slate-500 text-xs">Say hello while you've got some left.</p>
-              </div>
+            {/* Progress bar */}
+            <div className="w-full bg-slate-700 rounded-full h-2">
+              <div 
+                className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(balance.daily_actions_remaining / balance.daily_actions_limit) * 100}%` }}
+              />
             </div>
 
             {/* Paid Tokens */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 pt-2 border-t border-slate-700/50">
               <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
                 <Coins className="w-5 h-5 text-amber-400" />
               </div>
               <div className="flex-1">
                 <p className="text-white font-medium">
-                  {balance.balance} paid {balance.balance === 1 ? 'token' : 'tokens'} available
+                  {balance.balance} {balance.balance === 1 ? 'token' : 'tokens'} available
                 </p>
-                <p className="text-slate-500 text-xs">Once you've used your daily glances, icebreakers, or chat requests, you'll use tokens instead. Each action costs 1 token.</p>
+                <p className="text-slate-500 text-xs">
+                  Tokens are used when daily actions run out. They never expire.
+                </p>
               </div>
             </div>
           </div>

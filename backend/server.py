@@ -53,14 +53,18 @@ STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
 # Auto-checkout timeout (30 minutes)
 AUTO_CHECKOUT_MINUTES = 120  # 2 hours - checkins expire after this time of inactivity
 
-# Premium/Token Config
-FREE_DAILY_GLANCES = 3
-FREE_DAILY_ICEBREAKERS = 3
-PREMIUM_DAILY_GLANCES = 15
-PREMIUM_DAILY_ICEBREAKERS = 15
-# Legacy aliases for backward compatibility
-FREE_DAILY_TOKENS = FREE_DAILY_ICEBREAKERS
-PREMIUM_DAILY_TOKENS = PREMIUM_DAILY_ICEBREAKERS
+# Premium/Token Config - UNIFIED DAILY ACTIONS SYSTEM
+# Glances, Icebreakers, and Chat Requests all share the same daily action pool
+FREE_DAILY_ACTIONS = 5
+PREMIUM_DAILY_ACTIONS = 20
+
+# Legacy constants (kept for backward compatibility)
+FREE_DAILY_GLANCES = FREE_DAILY_ACTIONS
+FREE_DAILY_ICEBREAKERS = FREE_DAILY_ACTIONS
+PREMIUM_DAILY_GLANCES = PREMIUM_DAILY_ACTIONS
+PREMIUM_DAILY_ICEBREAKERS = PREMIUM_DAILY_ACTIONS
+FREE_DAILY_TOKENS = FREE_DAILY_ACTIONS
+PREMIUM_DAILY_TOKENS = PREMIUM_DAILY_ACTIONS
 FREE_TOKEN_EXPIRY_HOURS = 24
 
 # Unlimited glances in test mode
@@ -509,6 +513,184 @@ async def check_chat_unlocked(user1_id: str, user2_id: str) -> dict:
         return {"is_unlocked": True, "reason": "message_history"}
     
     return {"is_unlocked": False, "reason": None}
+
+
+async def check_and_use_daily_action(user_id: str, action_type: str = "action") -> dict:
+    """
+    Unified daily action system for glances, icebreakers, and chat requests.
+    
+    Args:
+        user_id: The user's ID
+        action_type: Type of action (for logging/tracking - "glance", "icebreaker", "chat_request")
+    
+    Returns:
+        dict with:
+        - success: bool
+        - used_token: bool (True if token was used instead of daily allowance)
+        - daily_remaining: int (remaining daily actions after this use)
+        - token_balance: int (remaining tokens after this use)
+        - error: str (if success is False)
+    
+    Daily actions reset at 5 AM user local time.
+    Free users: 5 daily actions
+    Premium users: 20 daily actions
+    When daily allowance exhausted, tokens are used automatically.
+    Tokens never expire and can be purchased anytime.
+    """
+    now = datetime.now(timezone.utc)
+    
+    # Get fresh user data
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        return {"success": False, "error": "User not found"}
+    
+    # Check bypass flag (for testing)
+    bypass_limits = IS_TEST_BUILD or user.get("bypass_glance_limits", False)
+    
+    is_premium = user.get("is_premium", False)
+    daily_limit = PREMIUM_DAILY_ACTIONS if is_premium else FREE_DAILY_ACTIONS
+    
+    # Get current daily usage and reset time
+    actions_reset_at = user.get("daily_actions_reset_at") or user.get("glances_reset_at") or user.get("icebreakers_reset_at")
+    daily_used = user.get("daily_actions_used", 0)
+    
+    # Migrate from old system if needed (sum old counters on first use)
+    if "daily_actions_used" not in user:
+        old_glances = user.get("daily_glances_used", 0)
+        old_icebreakers = user.get("daily_icebreakers_used", 0)
+        daily_used = old_glances + old_icebreakers
+    
+    # Check if reset time has passed
+    if actions_reset_at:
+        try:
+            reset_time = datetime.fromisoformat(actions_reset_at.replace("Z", "+00:00"))
+            if now >= reset_time:
+                daily_used = 0
+                # Set next reset to 5am
+                next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
+                if now.hour >= 5:
+                    next_reset = next_reset + timedelta(days=1)
+                await db.users.update_one(
+                    {"id": user_id},
+                    {"$set": {
+                        "daily_actions_used": 0, 
+                        "daily_actions_reset_at": next_reset.isoformat(),
+                        # Clear old counters
+                        "daily_glances_used": 0,
+                        "daily_icebreakers_used": 0
+                    }}
+                )
+        except:
+            pass
+    else:
+        # Initialize reset time for users who don't have one yet
+        next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
+        if now.hour >= 5:
+            next_reset = next_reset + timedelta(days=1)
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": {"daily_actions_reset_at": next_reset.isoformat()}}
+        )
+    
+    token_balance = user.get("token_balance", 0)
+    use_token = False
+    
+    # Priority: Use daily allowance first, then tokens as fallback
+    if daily_used < daily_limit:
+        # Use daily allowance
+        await db.users.update_one(
+            {"id": user_id},
+            {"$inc": {"daily_actions_used": 1}}
+        )
+        daily_used += 1
+    elif token_balance > 0:
+        # Use token
+        use_token = True
+        await db.users.update_one(
+            {"id": user_id},
+            {"$inc": {"token_balance": -1}}
+        )
+        token_balance -= 1
+    elif not bypass_limits:
+        # No daily actions AND no tokens
+        return {
+            "success": False,
+            "error": "no_actions_remaining",
+            "daily_remaining": 0,
+            "token_balance": token_balance
+        }
+    
+    return {
+        "success": True,
+        "used_token": use_token,
+        "daily_remaining": max(0, daily_limit - daily_used),
+        "token_balance": token_balance,
+        "action_type": action_type
+    }
+
+
+async def get_daily_action_status(user_id: str) -> dict:
+    """
+    Get the current daily action status for a user.
+    
+    Returns:
+        dict with:
+        - daily_limit: int (5 for free, 20 for premium)
+        - daily_used: int
+        - daily_remaining: int
+        - token_balance: int
+        - resets_at: str (ISO timestamp of next reset)
+        - is_premium: bool
+    """
+    now = datetime.now(timezone.utc)
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        return None
+    
+    is_premium = user.get("is_premium", False)
+    daily_limit = PREMIUM_DAILY_ACTIONS if is_premium else FREE_DAILY_ACTIONS
+    
+    # Get current usage
+    daily_used = user.get("daily_actions_used", 0)
+    
+    # Migrate from old system if needed
+    if "daily_actions_used" not in user:
+        old_glances = user.get("daily_glances_used", 0)
+        old_icebreakers = user.get("daily_icebreakers_used", 0)
+        daily_used = old_glances + old_icebreakers
+    
+    # Check reset time
+    actions_reset_at = user.get("daily_actions_reset_at") or user.get("glances_reset_at") or user.get("icebreakers_reset_at")
+    
+    if actions_reset_at:
+        try:
+            reset_time = datetime.fromisoformat(actions_reset_at.replace("Z", "+00:00"))
+            if now >= reset_time:
+                daily_used = 0
+                # Calculate next reset
+                next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
+                if now.hour >= 5:
+                    next_reset = next_reset + timedelta(days=1)
+                actions_reset_at = next_reset.isoformat()
+        except:
+            pass
+    else:
+        # Calculate next reset
+        next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
+        if now.hour >= 5:
+            next_reset = next_reset + timedelta(days=1)
+        actions_reset_at = next_reset.isoformat()
+    
+    return {
+        "daily_limit": daily_limit,
+        "daily_used": daily_used,
+        "daily_remaining": max(0, daily_limit - daily_used),
+        "token_balance": user.get("token_balance", 0),
+        "resets_at": actions_reset_at,
+        "is_premium": is_premium
+    }
+
 
 # Create the main app
 app = FastAPI(title="Here & Now API")
@@ -1944,7 +2126,7 @@ async def reset_password(data: PasswordResetConfirm):
 
 @api_router.post("/chat-request")
 async def send_chat_request(data: ChatRequestCreate, current_user: dict = Depends(get_current_user)):
-    """Send a drink offer or chat request. Uses daily icebreaker allowance first, then tokens as fallback."""
+    """Send a drink offer or chat request. Uses unified daily actions system."""
     now = datetime.now(timezone.utc)
     
     # Check blocks (bilateral - both directions)
@@ -1962,70 +2144,13 @@ async def send_chat_request(data: ChatRequestCreate, current_user: dict = Depend
     if data.to_user_id in current_user.get("blocked_by_users", []):
         raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
-    # ========================================================================
-    # DAILY ICEBREAKER ALLOWANCE CHECK (with token fallback)
-    # Chat requests share the same daily allowance as icebreakers
-    # ========================================================================
-    bypass_limits = IS_TEST_BUILD or current_user.get("bypass_glance_limits", False)
+    # Use unified daily action system
+    action_result = await check_and_use_daily_action(current_user["id"], "chat_request")
     
-    # Re-fetch user from database to get fresh daily usage counters
-    fresh_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
-    if not fresh_user:
-        raise HTTPException(status_code=401, detail="User not found")
+    if not action_result["success"]:
+        raise HTTPException(status_code=429, detail=action_result.get("error", "no_actions_remaining"))
     
-    is_premium = fresh_user.get("is_premium", False)
-    daily_limit = PREMIUM_DAILY_ICEBREAKERS if is_premium else FREE_DAILY_ICEBREAKERS
-    
-    # Check if daily icebreaker counter needs reset (resets at 5am local)
-    icebreakers_reset_at = fresh_user.get("icebreakers_reset_at")
-    daily_used = fresh_user.get("daily_icebreakers_used", 0)
-    
-    if icebreakers_reset_at:
-        reset_time = datetime.fromisoformat(icebreakers_reset_at.replace("Z", "+00:00"))
-        if now >= reset_time:
-            daily_used = 0
-            next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
-            if now.hour >= 5:
-                next_reset = next_reset + timedelta(days=1)
-            await db.users.update_one(
-                {"id": current_user["id"]},
-                {"$set": {"daily_icebreakers_used": 0, "icebreakers_reset_at": next_reset.isoformat()}}
-            )
-    else:
-        # Initialize reset time for users who don't have one yet
-        next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
-        if now.hour >= 5:
-            next_reset = next_reset + timedelta(days=1)
-        await db.users.update_one(
-            {"id": current_user["id"]},
-            {"$set": {"icebreakers_reset_at": next_reset.isoformat()}}
-        )
-    
-    token_balance = fresh_user.get("token_balance", 0)
-    use_token = False
-    
-    # Priority: Use daily allowance first, then tokens as fallback
-    if daily_used < daily_limit:
-        # Still have daily icebreakers available
-        pass
-    elif token_balance > 0:
-        # Out of daily icebreakers, use token
-        use_token = True
-    elif not bypass_limits:
-        # No daily icebreakers AND no tokens
-        raise HTTPException(status_code=429, detail="no_icebreakers_remaining")
-    
-    # Track usage
-    if use_token:
-        await db.users.update_one(
-            {"id": current_user["id"]},
-            {"$inc": {"token_balance": -1}}
-        )
-    else:
-        await db.users.update_one(
-            {"id": current_user["id"]},
-            {"$inc": {"daily_icebreakers_used": 1}}
-        )
+    use_token = action_result["used_token"]
     
     request_id = str(uuid.uuid4())
     chat_request = {
@@ -4970,49 +5095,8 @@ async def update_user_location(
 # Glance Routes
 @api_router.post("/glance")
 async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_current_user)):
-    """Send a glance to another user at a venue"""
+    """Send a glance to another user at a venue. Uses unified daily actions system."""
     now = datetime.now(timezone.utc)
-    
-    # Check daily glance limit (unlimited glances in test mode or for users with bypass flag, but still track usage)
-    bypass_limits = IS_TEST_BUILD or current_user.get("bypass_glance_limits", False)
-    
-    # Check if daily glances available
-    is_premium = current_user.get("is_premium", False)
-    daily_limit = PREMIUM_DAILY_GLANCES if is_premium else FREE_DAILY_GLANCES
-    
-    # Get daily glances used (reset at 5am)
-    glances_reset_at = current_user.get("glances_reset_at")
-    daily_used = current_user.get("daily_glances_used", 0)
-    
-    if glances_reset_at:
-        reset_time = datetime.fromisoformat(glances_reset_at.replace("Z", "+00:00"))
-        if now >= reset_time:
-            daily_used = 0
-            # Set next reset to 5am
-            next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
-            if now.hour >= 5:
-                next_reset = next_reset + timedelta(days=1)
-            await db.users.update_one(
-                {"id": current_user["id"]},
-                {"$set": {"daily_glances_used": 0, "glances_reset_at": next_reset.isoformat()}}
-            )
-    
-    # Check if free allowance available, otherwise use tokens
-    token_balance = current_user.get("token_balance", 0)
-    use_token = False
-    
-    if daily_used < daily_limit:
-        # Use free allowance
-        pass  # Will increment daily_glances_used below
-    elif token_balance > 0:
-        # Use token
-        use_token = True
-    elif not bypass_limits:
-        # No glances remaining and not in bypass mode
-        raise HTTPException(
-            status_code=429, 
-            detail="no_glances_remaining"  # Special code for frontend to show upgrade prompt
-        )
     
     # Check if target user has blocked current user OR current user is in their blocked_by list
     target_user = await db.users.find_one({"id": data.to_user_id}, {"_id": 0})
@@ -5029,7 +5113,6 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
         raise HTTPException(status_code=403, detail="Sorry, this user is unavailable right now.")
     
     # Check if already glanced - but allow re-sending after 5am reset
-    # Sort by created_at descending to get the most recent glance
     existing = await db.glances.find_one(
         {
             "from_user_id": current_user["id"],
@@ -5039,22 +5122,20 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
     )
     
     if existing:
-        # Check if 5am reset has passed since last glance
-        timezone_offset = current_user.get("timezone_offset", 0)  # User's timezone offset
+        timezone_offset = current_user.get("timezone_offset", 0)
         if not can_send_interaction_again(existing.get("created_at"), timezone_offset):
             return {"message": "Already glanced today", "is_mutual": False, "can_send_again_at": get_next_5am_reset(timezone_offset).isoformat()}
     
-    # Track usage (always update counters, even in test mode for UI consistency)
-    if use_token:
-        await db.users.update_one(
-            {"id": current_user["id"]},
-            {"$inc": {"token_balance": -1}}
+    # Use unified daily action system
+    action_result = await check_and_use_daily_action(current_user["id"], "glance")
+    
+    if not action_result["success"]:
+        raise HTTPException(
+            status_code=429, 
+            detail=action_result.get("error", "no_actions_remaining")
         )
-    else:
-        await db.users.update_one(
-            {"id": current_user["id"]},
-            {"$inc": {"daily_glances_used": 1}}
-        )
+    
+    use_token = action_result["used_token"]
     
     glance_id = str(uuid.uuid4())
     glance = {
@@ -5154,7 +5235,7 @@ async def send_glance(data: GlanceCreate, current_user: dict = Depends(get_curre
 # Icebreaker Routes
 @api_router.post("/icebreaker")
 async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(get_current_user)):
-    """Send an icebreaker to another user"""
+    """Send an icebreaker to another user. Uses unified daily actions system."""
     now = datetime.now(timezone.utc)
     
     # Check if target user exists
@@ -5188,7 +5269,6 @@ async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(g
             raise HTTPException(status_code=429, detail="You can send another icebreaker to this person in a little while.")
     
     # Check daily attempt limit (max 2 per recipient per night, reset at 5am)
-    # Get today's 5am in UTC as baseline
     today_5am = now.replace(hour=5, minute=0, second=0, microsecond=0)
     if now.hour < 5:
         today_5am = today_5am - timedelta(days=1)
@@ -5202,46 +5282,13 @@ async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(g
     if attempts_today >= 2:
         raise HTTPException(status_code=429, detail="You've reached the limit for today.")
     
-    # Check icebreaker allowance
-    is_premium = current_user.get("is_premium", False)
-    daily_limit = PREMIUM_DAILY_ICEBREAKERS if is_premium else FREE_DAILY_ICEBREAKERS
+    # Use unified daily action system
+    action_result = await check_and_use_daily_action(current_user["id"], "icebreaker")
     
-    # Get daily icebreakers used (reset at 5am)
-    icebreakers_reset_at = current_user.get("icebreakers_reset_at")
-    daily_used = current_user.get("daily_icebreakers_used", 0)
+    if not action_result["success"]:
+        raise HTTPException(status_code=429, detail=action_result.get("error", "no_actions_remaining"))
     
-    if icebreakers_reset_at:
-        reset_time = datetime.fromisoformat(icebreakers_reset_at.replace("Z", "+00:00"))
-        if now >= reset_time:
-            daily_used = 0
-            # Set next reset to 5am
-            next_reset = now.replace(hour=5, minute=0, second=0, microsecond=0)
-            if now.hour >= 5:
-                next_reset = next_reset + timedelta(days=1)
-            await db.users.update_one(
-                {"id": current_user["id"]},
-                {"$set": {"daily_icebreakers_used": 0, "icebreakers_reset_at": next_reset.isoformat()}}
-            )
-    
-    # Check if free allowance available, otherwise use tokens
-    token_balance = current_user.get("token_balance", 0)
-    use_token = False
-    
-    if daily_used < daily_limit:
-        # Use free allowance
-        await db.users.update_one(
-            {"id": current_user["id"]},
-            {"$inc": {"daily_icebreakers_used": 1}}
-        )
-    elif token_balance > 0:
-        # Use token
-        use_token = True
-        await db.users.update_one(
-            {"id": current_user["id"]},
-            {"$inc": {"token_balance": -1}}
-        )
-    else:
-        raise HTTPException(status_code=429, detail="no_icebreakers_remaining")
+    use_token = action_result["used_token"]
     
     # Validate message type
     if data.message_type < 0 or data.message_type >= len(ICEBREAKER_MESSAGES):
@@ -5257,7 +5304,8 @@ async def send_icebreaker(data: IcebreakerCreate, current_user: dict = Depends(g
         "message": ICEBREAKER_MESSAGES[data.message_type],
         "created_at": now.isoformat(),
         "status": "pending",
-        "viewed_at": None
+        "viewed_at": None,
+        "used_token": use_token
     }
     await db.icebreakers.insert_one(icebreaker)
     
@@ -7752,11 +7800,13 @@ async def get_premium_status(current_user: dict = Depends(get_current_user)):
     is_premium = current_user.get("is_premium", False)
     expires_at = current_user.get("premium_expires_at")
     
+    # Get daily action status
+    action_status = await get_daily_action_status(current_user["id"])
+    
     benefits = []
     if is_premium:
         benefits = [
-            f"{PREMIUM_DAILY_GLANCES} daily glances (vs {FREE_DAILY_GLANCES})",
-            f"{PREMIUM_DAILY_TOKENS} daily tokens (vs {FREE_DAILY_TOKENS})",
+            f"{PREMIUM_DAILY_ACTIONS} daily actions (vs {FREE_DAILY_ACTIONS} for free users)",
             "See if your glance was viewed",
             "Second reveal attempt after 24h",
             "Priority visibility at venues",
@@ -7769,7 +7819,9 @@ async def get_premium_status(current_user: dict = Depends(get_current_user)):
         "benefits": benefits,
         "packages": [
             {"id": k, **v} for k, v in PREMIUM_PACKAGES.items()
-        ]
+        ],
+        # Daily actions info
+        "daily_actions": action_status
     }
 
 @api_router.get("/premium/packages")
@@ -7783,26 +7835,28 @@ async def get_premium_packages():
 
 @api_router.get("/tokens/balance")
 async def get_token_balance(current_user: dict = Depends(get_current_user)):
-    """Get current token balance and daily allowances"""
-    is_premium = current_user.get("is_premium", False)
+    """Get current token balance and daily action allowances"""
+    # Get unified daily action status
+    action_status = await get_daily_action_status(current_user["id"])
     
-    # Get daily limits based on premium status
-    daily_glance_limit = PREMIUM_DAILY_GLANCES if is_premium else FREE_DAILY_GLANCES
-    daily_icebreaker_limit = PREMIUM_DAILY_ICEBREAKERS if is_premium else FREE_DAILY_ICEBREAKERS
-    
-    # Get used counts (these reset at 5am)
-    daily_glances_used = current_user.get("daily_glances_used", 0)
-    daily_icebreakers_used = current_user.get("daily_icebreakers_used", 0)
+    if not action_status:
+        raise HTTPException(status_code=404, detail="User not found")
     
     return {
-        "balance": current_user.get("token_balance", 0),
-        "daily_glances_used": daily_glances_used,
-        "daily_icebreakers_used": daily_icebreakers_used,
-        "daily_glance_limit": daily_glance_limit,
-        "daily_icebreaker_limit": daily_icebreaker_limit,
-        "daily_glances_remaining": max(0, daily_glance_limit - daily_glances_used),
-        "daily_icebreakers_remaining": max(0, daily_icebreaker_limit - daily_icebreakers_used),
-        "is_premium": is_premium,
+        "balance": action_status["token_balance"],
+        # Unified daily actions (replaces separate glances/icebreakers)
+        "daily_actions_used": action_status["daily_used"],
+        "daily_actions_limit": action_status["daily_limit"],
+        "daily_actions_remaining": action_status["daily_remaining"],
+        "daily_actions_reset_at": action_status["resets_at"],
+        # Legacy fields for backward compatibility
+        "daily_glances_used": action_status["daily_used"],
+        "daily_icebreakers_used": action_status["daily_used"],
+        "daily_glance_limit": action_status["daily_limit"],
+        "daily_icebreaker_limit": action_status["daily_limit"],
+        "daily_glances_remaining": action_status["daily_remaining"],
+        "daily_icebreakers_remaining": action_status["daily_remaining"],
+        "is_premium": action_status["is_premium"],
         "token_fallback_confirmed": current_user.get("token_fallback_confirmed", False)
     }
 
@@ -7832,6 +7886,24 @@ try:
 except ImportError:
     STRIPE_AVAILABLE = False
     logger.warning("Stripe integration not available")
+
+@api_router.get("/daily-actions/status")
+async def get_daily_actions_status_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Get unified daily actions status.
+    
+    Returns:
+    - daily_limit: 5 for free users, 20 for premium
+    - daily_used: Number of actions used today (glances + icebreakers + chat requests)
+    - daily_remaining: Actions left before tokens are used
+    - token_balance: Purchased tokens (never expire)
+    - resets_at: Next reset time (5 AM local time)
+    - is_premium: Premium status
+    """
+    status = await get_daily_action_status(current_user["id"])
+    if not status:
+        raise HTTPException(status_code=404, detail="User not found")
+    return status
 
 @api_router.post("/payments/checkout/premium")
 async def create_premium_checkout(request: Request, package_id: str, current_user: dict = Depends(get_current_user)):
